@@ -1,0 +1,190 @@
+[
+    {
+        "orgId": 1105630,
+        "disabled": false,
+        "clientName": "Covetly",
+        "emailAddresses": [
+            {
+                "name": "Reid Nahm",
+                "emailName": "reid",
+                "domain": "covetlyapp.com"
+            }
+        ],
+        "keyFilename": "ssj_covetly.key",
+        "pemFilename": "ssj_covetly.pem",
+        "bidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "HIGH_CPI_BID_DECREASE_THRESH": 0.29,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.1,
+            "LOW_CPA_BID_BOOST": 1.1,
+            "HIGH_CPA_BID_DECREASE": 0.8,
+            "MAX_BID": 0.35,
+            "MIN_BID": 0.1
+        },
+        "adgroupBidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "LOW_CPI_BID_INCREASE_THRESH": 0.4,
+            "HIGH_CPI_BID_DECREASE_THRESH": 0.5,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.1,
+            "LOW_CPA_BID_BOOST": 1.1,
+            "HIGH_CPA_BID_DECREASE": 0.8,
+            "MAX_BID": 3.0,
+            "MIN_BID": 0.1
+        },
+        "campaignIds": [
+            158675458,
+            187214904
+        ],
+        "keywordAdderIds": {
+            "campaignId": {
+                "search": 187217541,
+                "broad": 187214904,
+                "exact": 158675458
+            },
+            "adGroupId": {
+                "search": 187217561,
+                "broad": 187192993,
+                "exact": 158698070
+            }
+        },
+        "keywordAdderParameters": {
+            "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10.0,
+            "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0.0,
+            "TARGETED_KEYWORD_TAP_THRESHOLD": 1.0,
+            "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1.0,
+            "EXACT_MATCH_DEFAULT_BID": 0.4,
+            "BROAD_MATCH_DEFAULT_BID": 0.4
+        }
+    },
+    {
+        "orgId": 1056410,
+        "disabled": false,
+        "clientName": "HER",
+        "emailAddresses": [
+            {
+                "name": "Robyn Exton",
+                "emailName": "robyn",
+                "domain": "weareher.com"
+            }
+        ],
+        "keyFilename": "ssj_her.key",
+        "pemFilename": "ssj_her.pem",
+        "bidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "HIGH_CPI_BID_DECREASE_THRESH": 1.7,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.1,
+            "LOW_CPA_BID_BOOST": 1.1,
+            "HIGH_CPA_BID_DECREASE": 0.8,
+            "MAX_BID": 2.0,
+            "MIN_BID": 0.1
+        },
+        "adgroupBidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "LOW_CPI_BID_INCREASE_THRESH": 1.58,
+            "HIGH_CPI_BID_DECREASE_THRESH": 2.0,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.1,
+            "LOW_CPA_BID_BOOST": 1.1,
+            "HIGH_CPA_BID_DECREASE": 0.8,
+            "MAX_BID": 6.0,
+            "MIN_BID": 0.1
+        },
+        "campaignIds": [
+            197913328,
+            197914192
+        ],
+        "keywordAdderIds": {
+            "campaignId": {
+                "search": 197915189,
+                "broad": 197914192,
+                "exact": 197913328
+            },
+            "adGroupId": {
+                "search": 197913017,
+                "broad": 197914177,
+                "exact": 197913349
+            }
+        },
+        "keywordAdderParameters": {
+            "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10.0,
+            "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0.0,
+            "TARGETED_KEYWORD_TAP_THRESHOLD": 1.0,
+            "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1.0,
+            "EXACT_MATCH_DEFAULT_BID": 2.0,
+            "BROAD_MATCH_DEFAULT_BID": 2.0
+        }
+    },
+    {
+        "orgId": 435290,
+        "disabled": true,
+        "clientName": "Wavy",
+        "emailAddresses": [
+            {
+                "name": "Sonia Sharma",
+                "emailName": "sonia",
+                "domain": "downloadwavy.com"
+            },
+            {
+                "name": "Hammad Bashir",
+                "emailName": "hammad",
+                "domain": "downloadwavy.com"
+            }
+        ],
+        "keyFilename": "ssj_wavy.key",
+        "pemFilename": "ssj_wavy.pem",
+        "bidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "HIGH_CPI_BID_DECREASE_THRESH": 0.36,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.1,
+            "LOW_CPA_BID_BOOST": 1.1,
+            "HIGH_CPA_BID_DECREASE": 0.9,
+            "MAX_BID": 1.0,
+            "MIN_BID": 0.1
+        },
+        "adgroupBidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "LOW_CPI_BID_INCREASE_THRESH": 0.24,
+            "HIGH_CPI_BID_DECREASE_THRESH": 0.36,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.1,
+            "LOW_CPA_BID_BOOST": 1.1,
+            "HIGH_CPA_BID_DECREASE": 0.9,
+            "MAX_BID": 1.0,
+            "MIN_BID": 0.1
+        },
+        "campaignIds": [
+            204189330,
+            204189331
+        ],
+        "keywordAdderIds": {
+            "campaignId": {
+                "search": 204120828,
+                "broad": 204189331,
+                "exact": 204189330
+            },
+            "adGroupId": {
+                "search": 204120799,
+                "broad": 204189351,
+                "exact": 204189350
+            }
+        },
+        "keywordAdderParameters": {
+            "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10.0,
+            "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0.0,
+            "TARGETED_KEYWORD_TAP_THRESHOLD": 1.0,
+            "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1.0,
+            "EXACT_MATCH_DEFAULT_BID": 0.5,
+            "BROAD_MATCH_DEFAULT_BID": 0.25
+        }
+    }
+]
