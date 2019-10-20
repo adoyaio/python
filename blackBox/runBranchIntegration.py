@@ -1,3 +1,5 @@
+from __future__ import print_function # Python 2/3 compatibility
+import boto3
 from collections import defaultdict
 import datetime
 import email.message
@@ -23,7 +25,9 @@ from configuration import SMTP_HOSTNAME, \
     BRANCH_ANALYTICS_URL_BASE
 
 from debug import debug, dprint
-from retry import retry
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 ###### date and time parameters for bidding lookback ######
 BIDDING_LOOKBACK = 7  # days
@@ -41,7 +45,7 @@ def initialize():
     global sendG
 
     sendG = "-s" in sys.argv or "--send" in sys.argv
-    dprint("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
+    logger.info("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
 
 
 # ------------------------------------------------------------------------------
@@ -57,7 +61,7 @@ def getKeywordReportFromBranch():
         "branch_secret": "secret_live_6afuIbahkAfjz4mChpHvf6TInRM33EGb",
         "start_date": str(start_date),
         "end_date": str(end_date),
-        "data_source": "eo_install",
+        "data_source": "eo_commerce_event",
         "dimensions": [
             "last_attributed_touch_data_tilde_feature",
             "last_attributed_touch_data_tilde_channel",
@@ -85,15 +89,14 @@ def getKeywordReportFromBranch():
 
     headers = {"Content-Type": "application/json"}
 
-    dprint("URL is '%s'." % url)
-    dprint("Payload is '%s'." % payload)
-    dprint("Headers are %s." % headers)
+    logger.info("URL is '%s'." % url)
+    logger.info("Payload is '%s'." % payload)
+    logger.info("Headers are %s." % headers)
 
     response = getKeywordReportFromBranchHelper(url, json=payload, headers=headers)
-    dprint("Response is %s." % response)
+    logger.info("Response is %s." % response)
 
     return json.loads(response.text)
-
 
 # ------------------------------------------------------------------------------
 @debug
@@ -108,7 +111,45 @@ def process():
 # for campaignId in campaignIds:
 
     data = getKeywordReportFromBranch()
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+    table = dynamodb.Table('branch_commerce_events')
+    if table:
+        logger.info("found table")
+    else:
+        logger.info("issue connecting to dynamodb ")
 
+    results = data['results']
+    if len(results) == 0:
+        return False  # EARLY RETURN
+
+    for result in results:
+
+        dash = "-"
+        timestamp = str(result["timestamp"])
+        campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+        count = str(result["result"]["total_count"])
+        campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+        branch_commerce_event_key = campaign_id + dash + keyword
+
+        # dprint("timestamp=%s." % timestamp)
+        # dprint("campaign=%s." % campaign)
+        # dprint("keyword=%s." % keyword)
+        # dprint("count=%s." % count)
+        # dprint("campaign_id=%s." % campaign_id)
+        # dprint("branch_commerce_event_key=%s." % branch_commerce_event_key)
+
+        response = table.put_item(
+            Item={
+                'branch_commerce_event_key': branch_commerce_event_key,
+                'timestamp': timestamp,
+                'campaign': campaign,
+                'keyword': keyword,
+                'count': count,
+                'campaign_id': campaign_id
+            }
+        )
+        logger.info("PutItem succeeded:")
 
 # ------------------------------------------------------------------------------
 @debug
@@ -123,3 +164,12 @@ if __name__ == "__main__":
     initialize()
     process()
     terminate()
+
+def lambda_handler(event, context):
+    initialize()
+    process()
+    terminate()
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Branch Integration Complete')
+    }
