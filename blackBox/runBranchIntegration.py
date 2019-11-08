@@ -70,8 +70,11 @@ def getKeywordReportFromBranch():
             "last_attributed_touch_data_tilde_ad_name",
             "last_attributed_touch_data_tilde_ad_id",
             "last_attributed_touch_data_tilde_campaign_id",
-            "last_attributed_touch_data_tilde_advertising_partner_name"
+            "last_attributed_touch_data_tilde_advertising_partner_name",
+            "last_attributed_touch_data_tilde_ad_set_id",
+            "last_attributed_touch_data_tilde_ad_set_name"
         ],
+        "granularity": "day", "aggregation": "total_count",
         "filters": {
             "last_attributed_touch_data_tilde_feature":
                 [
@@ -111,7 +114,8 @@ def process():
 # for campaignId in campaignIds:
 
     data = getKeywordReportFromBranch()
-    dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+    #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
     table = dynamodb.Table('branch_commerce_events')
     if table:
         logger.info("found table")
@@ -127,10 +131,16 @@ def process():
         dash = "-"
         timestamp = str(result["timestamp"])
         campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
-        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-        count = str(result["result"]["total_count"])
         campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-        branch_commerce_event_key = campaign_id + dash + keyword
+        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+        ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+        ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+        count = str(result["result"]["total_count"])
+
+        if(campaign == "exact_match"):
+            branch_commerce_event_key = campaign_id + dash + keyword.replace(" ", dash)
+        else:
+            branch_commerce_event_key = campaign_id + dash + ad_set_name
 
         # dprint("timestamp=%s." % timestamp)
         # dprint("campaign=%s." % campaign)
@@ -144,9 +154,11 @@ def process():
                 'branch_commerce_event_key': branch_commerce_event_key,
                 'timestamp': timestamp,
                 'campaign': campaign,
+                'campaign_id': campaign_id,
                 'keyword': keyword,
-                'count': count,
-                'campaign_id': campaign_id
+                'ad_set_id':  ad_set_id,
+                'ad_set_name': ad_set_name,
+                'count': count
             }
         )
         logger.info("PutItem succeeded:")
