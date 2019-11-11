@@ -12,6 +12,9 @@ import requests
 import smtplib
 import sys
 import time
+
+from botocore.exceptions import ClientError
+
 from Client import CLIENTS
 from configuration import SMTP_HOSTNAME, \
     SMTP_PORT, \
@@ -114,6 +117,7 @@ def process():
 # for campaignId in campaignIds:
 
     data = getKeywordReportFromBranch()
+    #
     #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
     dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
     table = dynamodb.Table('branch_commerce_events')
@@ -128,41 +132,49 @@ def process():
 
     for result in results:
 
-        dash = "-"
-        timestamp = str(result["timestamp"])
-        campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
-        campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-        ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-        ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
-        count = str(result["result"]["total_count"])
+        if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
 
-        if(campaign == "exact_match"):
-            branch_commerce_event_key = campaign_id + dash + keyword.replace(" ", dash)
+            dash = "-"
+            timestamp = str(result["timestamp"])
+            campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+            campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+            keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+            ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+            ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+            count = str(result["result"]["total_count"])
+
+            if(campaign == "exact_match"):
+                branch_commerce_event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+            else:
+                branch_commerce_event_key = campaign_id + dash + ad_set_name
+
+                # enable for local debugging
+                # dprint("timestamp=%s." % timestamp)
+                # dprint("campaign=%s." % campaign)
+                # dprint("keyword=%s." % keyword)
+                # dprint("count=%s." % count)
+                # dprint("campaign_id=%s." % campaign_id)
+                # dprint("branch_commerce_event_key=%s." % branch_commerce_event_key)
+
+            try:
+                response = table.put_item(
+                    Item={
+                        'branch_commerce_event_key': branch_commerce_event_key,
+                        'timestamp': timestamp,
+                        'campaign': campaign,
+                        'campaign_id': campaign_id,
+                        'keyword': keyword,
+                        'ad_set_id':  ad_set_id,
+                        'ad_set_name': ad_set_name,
+                        'count': count
+                    }
+                )
+            except ClientError as e:
+                logger.info("PutItem failed due to" + e.response['Error']['Message'])
+            else:
+                logger.info("PutItem succeeded:")
         else:
-            branch_commerce_event_key = campaign_id + dash + ad_set_name
-
-        # dprint("timestamp=%s." % timestamp)
-        # dprint("campaign=%s." % campaign)
-        # dprint("keyword=%s." % keyword)
-        # dprint("count=%s." % count)
-        # dprint("campaign_id=%s." % campaign_id)
-        # dprint("branch_commerce_event_key=%s." % branch_commerce_event_key)
-
-        response = table.put_item(
-            Item={
-                'branch_commerce_event_key': branch_commerce_event_key,
-                'timestamp': timestamp,
-                'campaign': campaign,
-                'campaign_id': campaign_id,
-                'keyword': keyword,
-                'ad_set_id':  ad_set_id,
-                'ad_set_name': ad_set_name,
-                'count': count
-            }
-        )
-        logger.info("PutItem succeeded:")
-
+            logger.info("Non keyword branch item found, skipping")
 # ------------------------------------------------------------------------------
 @debug
 def terminate():
