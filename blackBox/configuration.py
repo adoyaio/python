@@ -14,4 +14,5 @@ from configuration_apple import APPLE_KEYWORDS_REPORT_URL, \
                                 APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
                                 APPLE_ADGROUP_UPDATE_URL_TEMPLATE
 
-from configuration_branch import BRANCH_ANALYTICS_URL_BASE
+from configuration_branch import BRANCH_ANALYTICS_URL_BASE, \
+                                 data_sources

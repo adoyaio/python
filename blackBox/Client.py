@@ -30,7 +30,8 @@ class Client:
                adgroupBidParameters,
                campaignIds,
                keywordAdderIds,
-               keywordAdderParameters
+               keywordAdderParameters,
+               branchIntegrationParameters,
                ):
     if "campaignId" not in keywordAdderIds or \
        "adGroupId"  not in keywordAdderIds:
@@ -58,7 +59,7 @@ class Client:
     self._updatedAdgroupBidsCount = self._readUpdatedAdgroupBidsCount()
     self._positiveKeywordsAdded   = self._readPositiveKeywordsAdded()
     self._negativeKeywordsAdded   = self._readNegativeKeywordsAdded()
-
+    self._branchIntegrationParameters = branchIntegrationParameters
     # The history data is populated when requested.
 
 
@@ -86,6 +87,8 @@ class Client:
   def campaignIds(self)            : return tuple(self._campaignIds)
   @property
   def updatedBids(self)            : return self._updatedBidsCount
+  @property
+  def branchIntegrationParameters(self) : return dict(self._branchIntegrationParameters)
 
   @updatedBids.setter
   def updatedBids(self, newValue):
@@ -584,6 +587,7 @@ CLIENTS = [ Client(client["orgId"],
                    client["campaignIds"],
                    client["keywordAdderIds"],
                    client["keywordAdderParameters"],
+                   client["branchIntegrationParameters"],
                   )
               for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
                 if client.get("disabled", False) == False]
