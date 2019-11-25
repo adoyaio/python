@@ -1,4 +1,6 @@
-from __future__ import print_function # Python 2/3 compatibility
+from __future__ import print_function  # Python 2/3 compatibility
+
+import decimal
 import boto3
 from collections import defaultdict
 import datetime
@@ -26,9 +28,11 @@ from configuration import SMTP_HOSTNAME, \
     TOTAL_COST_PER_INSTALL_LOOKBACK, \
     HTTP_REQUEST_TIMEOUT, \
     BRANCH_ANALYTICS_URL_BASE, \
-    data_sources
+    data_sources, \
+    aggregations
 from debug import debug, dprint
 import logging
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -41,6 +45,16 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
 
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
 
 # ------------------------------------------------------------------------------
 @debug
@@ -60,8 +74,7 @@ def getKeywordReportFromBranchHelper(url, json, headers):
 
 # ------------------------------------------------------------------------------
 @debug
-def getKeywordReportFromBranch(branch_job, branch_key, branch_secret):
-
+def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation):
     payload = {
         "branch_key": branch_key,
         "branch_secret": branch_secret,
@@ -80,7 +93,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret):
             "last_attributed_touch_data_tilde_ad_set_id",
             "last_attributed_touch_data_tilde_ad_set_name",
         ],
-        "granularity": "day", "aggregation": "total_count",
+        "granularity": "day", "aggregation": aggregation,
         "filters": {
             "last_attributed_touch_data_tilde_feature":
                 [
@@ -107,85 +120,133 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret):
 
     return json.loads(response.text)
 
+
 # ------------------------------------------------------------------------------
 @debug
 def process():
-
-    #summaryReportInfo = {}
+    # summaryReportInfo = {}
     for client in CLIENTS:
         # summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = { }
         branch_key = client.branchIntegrationParameters["branch_key"]
         branch_secret = client.branchIntegrationParameters["branch_secret"]
 
         for data_source in data_sources.keys():
-            #key field
+            # key field of db table (slice off the last character)
             data_source_key = data_source[:-1] + "_key"
             branch_job = data_sources.get(data_source)
-            data = getKeywordReportFromBranch(branch_job, branch_key, branch_secret)
 
-            #LOCAL
-            #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
-
-            #LIVE
+            # LOCAL
+            # dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+            # LIVE
             dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
             table = dynamodb.Table(data_source)
 
             if table:
                 logger.info("found table " + data_source)
+
+                branch_job_aggregations = aggregations[branch_job]
+
+                for aggregation in branch_job_aggregations:
+                    data = {aggregation: getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation)}
+
+                    results = data[aggregation]['results']
+
+                    if len(results) == 0:
+                        # return False  # EARLY RETURN
+                        logger.info("no results from " + branch_job)
+
+                    for result in results:
+
+                        if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
+
+                            if aggregation != "revenue":
+
+                                logger.info("handle unique_count")
+                                dash = "-"
+                                timestamp = str(result["timestamp"])
+                                campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+                                campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+                                keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+                                ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+                                ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                                count = str(result["result"]["unique_count"])
+
+                                if campaign == "exact_match":
+                                    event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                else:
+                                    event_key = campaign_id + dash + ad_set_name
+
+                                # enable for local debugging
+                                # dprint("timestamp=%s." % timestamp)
+                                # dprint("campaign=%s." % campaign)
+                                # dprint("keyword=%s." % keyword)
+                                # dprint("count=%s." % count)
+                                # dprint("campaign_id=%s." % campaign_id)
+                                # dprint("event_key=%s." % event_key)
+
+                                try:
+                                    response = table.put_item(
+                                        Item={
+                                             data_source_key: event_key,
+                                            'timestamp': timestamp,
+                                            'campaign': campaign,
+                                            'campaign_id': campaign_id,
+                                            'keyword': keyword,
+                                            'ad_set_id': ad_set_id,
+                                            'ad_set_name': ad_set_name,
+                                            'count': count
+                                        }
+                                    )
+                                except ClientError as e:
+                                    logger.info("PutItem failed due to" + e.response['Error']['Message'])
+                                else:
+                                    logger.info("PutItem succeeded:")
+
+                            else:
+                                # TODO refactor revenue
+                                logger.info("handle revenue")
+                                dash = "-"
+                                timestamp = str(result["timestamp"])
+                                campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+                                campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+                                keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+                                ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+                                ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                                revenue = decimal.Decimal(result["result"]["revenue"])
+
+                                if campaign == "exact_match":
+                                    event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                else:
+                                    event_key = campaign_id + dash + ad_set_name
+
+                                # enable for local debugging
+                                # dprint("timestamp=%s." % timestamp)
+                                # dprint("campaign=%s." % campaign)
+                                # dprint("keyword=%s." % keyword)
+                                # dprint("revenue=%d." % revenue)
+                                # dprint("campaign_id=%s." % campaign_id)
+                                # dprint("branch_commerce_event_key=%s." % event_key)
+
+                                try:
+                                    response = table.update_item(
+                                        Key={
+                                            data_source_key: event_key,
+                                            'timestamp': timestamp,
+                                        },
+                                        UpdateExpression='SET revenue = :val',
+                                        ExpressionAttributeValues={
+                                            ':val': revenue
+                                        }
+                                    )
+                                except ClientError as e:
+                                    logger.info("PutItem failed due to" + e.response['Error']['Message'])
+                                else:
+                                    print(json.dumps(response, indent=4, cls=DecimalEncoder))
+                        else:
+                            logger.info("Non keyword branch item found, skipping")
             else:
                 logger.info("issue connecting to " + data_source)
-
-            results = data['results']
-
-            if len(results) == 0:
-                #return False  # EARLY RETURN
-                logger.info("no results from " + branch_job)
-
-            for result in results:
-
-                if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
-                    dash = "-"
-                    timestamp = str(result["timestamp"])
-                    campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
-                    campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-                    keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                    ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                    ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
-                    count = str(result["result"]["total_count"])
-
-                    if campaign == "exact_match":
-                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
-                    else:
-                        event_key = campaign_id + dash + ad_set_name
-
-                        # enable for local debugging
-                        # dprint("timestamp=%s." % timestamp)
-                        # dprint("campaign=%s." % campaign)
-                        # dprint("keyword=%s." % keyword)
-                        # dprint("count=%s." % count)
-                        # dprint("campaign_id=%s." % campaign_id)
-                        # dprint("branch_commerce_event_key=%s." % branch_commerce_event_key)
-
-                    try:
-                        response = table.put_item(
-                            Item={
-                            data_source_key: event_key,
-                            'timestamp': timestamp,
-                            'campaign': campaign,
-                            'campaign_id': campaign_id,
-                            'keyword': keyword,
-                            'ad_set_id':  ad_set_id,
-                            'ad_set_name': ad_set_name,
-                            'count': count
-                            }
-                        )
-                    except ClientError as e:
-                        logger.info("PutItem failed due to" + e.response['Error']['Message'])
-                    else:
-                        logger.info("PutItem succeeded:")
-                else:
-                    logger.info("Non keyword branch item found, skipping")
 
 
 # ------------------------------------------------------------------------------
@@ -201,6 +262,7 @@ if __name__ == "__main__":
     initialize()
     process()
     terminate()
+
 
 def lambda_handler(event, context):
     initialize()
