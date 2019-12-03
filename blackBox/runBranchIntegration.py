@@ -46,6 +46,10 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 
+# FOR QA PURPOSES
+# start_date = '2019-11-17'
+# end_date = '2019-11-23'
+
 # Helper class to convert a DynamoDB item to JSON.
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -55,6 +59,7 @@ class DecimalEncoder(json.JSONEncoder):
             else:
                 return int(o)
         return super(DecimalEncoder, self).default(o)
+
 
 # ------------------------------------------------------------------------------
 @debug
@@ -175,7 +180,7 @@ def process():
                                 if campaign == "exact_match":
                                     event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
                                 else:
-                                    event_key = campaign_id + dash + ad_set_name
+                                    event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
 
                                 # enable for local debugging
                                 # dprint("timestamp=%s." % timestamp)
@@ -188,7 +193,7 @@ def process():
                                 try:
                                     response = table.put_item(
                                         Item={
-                                             data_source_key: event_key,
+                                            data_source_key: event_key,
                                             'timestamp': timestamp,
                                             'campaign': campaign,
                                             'campaign_id': campaign_id,
