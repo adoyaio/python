@@ -71,10 +71,10 @@ def initialize():
 
 
 # ------------------------------------------------------------------------------
-def getKeywordReportFromBranchHelper(url, json, headers):
+def getKeywordReportFromBranchHelper(url, payload, headers):
     dprint("url=%s." % url)
     dprint("json=%s." % json)
-    return requests.post(url, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+    return requests.post(url, json=payload, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
 
 
 # ------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
     logger.info("Payload is '%s'." % payload)
     logger.info("Headers are %s." % headers)
 
-    response = getKeywordReportFromBranchHelper(url, json=payload, headers=headers)
+    response = getKeywordReportFromBranchHelper(url, payload, headers)
     logger.info("Response is %s." % response)
 
     return json.loads(response.text)
@@ -141,7 +141,7 @@ def process():
             branch_job = data_sources.get(data_source)
 
             # LOCAL
-            # dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+            #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
             # LIVE
             dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
