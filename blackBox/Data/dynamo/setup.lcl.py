@@ -31,5 +31,96 @@ table = dynamodb.create_table(
         'WriteCapacityUnits': 10
     }
 )
+print("Table status:", table.table_status)
 
+
+table = dynamodb.create_table(
+    TableName='branch_opens',
+    KeySchema=[
+        {
+            'AttributeName': 'branch_open_key',
+            'KeyType': 'HASH'  #Partition key defined by concatenating last_attributed_touch_data_tilde_campaign_id and last_attributed_touch_data_tilde_keyword
+        },
+        {
+            'AttributeName': 'timestamp',
+            'KeyType': 'RANGE'  #Sort key
+        },
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'branch_open_key',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'timestamp',
+            'AttributeType': 'S'
+        },
+
+    ],
+    ProvisionedThroughput={
+        'ReadCapacityUnits': 10,
+        'WriteCapacityUnits': 10
+    }
+)
+print("Table status:", table.table_status)
+
+table = dynamodb.create_table(
+    TableName='branch_installs',
+    KeySchema=[
+        {
+            'AttributeName': 'branch_install_key',
+            'KeyType': 'HASH'  #Partition key defined by concatenating last_attributed_touch_data_tilde_campaign_id and last_attributed_touch_data_tilde_keyword
+        },
+        {
+            'AttributeName': 'timestamp',
+            'KeyType': 'RANGE'  #Sort key
+        },
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'branch_install_key',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'timestamp',
+            'AttributeType': 'S'
+        },
+
+    ],
+    ProvisionedThroughput={
+        'ReadCapacityUnits': 10,
+        'WriteCapacityUnits': 10
+    }
+)
+print("Table status:", table.table_status)
+
+
+table = dynamodb.create_table(
+    TableName='branch_reinstalls',
+    KeySchema=[
+        {
+            'AttributeName': 'branch_reinstall_key',
+            'KeyType': 'HASH'  #Partition key defined by concatenating last_attributed_touch_data_tilde_campaign_id and last_attributed_touch_data_tilde_keyword
+        },
+        {
+            'AttributeName': 'timestamp',
+            'KeyType': 'RANGE'  #Sort key
+        },
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'branch_reinstall_key',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'timestamp',
+            'AttributeType': 'S'
+        },
+
+    ],
+    ProvisionedThroughput={
+        'ReadCapacityUnits': 10,
+        'WriteCapacityUnits': 10
+    }
+)
 print("Table status:", table.table_status)

@@ -15,6 +15,7 @@ import smtplib
 import sys
 import time
 
+from boto3 import dynamodb
 from botocore.exceptions import ClientError
 
 from Client import CLIENTS
@@ -45,8 +46,7 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
 
-
-# FOR QA PURPOSES
+# FOR QA PURPOSES set these fields explicitly
 # start_date = '2019-11-17'
 # end_date = '2019-11-23'
 
@@ -63,12 +63,25 @@ class DecimalEncoder(json.JSONEncoder):
 
 # ------------------------------------------------------------------------------
 @debug
-def initialize():
+def initialize(env, dynamoEndpoint):
     global sendG
+    global dynamodb
 
-    sendG = "-s" in sys.argv or "--send" in sys.argv
-    logger.info("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
+    #TODO rm v0 code
+    #sendG = "-s" in sys.argv or "--send" in sys.argv
+    #logger.info("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
 
+    if env != "prod":
+        sendG = "false"
+        #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+        #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://dynamodb:8000")
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+
+    else:
+        sendG = "true"
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+
+    logger.info("In initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
 def getKeywordReportFromBranchHelper(url, payload, headers):
@@ -140,10 +153,12 @@ def process():
             data_source_key = data_source[:-1] + "_key"
             branch_job = data_sources.get(data_source)
 
+            #TODO parameterize db connection
+
             # LOCAL
             #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
             # LIVE
-            dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+            #dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
             table = dynamodb.Table(data_source)
 
@@ -264,13 +279,13 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize()
+    initialize('lcl', 'http://localhost:8000')
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize()
+    initialize(event['env'], event['dynamoEndpoint'])
     process()
     terminate()
     return {
