@@ -1,0 +1,4 @@
+{
+  "env": "lcl",
+  "dynamoEndpoint": "http://dynamodb:8000"
+ }
