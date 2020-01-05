@@ -15,7 +15,6 @@ import smtplib
 import sys
 import time
 
-from boto3 import dynamodb
 from botocore.exceptions import ClientError
 
 from Client import CLIENTS
@@ -34,6 +33,7 @@ from configuration import SMTP_HOSTNAME, \
 from debug import debug, dprint
 import logging
 
+sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -72,16 +72,16 @@ def initialize(env, dynamoEndpoint):
     #logger.info("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
 
     if env != "prod":
-        sendG = "false"
+        sendG = False
         #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
         #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://dynamodb:8000")
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
 
     else:
-        sendG = "true"
+        sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    logger.info("In initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    logger.info("In runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
 def getKeywordReportFromBranchHelper(url, payload, headers):
@@ -152,14 +152,6 @@ def process():
             # key field of db table (slice off the last character)
             data_source_key = data_source[:-1] + "_key"
             branch_job = data_sources.get(data_source)
-
-            #TODO parameterize db connection
-
-            # LOCAL
-            #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
-            # LIVE
-            #dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-
             table = dynamodb.Table(data_source)
 
             if table:
@@ -224,7 +216,7 @@ def process():
                                     logger.info("PutItem succeeded:")
 
                             else:
-                                # TODO refactor revenue
+                                # TODO refactor revenue to be order angostic, currently revenue must run after count
                                 logger.info("handle revenue")
                                 dash = "-"
                                 timestamp = str(result["timestamp"])
