@@ -282,13 +282,19 @@ def createUpdatedKeywordBids(data, campaignId, client):
     )
 
     total_cost_per_install = 0
-    if len(response) > BIDDING_LOOKBACK:
+
+    if len(response['Items']) >= BIDDING_LOOKBACK:
+
         totalCost, totalInstalls = 0.0, 0
         for i in response[u'Items']:
             totalCost += float(i['spend'][1:])
             totalInstalls += int(i['installs'])
-            # print(json.dumps(i, cls=DecimalEncoder))
+            #print(json.dumps(i, cls=DecimalEncoder))
+            #dprint("appending to totalCost" + str(totalCost))
+            #dprint("appending to totalInstalls" + str(totalInstalls))
+
         total_cost_per_install = totalCost / totalInstalls
+        dprint("total cpi %s" % str(total_cost_per_install))
 
     if total_cost_per_install > BP["HIGH_CPI_BID_DECREASE_THRESH"]:
         high_cpa_keywords["bid"] = high_cpa_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]
