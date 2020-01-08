@@ -1,16 +1,5 @@
 import boto3
-from Client import CLIENTS
-from debug import debug, dprint
-from retry import retry
 from botocore.exceptions import ClientError
-
-# Replace sender@example.com with your "From" address.
-# This address must be verified with Amazon SES.
-#SENDER = "james@adoya.io"
-
-# Replace recipient@example.com with a "To" address. If your account
-# is still in the sandbox, this address must be verified.
-#RECIPIENT = "jarfarri@gmail.com"
 
 # Specify a configuration set. If you do not want to use a configuration
 # set, comment the following variable, and the
@@ -49,21 +38,6 @@ CHARSET = "UTF-8"
 client = boto3.client('ses', region_name=AWS_REGION)
 
 def sendEmailForACampaign(emailBody, emailSubject, emailRecipients, emailFrom):
-  #TODO delete v0 code
-  # msg = email.message.EmailMessage()
-  # msg.set_content(emailBody)
-
-  # dateString = time.strftime("%m/%d/%Y", time.localtime(now))
-  # if dateString.startswith("0"):
-  #   dateString = dateString[1:]
-
-  # msg['Subject'] = EMAIL_SUBJECT % (client.clientName, dateString)
-  # msg['From'] = EMAIL_FROM
-  # msg['To'] = client.emailAddresses
-  # msg['Bcc'] = EMAIL_BCC
-  #  #  msg.replace_header("Content-Type", "text/html")
-  # msg.add_attachment("".join(client.getHistory()), filename="adoya.csv", subtype="csv")
-
   # Try to send the email.
   try:
       # Provide the contents of the email.
