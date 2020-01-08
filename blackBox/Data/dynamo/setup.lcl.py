@@ -173,7 +173,7 @@ with open("history_sample_data.lcl.json") as json_file:
                'timestamp': timestamp,
                'spend': spend,
                'installs': installs,
-               'cpi' : cpi,
-               'org_id' : org_id
+               'cpi': cpi,
+               'org_id': org_id
             }
         )
