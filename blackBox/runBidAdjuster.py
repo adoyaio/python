@@ -14,6 +14,7 @@ import smtplib
 import sys
 import time
 import boto3
+from utils import AdoyaEmail
 from boto3.dynamodb.conditions import Key, Attr
 
 # TODO rm v0 code
@@ -27,11 +28,7 @@ from boto3.dynamodb.conditions import Key, Attr
 
 
 from Client import CLIENTS
-from configuration import SMTP_HOSTNAME, \
-    SMTP_PORT, \
-    SMTP_USERNAME, \
-    SMTP_PASSWORD, \
-    EMAIL_FROM, \
+from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
     TOTAL_COST_PER_INSTALL_LOOKBACK, \
@@ -42,8 +39,7 @@ from retry import retry
 import logging
 
 BIDDING_LOOKBACK = 7  # days
-
-EMAIL_TO = (Address("James Farris", "james", "adoya.io"))
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
 ###### date and time parameters for bidding lookback ######
 date = datetime.date
@@ -271,7 +267,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
     # check if overall CPI is within bid threshold, if not, fix it.
     # total_cost_per_install = client.getTotalCostPerInstall(TOTAL_COST_PER_INSTALL_LOOKBACK)
 
-    # TODO pull from db here
+    # pull from db here
     # 1 select where ordId = client.orgId
     # 2 select where date > day (YYYY_MM_DD)
 
@@ -284,15 +280,11 @@ def createUpdatedKeywordBids(data, campaignId, client):
     total_cost_per_install = 0
 
     if len(response['Items']) >= BIDDING_LOOKBACK:
-
         totalCost, totalInstalls = 0.0, 0
         for i in response[u'Items']:
             totalCost += float(i['spend'][1:])
             totalInstalls += int(i['installs'])
             #print(json.dumps(i, cls=DecimalEncoder))
-            #dprint("appending to totalCost" + str(totalCost))
-            #dprint("appending to totalInstalls" + str(totalInstalls))
-
         total_cost_per_install = totalCost / totalInstalls
         dprint("total cpi %s" % str(total_cost_per_install))
 
@@ -442,27 +434,31 @@ def createEmailBody(data, sent):
 # ------------------------------------------------------------------------------
 @debug
 def emailSummaryReport(data, sent):
-    msg = email.message.EmailMessage()
-    msg.set_content(createEmailBody(data, sent))
-
+    messageString = createEmailBody(data, sent);
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
+    subjectString =  "Bid Adjuster summary for %s" % dateString
+    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, EMAIL_FROM)
 
-    msg['Subject'] = "Bid Adjuster summary for %s" % dateString
-    msg['From'] = EMAIL_FROM
-    msg['To'] = EMAIL_TO
+    #msg = email.message.EmailMessage()
+    #msg.set_content(createEmailBody(data, sent))
+
+    # TODO rm v0 code
+    # msg['Subject'] = "Bid Adjuster summary for %s" % dateString
+    # msg['From'] = EMAIL_FROM
+    # msg['To'] = EMAIL_TO
     # msg.replace_header("Content-Type", "text/html")
 
     # TODO: Merge this duplicate code with runClientDailyReports.py. --DS, 30-Aug-2018
     # if sys.platform == "linux": # Don't try to send email on Scott's "Windows" box.
-    dprint("SMTP hostname/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
+    #dprint("SMTP hostname/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
 
-    with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
-        smtpServer.set_debuglevel(2)
-        smtpServer.starttls()
-        smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
-        smtpServer.send_message(msg)
+    # with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
+    #     smtpServer.set_debuglevel(2)
+    #     smtpServer.starttls()
+    #     smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
+    #     smtpServer.send_message(msg)
 
 
 # ------------------------------------------------------------------------------
