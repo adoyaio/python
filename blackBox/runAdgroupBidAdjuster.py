@@ -1,33 +1,21 @@
 #! /usr/bin/python3
-
+import logging
+import decimal
 from collections import defaultdict
+from datetime import datetime as dt
 import datetime
-import email.message
-from email.headerregistry import Address
 import json
-import os
 import numpy as np
 import pandas as pd
 import pprint
 import requests
-import smtplib 
-import sys
 import time
+import boto3
+from boto3.dynamodb.conditions import Key
 
-if sys.platform == "linux":
-  os.chdir("/home/scott/ScottKaplan/Adoya")
-
-else:
-  PATH_ADDEND = "C:\\Users\A\\Desktop\\apple_search_ads_api\\adGroup_bid_adjuster"
-  print("Adding '%s' to sys.path." % PATH_ADDEND);
-  sys.path.append(PATH_ADDEND)
-
+from utils import AdoyaEmail
 from Client import CLIENTS
-from configuration import SMTP_HOSTNAME, \
-                          SMTP_PORT, \
-                          SMTP_USERNAME, \
-                          SMTP_PASSWORD, \
-                          EMAIL_FROM, \
+from configuration import EMAIL_FROM, \
                           APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
                           APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
                           TOTAL_COST_PER_INSTALL_LOOKBACK, \
@@ -36,14 +24,8 @@ from configuration import SMTP_HOSTNAME, \
 from debug import debug, dprint
 from retry import retry
 
-
 BIDDING_LOOKBACK = 7 # days
-
-# TODO: Merge these duplicate EMAIL_FROM and EMAIL_TO into a config.py file. --DS, 9-Nov-2018
-EMAIL_TO         = (Address("David Schachter", "davidschachter", "gmail.com"),
-                    Address("Scott Kaplan",    "scott.kaplan",   "ssjdigital.com"),
-                   )
-
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
 ###### date and time parameters for bidding lookback ######
@@ -51,21 +33,37 @@ date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
 start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
-start_date = today - start_date_delta
-end_date = today - end_date_delta
+#start_date = today - start_date_delta
+#end_date = today - end_date_delta
+
+# FOR QA PURPOSES set these fields explicitly
+start_date = dt.strptime('2019-12-15', '%Y-%m-%d').date()
+end_date = dt.strptime('2019-12-22', '%Y-%m-%d').date()
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return str(o)
+        return super(DecimalEncoder, self).default(o)
 
 
-
-# ------------------------------------------------------------------------------
 @debug
-def initialize():
-  global sendG
+def initialize(env, dynamoEndpoint):
+    global sendG
+    global dynamodb
 
+    if env != "prod":
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+    else:
+        sendG = True
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-  sendG = "-s" in sys.argv or "--send" in sys.argv
-  dprint("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
-
-
+    logger.info("In runAdgroupBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
 @retry
@@ -236,7 +234,25 @@ def createUpdatedAdGroupBids(data, client):
                                     adGroup_info.bid * 1]
 
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
-  total_cost_per_install = client.getTotalCostPerInstall(TOTAL_COST_PER_INSTALL_LOOKBACK)
+  #total_cost_per_install = client.getTotalCostPerInstall(TOTAL_COST_PER_INSTALL_LOOKBACK)
+
+  #TODO extract into utility
+  table = dynamodb.Table('cpi_history')
+  response = table.query(
+      KeyConditionExpression=Key('org_id').eq(str(client.orgId)) & Key('timestamp').between(start_date.strftime(
+          '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+  )
+  total_cost_per_install = 0
+
+  if len(response['Items']) >= BIDDING_LOOKBACK:
+      totalCost, totalInstalls = 0.0, 0
+      for i in response[u'Items']:
+          totalCost += float(i['spend'][1:])
+          totalInstalls += int(i['installs'])
+          # print(json.dumps(i, cls=DecimalEncoder))
+      total_cost_per_install = totalCost / totalInstalls
+      dprint("total cpi %s" % str(total_cost_per_install))
+
 
   bid_decision = adGroup_info_choices_increases \
                  if total_cost_per_install <= ABP["HIGH_CPI_BID_DECREASE_THRESH"] \
@@ -354,30 +370,12 @@ def createEmailBody(data, sent):
 # ------------------------------------------------------------------------------
 @debug
 def emailSummaryReport(data, sent):
-  msg = email.message.EmailMessage()
-  msg.set_content(createEmailBody(data, sent))
-
-  dateString = time.strftime("%m/%d/%Y")
-  if dateString.startswith("0"):
-    dateString = dateString[1:]
-
-  msg['Subject'] = "Ad Group Bid Adjuster summary for %s" % dateString
-  msg['From']    = EMAIL_FROM
-  msg['To']      = EMAIL_TO
-#  msg.replace_header("Content-Type", "text/html")
-
-
-  # TODO: Merge this duplicate code with runClientDailyReports.py. --DS, 30-Aug-2018
-  if sys.platform == "linux": # Don't try to send email on Scott's "Windows" box.
-    dprint("SMTP hostname/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
-
-    with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
-      smtpServer.set_debuglevel(2)
-      smtpServer.starttls()
-      smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
-      smtpServer.send_message(msg)
-
-
+    messageString = createEmailBody(data, sent);
+    dateString = time.strftime("%m/%d/%Y")
+    if dateString.startswith("0"):
+        dateString = dateString[1:]
+    subjectString = "Ad Group Bid Adjuster summary for %s" % dateString
+    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 @debug
@@ -412,11 +410,20 @@ def terminate():
   pass
 
 
-
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-  initialize()
-  process()
-  terminate()
+    initialize('lcl', 'http://localhost:8000')
+    process()
+    terminate()
+
+
+def lambda_handler(event, context):
+    initialize(event['env'], event['dynamoEndpoint'])
+    process()
+    terminate()
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Branch Integration Complete')
+    }

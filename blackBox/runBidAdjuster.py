@@ -3,15 +3,10 @@ import decimal
 from collections import defaultdict
 from datetime import datetime as dt
 import datetime
-import email.message
-from email.headerregistry import Address
 import json
-import os
 import pandas as pd
 import pprint
 import requests
-import smtplib
-import sys
 import time
 import boto3
 from utils import AdoyaEmail
@@ -97,22 +92,14 @@ def initialize(env, dynamoEndpoint):
     global sendG
     global dynamodb
 
-    # TODO rm v0 code
-    # sendG = "-s" in sys.argv or "--send" in sys.argv
-    # logger.info("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
-
     if env != "prod":
         sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
-        # dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://dynamodb:8000")
-        # dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
     else:
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    logger.info("In runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
-
+    logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
 @retry
@@ -440,26 +427,6 @@ def emailSummaryReport(data, sent):
         dateString = dateString[1:]
     subjectString =  "Bid Adjuster summary for %s" % dateString
     AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, EMAIL_FROM)
-
-    #msg = email.message.EmailMessage()
-    #msg.set_content(createEmailBody(data, sent))
-
-    # TODO rm v0 code
-    # msg['Subject'] = "Bid Adjuster summary for %s" % dateString
-    # msg['From'] = EMAIL_FROM
-    # msg['To'] = EMAIL_TO
-    # msg.replace_header("Content-Type", "text/html")
-
-    # TODO: Merge this duplicate code with runClientDailyReports.py. --DS, 30-Aug-2018
-    # if sys.platform == "linux": # Don't try to send email on Scott's "Windows" box.
-    #dprint("SMTP hostname/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
-
-    # with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
-    #     smtpServer.set_debuglevel(2)
-    #     smtpServer.starttls()
-    #     smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
-    #     smtpServer.send_message(msg)
-
 
 # ------------------------------------------------------------------------------
 @debug

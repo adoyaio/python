@@ -1,38 +1,18 @@
 #! /usr/bin/python3
-
+import logging
 from collections import defaultdict
 import datetime
-import email.message
-from email.headerregistry import Address
+from datetime import datetime as dt
 import json
-import os
-#import numpy as np
 import pandas as pd
 import pprint
 import re
 import requests
-import smtplib 
-import sys
 import time
-import urllib.parse
-
-if sys.platform == "linux":
-  os.chdir("/home/scott/ScottKaplan/Adoya")
-
-elif sys.platform == "darwin":
-  os.chdir("/Users/Davidschachter/Scott Kaplan/2018_10_01")
-
-else:
-  PATH_ADDEND = "C:\\Users\A\\Desktop\\apple_search_ads_api\\keyword_adder"
-  print("Adding '%s' to sys.path." % PATH_ADDEND);
-  sys.path.append(PATH_ADDEND)
-
+from utils import AdoyaEmail
+import boto3
 from Client import CLIENTS
-from configuration import SMTP_HOSTNAME, \
-                          SMTP_PORT, \
-                          SMTP_USERNAME, \
-                          SMTP_PASSWORD, \
-                          EMAIL_FROM, \
+from configuration import EMAIL_FROM, \
                           APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE, \
                           APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
                           APPLE_UPDATE_NEGATIVE_KEYWORDS_URL, \
@@ -41,12 +21,8 @@ from configuration import SMTP_HOSTNAME, \
 from debug import debug, dprint
 from retry import retry
 
-
-EMAIL_TO         = (Address("David Schachter", "davidschachter", "gmail.com"),
-                    Address("Scott Kaplan",    "scott.kaplan",   "ssjdigital.com"),
-                   )
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 JSON_MIME_TYPES  = ("application/json", "text/json")
-
 DUPLICATE_KEYWORD_REGEX = re.compile("(NegativeKeywordImport|KeywordImport)\[(?P<index>\d+)\]\.text")
 
 ###### date and time parameters for bidding lookback ######
@@ -57,30 +33,28 @@ start_date_delta = datetime.timedelta(days=365)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
 
+# FOR QA PURPOSES set these fields explicitly
+#start_date = dt.strptime('2019-12-15', '%Y-%m-%d').date()
+#end_date = dt.strptime('2019-12-22', '%Y-%m-%d').date()
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
-
-
-# ------------------------------------------------------------------------------
 @debug
-def enableSendingToApple():
-  global sendG
+def initialize(env, dynamoEndpoint):
+    global sendG
+    global dynamodb
 
+    if env != "prod":
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+    else:
+        sendG = True
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-  sendG = True
-
-
-
-# ------------------------------------------------------------------------------
-@debug
-def initialize():
-  if "-s" in sys.argv or "--send" in sys.argv:
-    enableSendingToApple()
-
-  dprint("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
-
-
+    logger.info("In runKeywordAdder:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
 @retry
@@ -548,30 +522,12 @@ def createEmailBody(data, sent):
 # ------------------------------------------------------------------------------
 @debug
 def emailSummaryReport(data, sent):
-  msg = email.message.EmailMessage()
-  msg.set_content(createEmailBody(data, sent))
-
-  dateString = time.strftime("%m/%d/%Y")
-  if dateString.startswith("0"):
-    dateString = dateString[1:]
-
-  msg['Subject'] = "Keyword Adder summary for %s" % dateString
-  msg['From']    = EMAIL_FROM
-  msg['To']      = EMAIL_TO
-#  msg.replace_header("Content-Type", "text/html")
-
-
-  # TODO: Merge this duplicate code with runClientDailyReports.py. --DS, 30-Aug-2018
-  if sys.platform == "linux": # Don't try to send email on Scott's "Windows" box.
-    dprint("SMTP hostname/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
-
-    with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
-      smtpServer.set_debuglevel(2)
-      smtpServer.starttls()
-      smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
-      smtpServer.send_message(msg)
-
-
+    messageString = createEmailBody(data, sent);
+    dateString = time.strftime("%m/%d/%Y")
+    if dateString.startswith("0"):
+        dateString = dateString[1:]
+    subjectString ="Keyword Adder summary for %s" % dateString
+    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 @debug
@@ -634,18 +590,26 @@ def process():
   emailSummaryReport(summaryReportInfo, sent)
 
 
-
 # ------------------------------------------------------------------------------
 @debug
 def terminate():
   pass
 
 
-
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-  initialize()
-  process()
-  terminate()
+    initialize('lcl', 'http://localhost:8000')
+    process()
+    terminate()
+
+
+def lambda_handler(event, context):
+    initialize(event['env'], event['dynamoEndpoint'])
+    process()
+    terminate()
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Branch Integration Complete')
+    }

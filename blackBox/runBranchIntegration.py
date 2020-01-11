@@ -1,28 +1,20 @@
 from __future__ import print_function  # Python 2/3 compatibility
-
+import logging
 import decimal
 import boto3
 from collections import defaultdict
 import datetime
-import email.message
-from email.headerregistry import Address
 import json
-import os
 import pandas as pd
 import pprint
 import requests
-import smtplib
 import sys
 import time
 
 from botocore.exceptions import ClientError
 
 from Client import CLIENTS
-from configuration import SMTP_HOSTNAME, \
-    SMTP_PORT, \
-    SMTP_USERNAME, \
-    SMTP_PASSWORD, \
-    EMAIL_FROM, \
+from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
     TOTAL_COST_PER_INSTALL_LOOKBACK, \
@@ -31,7 +23,6 @@ from configuration import SMTP_HOSTNAME, \
     data_sources, \
     aggregations
 from debug import debug, dprint
-import logging
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
@@ -67,16 +58,9 @@ def initialize(env, dynamoEndpoint):
     global sendG
     global dynamodb
 
-    #TODO rm v0 code
-    #sendG = "-s" in sys.argv or "--send" in sys.argv
-    #logger.info("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG))
-
     if env != "prod":
         sendG = False
-        #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
-        #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://dynamodb:8000")
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-
     else:
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
