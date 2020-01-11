@@ -5,6 +5,9 @@ import os
 # import requests
 import sys
 
+import boto3
+from boto3.dynamodb.conditions import Key
+
 from debug import debug, dprint
 
 DATA_DIR = "data"
@@ -242,29 +245,53 @@ class Client:
     # ^
     # ^    return [ item["metadata"]["campaignId"] for item in json.loads(response.text)["data"]["reportingDataResponse"]["row"] ]
 
+    # TODO delete V0 code
     # ----------------------------------------------------------------------------
     # def _getCertificatesPath(self) :
     # return '/home/scott/ScottKaplan/Certificates' if sys.platform == Client._LINUX_OS_PLATFORM or sys.platform == Client._MAC_OS_PLATFORM else \
     #          'C:/Users/A/Desktop/apple_search_ads_api'
 
+    # TODO delete V0 code after migration
     # ----------------------------------------------------------------------------
     def _getHistoryPathname(self):
         return os.path.join(DATA_DIR, CLIENT_HISTORY_FILENAME_TEMPLATE % self.orgId)
 
+    # TODO update V0 code to use dynamo
     # ----------------------------------------------------------------------------
-    def addRowToHistory(self, stuff, headerStuff):
-        pathname = self._getHistoryPathname()
+    def addRowToHistory(self, stuff, dynamoResource):
+        # TODO delete v0 code
+        # pathname = self._getHistoryPathname()
+        #
+        # if not os.path.exists(pathname):
+        #     with open(pathname, "w") as handle:
+        #         handle.write("%s\n" % ",".join(headerStuff))
+        #
+        # with open(pathname, "a") as handle:
+        #     handle.write("%s\n" % ",".join(stuff))
+        print("stuff:", stuff)
+        table = dynamoResource.Table('cpi_history')
 
-        if not os.path.exists(pathname):
-            with open(pathname, "w") as handle:
-                handle.write("%s\n" % ",".join(headerStuff))
+        timestamp = stuff[0]
+        spend = stuff[1]
+        installs = int(stuff[2])
+        cpi = stuff[3]
+        org_id = str(self.orgId)
+        print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+        table.put_item(
+            Item={
+                'timestamp': timestamp,
+                'spend': spend,
+                'installs': installs,
+                'cpi': cpi,
+                'org_id': org_id
+            }
+        )
 
-        with open(pathname, "a") as handle:
-            handle.write("%s\n" % ",".join(stuff))
 
     # ----------------------------------------------------------------------------
-    def getHistory(self):
-        pathname = self._getHistoryPathname()
+    def getHistory(self, dynamoResource):
+        # TODO delete v0 code
+        #pathname = self._getHistoryPathname()
 
         # A call to "addRowToHistory()" is always made before reading the history so
         # the file should exist. Therefore, we don't check that the file exists
@@ -274,25 +301,38 @@ class Client:
        #     # TODO: [Performance] Yes, I know this won't scale. It's ok for now, however. --DS, 13-Jan-2019
        #     return handle.readlines()[-ONE_YEAR_IN_DAYS:]
 
+        today = datetime.date.today()
+        end_date_delta = datetime.timedelta(days=1)
+        start_date_delta = datetime.timedelta(ONE_YEAR_IN_DAYS)
+        start_date = today - start_date_delta
+        end_date = today - end_date_delta
+
+        table = dynamoResource.Table('cpi_history')
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
+                '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        )
+        return response['Items']
 
 
+    # TODO update V0 code to use dynamo
     # ----------------------------------------------------------------------------
-    def getTotalCostPerInstall(self, daysToLookBack):
-        #if not os.path.exists(self._getHistoryPathname()):
-        #    return None  # EARLY RETURN
-
-        #lines = self.getHistory()
-
-        if len(lines) <= daysToLookBack:  # <= rather than < to account for the header row.
-            return None  # EARLY RETURN
-
-        totalCost, totalInstalls = 0.0, 0
-        for line in lines[-daysToLookBack:]:
-            tokens = line.rstrip().split(",")
-            totalCost += float(tokens[1][1:])
-            totalInstalls += int(tokens[2])
-
-        return totalCost / totalInstalls
+    # def getTotalCostPerInstall(self, daysToLookBack):
+    #     if not os.path.exists(self._getHistoryPathname()):
+    #         return None  # EARLY RETURN
+    #
+    #     lines = self.getHistory()
+    #
+    #     if len(lines) <= daysToLookBack:  # <= rather than < to account for the header row.
+    #         return None  # EARLY RETURN
+    #
+    #     totalCost, totalInstalls = 0.0, 0
+    #     for line in lines[-daysToLookBack:]:
+    #         tokens = line.rstrip().split(",")
+    #         totalCost += float(tokens[1][1:])
+    #         totalInstalls += int(tokens[2])
+    #
+    #     return totalCost / totalInstalls
 
     # ----------------------------------------------------------------------------
     @staticmethod

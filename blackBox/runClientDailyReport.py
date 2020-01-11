@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-
+import logging
 import datetime
 import email.message
 from email.headerregistry import Address
@@ -10,23 +10,10 @@ import requests
 import smtplib
 import sys
 import time
-import urllib.parse
-
-# TODO: Centralize this duplicated logic. --DS, 30-Aug-2018
-if sys.platform == "linux":
-  os.chdir("/home/scott/ScottKaplan/Adoya")
-
-else:
-  PATH_ADDEND = "C:\\Users\A\\Desktop\\apple_search_ads_api\\bid_adjuster"
-  print("Adding '%s' to sys.path." % PATH_ADDEND);
-  sys.path.append(PATH_ADDEND)
-
+from utils import AdoyaEmail
+import boto3
 from Client import CLIENTS
-from configuration import SMTP_HOSTNAME, \
-                          SMTP_PORT, \
-                          SMTP_USERNAME, \
-                          SMTP_PASSWORD, \
-                          EMAIL_FROM, \
+from configuration import EMAIL_FROM, \
                           APPLE_KEYWORDS_REPORT_URL, \
                           HTTP_REQUEST_TIMEOUT
 
@@ -39,30 +26,33 @@ SEVEN_DAYS = 7
 FOUR_YEARS  = 365 * 4 # Ignoring leap years.
 
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
-EMAIL_BCC     = (Address("David Schachter", "davidschachter", "gmail.com"),
-                 Address("Scott Kaplan",    "scott.kaplan",   "ssjdigital.com"),
-                )
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 sendG = False  # Set to True to enable sending email to clients, else a test run.
 
 
-
 @debug
-def initialize():
-  global sendG # TODO: Combine with duplicate of this logic in bidAdjuster.py --DS, 30-Aug-2018
+def initialize(env, dynamoEndpoint):
+    global sendG
+    global dynamodb
 
+    if env != "prod":
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+    else:
+        sendG = True
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-  sendG = "-s" in sys.argv or "--send" in sys.argv
-  dprint("In initialize(), getcwd()='%s' and sendG=%s." % (os.getcwd(), sendG)) 
-
+    logger.info("In runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
 # ------------------------------------------------------------------------------
 @retry
 def getCampaignDataHelper(url, cert, json, headers):
   return requests.post(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
-
 
 
 # ------------------------------------------------------------------------------
@@ -140,8 +130,6 @@ def createOneRowOfTable(data, label):
 
   return """{:s}\t${:>9,.2f}\t{:>8,d}\t${:>s}""".format(label, data["spend"], data["conversions"], cpi)
 
-
-
 # ------------------------------------------------------------------------------
 @debug
 def createEmailBodyForACampaign(client, summary, now):
@@ -172,34 +160,43 @@ Keywords submitted for upload today: %s""" % \
 # ------------------------------------------------------------------------------
 @debug
 def sendEmailForACampaign(client, emailBody, now):
-  msg = email.message.EmailMessage()
-  msg.set_content(emailBody)
+    messageString = emailBody;
+    dateString = time.strftime("%m/%d/%Y", time.localtime(now))
+    if dateString.startswith("0"):
+        dateString = dateString[1:]
+    subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
-  dateString = time.strftime("%m/%d/%Y", time.localtime(now))
-  if dateString.startswith("0"):
-    dateString = dateString[1:]
+    #TODO add sendG logic
+    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, EMAIL_FROM)
 
-  msg['Subject'] = EMAIL_SUBJECT % (client.clientName, dateString)
-  msg['From'] = EMAIL_FROM
-  msg['To'] = client.emailAddresses
-  msg['Bcc'] = EMAIL_BCC
-#  msg.replace_header("Content-Type", "text/html")
-  msg.add_attachment("".join(client.getHistory()), filename="adoya.csv", subtype="csv")
+  # msg = email.message.EmailMessage()
+  # msg.set_content(emailBody)
+  #
+  # dateString = time.strftime("%m/%d/%Y", time.localtime(now))
+  # if dateString.startswith("0"):
+  #   dateString = dateString[1:]
+  #
+  # msg['Subject'] = EMAIL_SUBJECT % (client.clientName, dateString)
+  # msg['From'] = EMAIL_FROM
+  # msg['To'] = client.emailAddresses
+  # msg['Bcc'] = EMAIL_BCC
+  # msg.replace_header("Content-Type", "text/html")
 
-  dprint("SMTP host/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
+  #msg.add_attachment("".join(client.getHistory(dynamodb)), filename="adoya.csv", subtype="csv")
 
-  if sendG:
-    with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
-      smtpServer.set_debuglevel(2)
-      smtpServer.starttls()
-      smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
-      smtpServer.send_message(msg)
+  #dprint("SMTP host/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
 
-  else:
-    with open("deleteme.email.txt", "w") as h:
-      h.write(msg.as_string())
-    print("Not actually sending any email.  Saved message body in deleteme.email.txt")
+  #if sendG:
+    # with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
+    #   smtpServer.set_debuglevel(2)
+    #   smtpServer.starttls()
+    #   smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
+    #   smtpServer.send_message(msg)
 
+  #else:
+    # with open("deleteme.email.txt", "w") as h:
+    #   h.write(msg.as_string())
+    # print("Not actually sending any email.  Saved message body in deleteme.email.txt")
 
 
 # ------------------------------------------------------------------------------
@@ -224,11 +221,14 @@ def sendEmailReport(client, dataForVariousTimes):
     
     
   now = time.time()
-  client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]),
-                         ["Date", "Spend", "Conversions", "Cost per Install"])
+
+  #TODO update to use dynamo
+  # client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]),
+  #                        ["Date", "Spend", "Conversions", "Cost per Install"])
+
+  client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]),dynamodb)
   emailBody = createEmailBodyForACampaign(client, summary, now)
   sendEmailForACampaign(client, emailBody, now)
-
 
 
 # ------------------------------------------------------------------------------
@@ -260,12 +260,20 @@ def terminate():
   pass
 
 
-
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
-
 if __name__ == "__main__":
-  initialize()
-  process()
-  terminate()
+    initialize('lcl', 'http://localhost:8000')
+    process()
+    terminate()
+
+
+def lambda_handler(event, context):
+    initialize(event['env'], event['dynamoEndpoint'])
+    process()
+    terminate()
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Branch Integration Complete')
+    }
