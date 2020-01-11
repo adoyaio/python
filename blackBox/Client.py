@@ -1,4 +1,5 @@
 import datetime
+import decimal
 from email.headerregistry import Address
 import json
 import os
@@ -6,6 +7,7 @@ import os
 import sys
 
 import boto3
+from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
 
 from debug import debug, dprint
@@ -19,6 +21,13 @@ CLIENT_POSITIVE_KEYWORDS_FILENAME_TEMPLATE = "positive_keywords_%s.json"
 CLIENT_NEGATIVE_KEYWORDS_FILENAME_TEMPLATE = "negative_keywords_%s.json"
 CLIENT_HISTORY_FILENAME_TEMPLATE = "history_%s.csv"
 ONE_YEAR_IN_DAYS = 365
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            return str(o)
+        return super(DecimalEncoder, self).default(o)
 
 
 class Client:
@@ -317,22 +326,31 @@ class Client:
 
     # TODO update V0 code to use dynamo
     # ----------------------------------------------------------------------------
-    # def getTotalCostPerInstall(self, daysToLookBack):
-    #     if not os.path.exists(self._getHistoryPathname()):
-    #         return None  # EARLY RETURN
-    #
-    #     lines = self.getHistory()
-    #
-    #     if len(lines) <= daysToLookBack:  # <= rather than < to account for the header row.
-    #         return None  # EARLY RETURN
-    #
-    #     totalCost, totalInstalls = 0.0, 0
-    #     for line in lines[-daysToLookBack:]:
-    #         tokens = line.rstrip().split(",")
-    #         totalCost += float(tokens[1][1:])
-    #         totalInstalls += int(tokens[2])
-    #
-    #     return totalCost / totalInstalls
+    def getTotalCostPerInstall(self, dynamodb, start_date, end_date, daysToLookBack):
+        table = dynamodb.Table('cpi_history')
+
+        dprint("daysToLookBack %s" % str(daysToLookBack))
+        dprint("start %s" % start_date.strftime('%Y-%m-%d'))
+        dprint("end %s" % end_date.strftime('%Y-%m-%d'))
+        dprint("org id %s" % str(self.orgId));
+
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
+            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        )
+
+        total_cost_per_install = 0
+
+        if len(response['Items']) >= daysToLookBack:
+            totalCost, totalInstalls = 0.0, 0
+            for i in response[u'Items']:
+                totalCost += float(i['spend'][1:])
+                totalInstalls += int(i['installs'])
+                print(json.dumps(i, cls=DecimalEncoder))
+            total_cost_per_install = totalCost / totalInstalls
+            dprint("total cpi %s" % str(total_cost_per_install))
+
+        return total_cost_per_install
 
     # ----------------------------------------------------------------------------
     @staticmethod

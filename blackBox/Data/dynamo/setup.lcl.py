@@ -149,31 +149,54 @@ table = dynamodb.create_table(
             'AttributeType': 'S'
         }
     ],
-    ProvisionedThroughput={
-        'ReadCapacityUnits': 10,
-        'WriteCapacityUnits': 10
-    }
+    BillingMode="PAY_PER_REQUEST",
+    # ProvisionedThroughput={
+    #     'ReadCapacityUnits': 10,
+    #     'WriteCapacityUnits': 10
+    # }
 )
 print("Table status:", table.table_name, table.table_status)
 
-# LOAD SAMPLE DATA
-with open("history_sample_data.lcl.json") as json_file:
-    cpi_lines = json.load(json_file, parse_float=decimal.Decimal)
-    for cpi_line in cpi_lines:
-        timestamp = cpi_line['date']
-        spend = cpi_line['spend']
-        installs = int(cpi_line['installs'])
-        cpi = cpi_line['cpi']
-        org_id = cpi_line['org_id']
+# LOAD SAMPLE DATA json
+# with open("history_sample_data.lcl.json") as json_file:
+#     cpi_lines = json.load(json_file, parse_float=decimal.Decimal)
+#     for cpi_line in cpi_lines:
+#         timestamp = cpi_line['date']
+#         spend = cpi_line['spend']
+#         installs = int(cpi_line['installs'])
+#         cpi = cpi_line['cpi']
+#         org_id = cpi_line['org_id']
+#
+#         print("Adding cpi line:", org_id, timestamp)
+#
+#         table.put_item(
+#            Item={
+#                'timestamp': timestamp,
+#                'spend': spend,
+#                'installs': installs,
+#                'cpi': cpi,
+#                'org_id': org_id
+#             }
+#         )
 
-        print("Adding cpi line:", org_id, timestamp)
+with open("../history_1105630.csv", "r") as handle:
+    cpi_lines = handle.readlines()[-365:]
 
-        table.put_item(
-           Item={
-               'timestamp': timestamp,
-               'spend': spend,
-               'installs': installs,
-               'cpi': cpi,
-               'org_id': org_id
-            }
-        )
+    for line in cpi_lines:
+        tokens = line.rstrip().split(",")
+        if (tokens[2]) != "Installs":
+            timestamp = tokens[0]
+            spend = tokens[1]
+            installs = int(tokens[2])
+            cpi = tokens[3]
+            org_id = "1105630"
+            print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+            table.put_item(
+                Item={
+                    'timestamp': timestamp,
+                    'spend': spend,
+                    'installs': installs,
+                    'cpi': cpi,
+                    'org_id': org_id
+                }
+            )

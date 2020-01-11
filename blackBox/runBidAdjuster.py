@@ -45,8 +45,8 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 #end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-start_date = dt.strptime('2019-12-15', '%Y-%m-%d').date()
-end_date = dt.strptime('2019-12-22', '%Y-%m-%d').date()
+start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
+end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 # url to api server for keywords report
 # From https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Reporting_Methods.html:
@@ -250,30 +250,10 @@ def createUpdatedKeywordBids(data, campaignId, client):
     # raise bids for low cpi keywords
     low_cpa_keywords["bid"] = low_cpa_keywords["bid"] * BP["LOW_CPA_BID_BOOST"]
 
-    # TODO rm v0 code
     # check if overall CPI is within bid threshold, if not, fix it.
-    # total_cost_per_install = client.getTotalCostPerInstall(TOTAL_COST_PER_INSTALL_LOOKBACK)
-
-    # pull from db here
-    # 1 select where ordId = client.orgId
-    # 2 select where date > day (YYYY_MM_DD)
-
-    table = dynamodb.Table('cpi_history')
-    response = table.query(
-        KeyConditionExpression=Key('org_id').eq(str(client.orgId)) & Key('timestamp').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-    )
-
-    total_cost_per_install = 0
-
-    if len(response['Items']) >= BIDDING_LOOKBACK:
-        totalCost, totalInstalls = 0.0, 0
-        for i in response[u'Items']:
-            totalCost += float(i['spend'][1:])
-            totalInstalls += int(i['installs'])
-            #print(json.dumps(i, cls=DecimalEncoder))
-        total_cost_per_install = totalCost / totalInstalls
-        dprint("total cpi %s" % str(total_cost_per_install))
+    total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
+                                                           TOTAL_COST_PER_INSTALL_LOOKBACK)
+    dprint("total cpi %s" % str(total_cost_per_install))
 
     if total_cost_per_install > BP["HIGH_CPI_BID_DECREASE_THRESH"]:
         high_cpa_keywords["bid"] = high_cpa_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]

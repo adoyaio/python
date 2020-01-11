@@ -234,25 +234,9 @@ def createUpdatedAdGroupBids(data, client):
                                     adGroup_info.bid * 1]
 
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
-  #total_cost_per_install = client.getTotalCostPerInstall(TOTAL_COST_PER_INSTALL_LOOKBACK)
-
-  #TODO extract into utility
-  table = dynamodb.Table('cpi_history')
-  response = table.query(
-      KeyConditionExpression=Key('org_id').eq(str(client.orgId)) & Key('timestamp').between(start_date.strftime(
-          '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-  )
-  total_cost_per_install = 0
-
-  if len(response['Items']) >= BIDDING_LOOKBACK:
-      totalCost, totalInstalls = 0.0, 0
-      for i in response[u'Items']:
-          totalCost += float(i['spend'][1:])
-          totalInstalls += int(i['installs'])
-          # print(json.dumps(i, cls=DecimalEncoder))
-      total_cost_per_install = totalCost / totalInstalls
-      dprint("total cpi %s" % str(total_cost_per_install))
-
+  total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
+                                                         TOTAL_COST_PER_INSTALL_LOOKBACK)
+  dprint("total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
                  if total_cost_per_install <= ABP["HIGH_CPI_BID_DECREASE_THRESH"] \

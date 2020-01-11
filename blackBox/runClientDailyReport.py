@@ -222,7 +222,7 @@ def sendEmailReport(client, dataForVariousTimes):
     
   now = time.time()
 
-  #TODO update to use dynamo
+  #TODO updated to use dynamo, no header row needed
   # client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]),
   #                        ["Date", "Spend", "Conversions", "Cost per Install"])
 
