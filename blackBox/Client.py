@@ -265,18 +265,9 @@ class Client:
     def _getHistoryPathname(self):
         return os.path.join(DATA_DIR, CLIENT_HISTORY_FILENAME_TEMPLATE % self.orgId)
 
-    # TODO update V0 code to use dynamo
+    # V1 code to use dynamo
     # ----------------------------------------------------------------------------
     def addRowToHistory(self, stuff, dynamoResource):
-        # TODO delete v0 code
-        # pathname = self._getHistoryPathname()
-        #
-        # if not os.path.exists(pathname):
-        #     with open(pathname, "w") as handle:
-        #         handle.write("%s\n" % ",".join(headerStuff))
-        #
-        # with open(pathname, "a") as handle:
-        #     handle.write("%s\n" % ",".join(stuff))
         print("stuff:", stuff)
         table = dynamoResource.Table('cpi_history')
 
@@ -296,20 +287,9 @@ class Client:
             }
         )
 
-
+    # V1 code to use dynamo
     # ----------------------------------------------------------------------------
     def getHistory(self, dynamoResource):
-        # TODO delete v0 code
-        #pathname = self._getHistoryPathname()
-
-        # A call to "addRowToHistory()" is always made before reading the history so
-        # the file should exist. Therefore, we don't check that the file exists
-        # here; if it doesn't, we want the program to fail.
-
-       # with open(pathname, "r") as handle:
-       #     # TODO: [Performance] Yes, I know this won't scale. It's ok for now, however. --DS, 13-Jan-2019
-       #     return handle.readlines()[-ONE_YEAR_IN_DAYS:]
-
         today = datetime.date.today()
         end_date_delta = datetime.timedelta(days=1)
         start_date_delta = datetime.timedelta(ONE_YEAR_IN_DAYS)
@@ -324,16 +304,10 @@ class Client:
         return response['Items']
 
 
-    # TODO update V0 code to use dynamo
+    # V1 code to use dynamo
     # ----------------------------------------------------------------------------
     def getTotalCostPerInstall(self, dynamodb, start_date, end_date, daysToLookBack):
         table = dynamodb.Table('cpi_history')
-
-        dprint("daysToLookBack %s" % str(daysToLookBack))
-        dprint("start %s" % start_date.strftime('%Y-%m-%d'))
-        dprint("end %s" % end_date.strftime('%Y-%m-%d'))
-        dprint("org id %s" % str(self.orgId));
-
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
@@ -346,9 +320,8 @@ class Client:
             for i in response[u'Items']:
                 totalCost += float(i['spend'][1:])
                 totalInstalls += int(i['installs'])
-                print(json.dumps(i, cls=DecimalEncoder))
+                #print(json.dumps(i, cls=DecimalEncoder))
             total_cost_per_install = totalCost / totalInstalls
-            dprint("total cpi %s" % str(total_cost_per_install))
 
         return total_cost_per_install
 

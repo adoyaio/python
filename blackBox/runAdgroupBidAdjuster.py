@@ -37,8 +37,8 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 #end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-start_date = dt.strptime('2019-12-15', '%Y-%m-%d').date()
-end_date = dt.strptime('2019-12-22', '%Y-%m-%d').date()
+start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
+end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
