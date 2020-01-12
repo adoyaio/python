@@ -60,8 +60,8 @@
             "BROAD_MATCH_DEFAULT_BID": 0.4
         },
         "branchIntegrationParameters": {
-            "branch_key": "key_live_bdnGY11GPAUIkCEibh6z1adlCzbm09Vf",
-            "branch_secret": "secret_live_6afuIbahkAfjz4mChpHvf6TInRM33EGb"
+            "branch_key": "key_live",
+            "branch_secret": "secret_live"
         }
     }
 ]
