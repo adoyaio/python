@@ -556,8 +556,12 @@ def convertAnalysisIntoApplePayloadAndSend(client,
     sent = sendToApple(client, APPLE_UPDATE_POSITIVE_KEYWORDS_URL, (exactPositive, broadPositive))
     sendToApple(client, APPLE_UPDATE_NEGATIVE_KEYWORDS_URL, (exactNegative, broadNegative))
 
-    client.positiveKeywordsAdded = exactPositiveText + broadPositiveText
-    client.negativeKeywordsAdded = exactNegativeText + broadNegativeText
+    # TODO rm v0 code
+    #client.positiveKeywordsAdded = exactPositiveText + broadPositiveText
+    #client.negativeKeywordsAdded = exactNegativeText + broadNegativeText
+
+    client.positiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
+    client.negativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
 
     return sent
 

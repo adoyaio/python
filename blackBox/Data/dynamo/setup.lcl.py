@@ -200,3 +200,79 @@ with open("../history_1105630.csv", "r") as handle:
                     'org_id': org_id
                 }
             )
+
+
+table = dynamodb.create_table(
+    TableName='bids',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)
+
+
+table = dynamodb.create_table(
+    TableName='adgroup_bids',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)
+
+
+table = dynamodb.create_table(
+    TableName='negative_keywords',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)
+
+
+table = dynamodb.create_table(
+    TableName='positive_keywords',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)

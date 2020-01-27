@@ -425,8 +425,9 @@ def process():
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
                 sent = sendUpdatedBidsToApple(client, keywordFileToPost)
-                if sent:
-                    client.updatedBids = numberOfUpdatedBids
+                #if sent:
+                #client.updatedBids = numberOfUpdatedBids
+                client.updatedBids(dynamodb, numberOfUpdatedBids)
 
     emailSummaryReport(summaryReportInfo, sent)
 
@@ -452,5 +453,5 @@ def lambda_handler(event, context):
     terminate()
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Branch Integration Complete')
+        'body': json.dumps('Run Bid Adjuster Complete')
     }

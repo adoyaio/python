@@ -379,10 +379,10 @@ def process():
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
         sent = sendUpdatedBidsToApple(client, updatedBids)
-        if sent:
+        #if sent:
           # TODO: Pull just the relevant field (defaultCPCBid?) from updatedBids, not the whole thing. --DS, 31-Dec-2018
-          clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
-          client.updatedAdgroupBids = numberOfBids
+        clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
+        client.updatedAdgroupBids = numberOfBids
 
   emailSummaryReport(summaryReportInfo, sent)
 
@@ -409,5 +409,5 @@ def lambda_handler(event, context):
     terminate()
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Branch Integration Complete')
+        'body': json.dumps('Run Adgroup Bid Adjuster Complete')
     }
