@@ -73,10 +73,6 @@ class Client:
         self._campaignIds = campaignIds
         self._keywordAdderIds = keywordAdderIds
         self._keywordAdderParameters = keywordAdderParameters
-        # self._updatedBidsCount = self._readUpdatedBidsCount()
-        # self._updatedAdgroupBidsCount = self._readUpdatedAdgroupBidsCount()
-        # self._positiveKeywordsAdded = self._readPositiveKeywordsAdded()
-        # self._negativeKeywordsAdded = self._readNegativeKeywordsAdded()
         self._branchIntegrationParameters = branchIntegrationParameters
         # The history data is populated when requested.
 
@@ -96,12 +92,10 @@ class Client:
         return list(self._emailAddresses)
 
     @property
-    # def keyPathname(self)            : return os.path.join(self._getCertificatesPath(), self._keyFilename)
     def keyPathname(self):
         return os.path.join(CERT_DIR, self._keyFilename)
 
     @property
-    # def pemPathname(self)            : return os.path.join(self._getCertificatesPath(), self._pemFilename)
     def pemPathname(self):
         return os.path.join(CERT_DIR, self._pemFilename)
 
@@ -125,15 +119,10 @@ class Client:
     def campaignIds(self):
         return tuple(self._campaignIds)
 
-    # @property
-    # def updatedBids(self):
-    #     return self._updatedBidsCount
-
     @property
     def branchIntegrationParameters(self):
         return dict(self._branchIntegrationParameters)
 
-    #@updatedBids.setter TODO rm v0 code
     def updatedBids(self, dynamoResource, newValue):
         print('Client.updatedBids: set value ' + str(newValue));
         print('Client.updatedBids: is stale ' + str(self._updatedBidsIsStale))
@@ -157,11 +146,6 @@ class Client:
             Item=item
         )
 
-    # @property TODO rm v0 code
-    # def updatedAdgroupBids(self):
-    #     return self._updatedAdgroupBidsCount
-
-    #@updatedAdgroupBids.setter TODO rm v0 code
     def updatedAdgroupBids(self, dynamoResource, newValue):
         print('Client.updatedAdgroupBids: set value ' + str(newValue));
         print('Client.updatedAdgroupBidsIsStale: is stale ' + str(self._updatedAdgroupBidsIsStale))
@@ -185,15 +169,6 @@ class Client:
             Item=item
         )
 
-    # @property
-    # def positiveKeywordsAdded(self):
-    #     return self._positiveKeywordsAdded
-    #
-    # @property
-    # def negativeKeywordsAdded(self):
-    #     return self._negativeKeywordsAdded
-
-    #@positiveKeywordsAdded.setter
     def positiveKeywordsAdded(self, dynamoResource, newValue):
         print('Client.positiveKeywordsAdded: set value ' + str(newValue));
         item = {
@@ -208,7 +183,6 @@ class Client:
             Item=item
         )
 
-    #@negativeKeywordsAdded.setter
     def negativeKeywordsAdded(self, dynamoResource, newValue):
 
         print('Client.positiveKeywordsAdded: set value ' + str(newValue));
@@ -223,38 +197,6 @@ class Client:
         table.put_item(
             Item=item
         )
-
-    # @property def campaignData(self)  : return self._campaignData
-    # def setCampaignData(self, campaignData) : self._campaignData = campaignData
-
-    # def _getUpdatedBidsCountPathname(self):
-    #     return os.path.join(DATA_DIR, CLIENT_UPDATED_BIDS_FILENAME_TEMPLATE % self.orgId)
-    #
-    # def _getUpdatedAdgroupBidsCountPathname(self):
-    #     return os.path.join(DATA_DIR, CLIENT_UPDATED_ADGROUP_BIDS_FILENAME_TEMPLATE % self.orgId)
-    #
-    # def _getPositiveKeywordsPathname(self):
-    #     return os.path.join(DATA_DIR, CLIENT_POSITIVE_KEYWORDS_FILENAME_TEMPLATE % self.orgId)
-    #
-    # def _getNegativeKeywordsPathname(self):
-    #     return os.path.join(DATA_DIR, CLIENT_NEGATIVE_KEYWORDS_FILENAME_TEMPLATE % self.orgId)
-
-    # def _writeStateInformation(self, dynamoResource, newValue):
-    #     # TODO: Convert this to store/retrieve the data to a database, not files. --DS, 28-Aug-2018
-    #     # with open(pathname, "w") as handle:
-    #     #     json.dump(newValue, handle)
-    #
-    #     table = dynamoResource.Table('cpi_history')
-    #     org_id = str(self.orgId)
-    #     print("Adding state value:",  org_id)
-    #
-    #     table.put_item(
-    #         Item={
-    #             'spend': spend,
-    #             'installs': installs,
-    #             'org_id': org_id
-    #         }
-    #     )
 
     def _readStateInformation(self, pathname, defaultValue):
         if os.path.exists(pathname):
