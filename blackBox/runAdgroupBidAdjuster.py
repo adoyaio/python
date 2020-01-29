@@ -33,12 +33,12 @@ date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
 start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
-#start_date = today - start_date_delta
-#end_date = today - end_date_delta
+start_date = today - start_date_delta
+end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
-end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
+#start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
+#end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)

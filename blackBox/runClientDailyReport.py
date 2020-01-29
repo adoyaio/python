@@ -113,10 +113,18 @@ def createOneRowOfHistory(data):
     #  timestamp = datetime.datetime.now().replace(tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
     #
     #  return utcTimestamp, timestamp, str(data["spend"]), str(data["conversions"])
-    return str(datetime.datetime.now().date()), \
+    print('createOneRowOfHistory:' + str(data))
+    if int(data["conversions"]) > 0:
+        return str(datetime.datetime.now().date()), \
            "$%s" % round(data["spend"], 2), \
            str(data["conversions"]), \
            "$%.2f" % round(data["spend"] / float(data["conversions"]), 2)
+    else:
+        print('createOneRowOfHistory:::adding line of history with 0s check values')
+        return str(datetime.datetime.now().date()), \
+           "$%s" % round(0, 2), \
+           str(data["conversions"]), \
+           "$%.2f" % round(0), 2
 
 
 # ------------------------------------------------------------------------------
