@@ -5,10 +5,22 @@ Resources:
   runAdoyaTest:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: runBranchIntegration.lambda_handler
+      Handler: runAdoya.lambda_handler
       Runtime: python3.7
       CodeUri: .
       Description: ''
       MemorySize: 448
       Timeout: 60
+      FunctionName: 'runAdoya'
       Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
+#  runBranchIntegration:
+#    Type: 'AWS::Serverless::Function'
+#    Properties:
+#      Handler: runBranchIntegration.lambda_handler
+#      Runtime: python3.7
+#      CodeUri: .
+#      Description: ''
+#      MemorySize: 448
+#      Timeout: 60
+#      FunctionName: 'runBranchIntegration'
+#      Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'

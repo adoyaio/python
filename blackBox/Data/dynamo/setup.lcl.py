@@ -179,12 +179,13 @@ print("Table status:", table.table_name, table.table_status)
 #             }
 #         )
 
+###############   load covetly data    #################
 with open("../history_1105630.csv", "r") as handle:
     cpi_lines = handle.readlines()[-365:]
 
     for line in cpi_lines:
         tokens = line.rstrip().split(",")
-        if (tokens[2]) != "Installs":
+        if (tokens[0]) != "Date":
             timestamp = tokens[0]
             spend = tokens[1]
             installs = int(tokens[2])
@@ -200,3 +201,124 @@ with open("../history_1105630.csv", "r") as handle:
                     'org_id': org_id
                 }
             )
+
+###############   load laundrie data   #################
+with open("../history_971540.csv", "r") as handle:
+    cpi_lines = handle.readlines()[-365:]
+
+    for line in cpi_lines:
+        tokens = line.rstrip().split(",")
+        if (tokens[0]) != "Date":
+            timestamp = tokens[0]
+            spend = tokens[1]
+            installs = int(tokens[2])
+            cpi = tokens[3]
+            org_id = "971540"
+            print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+            table.put_item(
+                Item={
+                    'timestamp': timestamp,
+                    'spend': spend,
+                    'installs': installs,
+                    'cpi': cpi,
+                    'org_id': org_id
+                }
+            )
+
+###############   load her data     #################
+with open("../history_1056410.csv", "r") as handle:
+    cpi_lines = handle.readlines()[-365:]
+
+    for line in cpi_lines:
+        tokens = line.rstrip().split(",")
+        if (tokens[0]) != "Date":
+            timestamp = tokens[0]
+            spend = tokens[1]
+            installs = int(tokens[2])
+            cpi = tokens[3]
+            org_id = "1056410"
+            print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+            table.put_item(
+                Item={
+                    'timestamp': timestamp,
+                    'spend': spend,
+                    'installs': installs,
+                    'cpi': cpi,
+                    'org_id': org_id
+                }
+            )
+
+table = dynamodb.create_table(
+    TableName='bids',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)
+
+
+table = dynamodb.create_table(
+    TableName='adgroup_bids',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)
+
+
+table = dynamodb.create_table(
+    TableName='negative_keywords',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)
+
+
+table = dynamodb.create_table(
+    TableName='positive_keywords',
+    KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        }
+    ],
+    AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
+    ],
+    BillingMode="PAY_PER_REQUEST",
+)
+print("Table status:", table.table_name, table.table_status)

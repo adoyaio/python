@@ -41,12 +41,12 @@ date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
 start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
-#start_date = today - start_date_delta
-#end_date = today - end_date_delta
+start_date = today - start_date_delta
+end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
-end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
+#start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
+#end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 # url to api server for keywords report
 # From https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Reporting_Methods.html:
@@ -425,8 +425,9 @@ def process():
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
                 sent = sendUpdatedBidsToApple(client, keywordFileToPost)
-                if sent:
-                    client.updatedBids = numberOfUpdatedBids
+                #if sent:
+                #client.updatedBids = numberOfUpdatedBids
+                client.updatedBids(dynamodb, numberOfUpdatedBids)
 
     emailSummaryReport(summaryReportInfo, sent)
 
@@ -452,5 +453,5 @@ def lambda_handler(event, context):
     terminate()
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Branch Integration Complete')
+        'body': json.dumps('Run Bid Adjuster Complete')
     }
