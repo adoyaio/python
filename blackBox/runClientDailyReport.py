@@ -25,6 +25,7 @@ SEVEN_DAYS = 7
 FOUR_YEARS = 365 * 4  # Ignoring leap years.
 
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
+#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
 EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
 logger = logging.getLogger()
@@ -166,7 +167,7 @@ Keywords submitted for upload today: %s""" % \
 # ------------------------------------------------------------------------------
 @debug
 def sendEmailForACampaign(client, emailBody, now):
-    messageString = emailBody;
+    messageString = emailBody
     dateString = time.strftime("%m/%d/%Y", time.localtime(now))
     if dateString.startswith("0"):
         dateString = dateString[1:]
