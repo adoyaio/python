@@ -25,8 +25,8 @@ from debug import debug, dprint
 from retry import retry
 
 BIDDING_LOOKBACK = 7 # days
-#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
+#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
 ###### date and time parameters for bidding lookback ######

@@ -1,5 +1,68 @@
 [
     {
+        "keywordAdderIds": {
+            "campaignId": {
+                "broad": 372047455,
+                "search": 372054232,
+                "exact": 371894677
+            },
+            "adGroupId": {
+                "exact": 372052531,
+                "search": 372071805,
+                "broad": 372072903
+            }
+        },
+        "clientName": "Laundrie",
+        "disabled": false,
+        "adgroupBidParameters": {
+            "TAP_THRESHOLD": 5,
+            "MIN_BID": 0.1,
+            "STALE_RAISE_IMPRESSION_THRESH": 0,
+            "LOW_CPI_BID_INCREASE_THRESH": 0.4,
+            "HIGH_CPA_BID_DECREASE": 0.85,
+            "STALE_RAISE_BID_BOOST": 1.15,
+            "MAX_BID": 3,
+            "LOW_CPA_BID_BOOST": 1.15,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0,
+            "HIGH_CPI_BID_DECREASE_THRESH": 0.5
+        },
+        "keywordAdderParameters": {
+            "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1.0,
+            "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10.0,
+            "EXACT_MATCH_DEFAULT_BID": 100.0,
+            "TARGETED_KEYWORD_TAP_THRESHOLD": 1.0,
+            "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0.0,
+            "BROAD_MATCH_DEFAULT_BID": 100.0
+        },
+        "bidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "MIN_BID": 0.1,
+            "LOW_CPA_BID_BOOST": 1.15,
+            "MAX_BID": 100.0,
+            "STALE_RAISE_BID_BOOST": 1.15,
+            "HIGH_CPA_BID_DECREASE": 0.85,
+            "HIGH_CPI_BID_DECREASE_THRESH": 20.0,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0
+        },
+        "campaignIds": [
+            371894677,
+            372047455
+        ],
+        "emailAddresses": [
+            {
+                "emailName": "james",
+                "domain": "adoya.io",
+                "name": "james"
+            }
+        ],
+        "pemFilename": "laundrie_api.pem",
+        "orgId": 971540,
+        "keyFilename": "laundrie_api.key",
+        "currency": "EUR",
+		"branchIntegrationParameters": {}
+    },
+    {
         "orgId": 1105630,
         "disabled": false,
         "clientName": "Covetly",
@@ -15,11 +78,11 @@
         "bidParameters": {
             "STALE_RAISE_IMPRESSION_THRESH": 0.0,
             "TAP_THRESHOLD": 5.0,
-            "HIGH_CPI_BID_DECREASE_THRESH": 0.29,
+            "HIGH_CPI_BID_DECREASE_THRESH": 0.35,
             "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
-            "STALE_RAISE_BID_BOOST": 1.1,
-            "LOW_CPA_BID_BOOST": 1.1,
-            "HIGH_CPA_BID_DECREASE": 0.8,
+            "STALE_RAISE_BID_BOOST": 1.15,
+            "LOW_CPA_BID_BOOST": 1.15,
+            "HIGH_CPA_BID_DECREASE": 0.85,
             "MAX_BID": 0.35,
             "MIN_BID": 0.1
         },
@@ -29,9 +92,9 @@
             "LOW_CPI_BID_INCREASE_THRESH": 0.4,
             "HIGH_CPI_BID_DECREASE_THRESH": 0.5,
             "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
-            "STALE_RAISE_BID_BOOST": 1.1,
-            "LOW_CPA_BID_BOOST": 1.1,
-            "HIGH_CPA_BID_DECREASE": 0.8,
+            "STALE_RAISE_BID_BOOST": 1.15,
+            "LOW_CPA_BID_BOOST": 1.15,
+            "HIGH_CPA_BID_DECREASE": 0.85,
             "MAX_BID": 3.0,
             "MIN_BID": 0.1
         },
@@ -59,9 +122,68 @@
             "EXACT_MATCH_DEFAULT_BID": 0.4,
             "BROAD_MATCH_DEFAULT_BID": 0.4
         },
-        "branchIntegrationParameters": {
-            "branch_key": "key_live",
-            "branch_secret": "secret_live"
-        }
+	    "branchIntegrationParameters": {}
+    },
+    {
+        "orgId": 1056410,
+        "disabled": false,
+        "clientName": "HER",
+        "emailAddresses": [
+            {
+                "name": "james",
+                "emailName": "james",
+                "domain": "adoya.io"
+            }
+        ],
+        "keyFilename": "ssj_her.key",
+        "pemFilename": "ssj_her.pem",
+        "bidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "HIGH_CPI_BID_DECREASE_THRESH": 1.8,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.15,
+            "LOW_CPA_BID_BOOST": 1.15,
+            "HIGH_CPA_BID_DECREASE": 0.85,
+            "MAX_BID": 2.0,
+            "MIN_BID": 0.1
+        },
+        "adgroupBidParameters": {
+            "STALE_RAISE_IMPRESSION_THRESH": 0.0,
+            "TAP_THRESHOLD": 5.0,
+            "LOW_CPI_BID_INCREASE_THRESH": 1.58,
+            "HIGH_CPI_BID_DECREASE_THRESH": 2.0,
+            "NO_INSTALL_BID_DECREASE_THRESH": 0.0,
+            "STALE_RAISE_BID_BOOST": 1.15,
+            "LOW_CPA_BID_BOOST": 1.15,
+            "HIGH_CPA_BID_DECREASE": 0.85,
+            "MAX_BID": 6.0,
+            "MIN_BID": 0.1
+        },
+        "campaignIds": [
+            197913328,
+            197914192
+        ],
+        "keywordAdderIds": {
+            "campaignId": {
+                "search": 197915189,
+                "broad": 197914192,
+                "exact": 197913328
+            },
+            "adGroupId": {
+                "search": 197913017,
+                "broad": 197914177,
+                "exact": 197913349
+            }
+        },
+        "keywordAdderParameters": {
+            "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10.0,
+            "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0.0,
+            "TARGETED_KEYWORD_TAP_THRESHOLD": 1.0,
+            "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1.0,
+            "EXACT_MATCH_DEFAULT_BID": 2.0,
+            "BROAD_MATCH_DEFAULT_BID": 2.0
+        },
+	    "branchIntegrationParameters": {}
     }
 ]

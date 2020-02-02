@@ -25,8 +25,8 @@ SEVEN_DAYS = 7
 FOUR_YEARS = 365 * 4  # Ignoring leap years.
 
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
-#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
+#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -117,15 +117,15 @@ def createOneRowOfHistory(data):
     print('createOneRowOfHistory:' + str(data))
     if int(data["conversions"]) > 0:
         return str(datetime.datetime.now().date()), \
-           "$%s" % round(data["spend"], 2), \
+           "%s" % round(data["spend"], 2), \
            str(data["conversions"]), \
-           "$%.2f" % round(data["spend"] / float(data["conversions"]), 2)
+           "%.2f" % round(data["spend"] / float(data["conversions"]), 2)
     else:
         print('createOneRowOfHistory:::adding line of history with 0s check values')
         return str(datetime.datetime.now().date()), \
-           "$%s" % round(0, 2), \
+           "%s" % round(0, 2), \
            str(data["conversions"]), \
-           "$%.2f" % round(0), 2
+           "%.2f" % round(0), 2
 
 
 # ------------------------------------------------------------------------------
@@ -133,7 +133,7 @@ def createOneRowOfHistory(data):
 def createOneRowOfTable(data, label):
     cpi = "N/A" if data["conversions"] < 1 else ("{: 6,.2f}".format((0.0 + data["spend"]) / data["conversions"]))
 
-    return """{:s}\t${:>9,.2f}\t{:>8,d}\t${:>s}""".format(label, data["spend"], data["conversions"], cpi)
+    return """{:s}\t{:>9,.2f}\t{:>8,d}\t{:>s}""".format(label, data["spend"], data["conversions"], cpi)
 
 
 # ------------------------------------------------------------------------------
@@ -251,12 +251,14 @@ def process():
                                            daysToGoBack)
 
             dataArray = campaignData["data"]["reportingDataResponse"]["row"]
+            print('runClientDailyReport:::dataArray' + str(dataArray))
 
             dprint("For %d (%s), there are %d campaigns in the campaign data." % \
                    (client.orgId, client.clientName, len(dataArray)))
 
             dataForVariousTimes[daysToGoBack] = dataArray
 
+        print('runClientDailyReport:::dataForVariousTimes' + str(dataForVariousTimes))
         sendEmailReport(client, dataForVariousTimes)
 
 

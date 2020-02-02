@@ -351,7 +351,7 @@ class Client:
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
             for i in response[u'Items']:
-                totalCost += float(i['spend'][1:])
+                totalCost += float(i['spend'])
                 totalInstalls += int(i['installs'])
                 #print(json.dumps(i, cls=DecimalEncoder))
             total_cost_per_install = totalCost / totalInstalls
