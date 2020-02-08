@@ -64,13 +64,13 @@ with open("../history_971540.csv", "r") as handle:
             installs = int(tokens[2])
             cpi = tokens[3]
             org_id = "971540"
-            print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+            print("Adding cpi line:", timestamp, spend.strip(), installs, cpi.strip(), org_id)
             table.put_item(
                 Item={
                     'timestamp': timestamp,
-                    'spend': spend,
+                    'spend': spend.strip(),
                     'installs': installs,
-                    'cpi': cpi,
+                    'cpi': cpi.strip(),
                     'org_id': org_id
                 }
             )

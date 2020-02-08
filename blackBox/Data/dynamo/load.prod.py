@@ -7,27 +7,6 @@ import boto3
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
 table = dynamodb.Table('cpi_history')
-    # LOAD SAMPLE DATA json
-    # with open("history_sample_data.lcl.json") as json_file:
-    #     cpi_lines = json.load(json_file, parse_float=decimal.Decimal)
-    #     for cpi_line in cpi_lines:
-    #         timestamp = cpi_line['date']
-    #         spend = cpi_line['spend']
-    #         installs = int(cpi_line['installs'])
-    #         cpi = cpi_line['cpi']
-    #         org_id = cpi_line['org_id']
-    #
-    #         print("Adding cpi line:", org_id, timestamp)
-    #
-    #         table.put_item(
-    #            Item={
-    #                'timestamp': timestamp,
-    #                'spend': spend,
-    #                'installs': installs,
-    #                'cpi': cpi,
-    #                'org_id': org_id
-    #             }
-    #         )
 
 ###############   load covetly data    #################
 with open("../history_1105630.csv", "r") as handle:
@@ -64,13 +43,13 @@ with open("../history_971540.csv", "r") as handle:
             installs = int(tokens[2])
             cpi = tokens[3]
             org_id = "971540"
-            print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+            print("Adding cpi line:", timestamp, spend.strip(), installs, cpi.strip(), org_id)
             table.put_item(
                 Item={
                     'timestamp': timestamp,
-                    'spend': spend,
+                    'spend': spend.strip(),
                     'installs': installs,
-                    'cpi': cpi,
+                    'cpi': cpi.strip(),
                     'org_id': org_id
                 }
             )

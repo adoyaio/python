@@ -38,8 +38,8 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-# start_date = '2019-11-17'
-# end_date = '2019-11-23'
+#start_date = '2020-02-01'
+#end_date = '2020-02-04'
 
 # Helper class to convert a DynamoDB item to JSON.
 class DecimalEncoder(json.JSONEncoder):
@@ -93,7 +93,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
             "last_attributed_touch_data_tilde_campaign_id",
             "last_attributed_touch_data_tilde_advertising_partner_name",
             "last_attributed_touch_data_tilde_ad_set_id",
-            "last_attributed_touch_data_tilde_ad_set_name",
+            "last_attributed_touch_data_tilde_ad_set_name"
         ],
         "granularity": "day", "aggregation": aggregation,
         "filters": {
@@ -162,6 +162,14 @@ def process():
 
                                     logger.info("handle unique_count")
                                     dash = "-"
+
+                                    test = str(result["timestamp"]).split('T')
+                                    #print("test=%s." % test)
+
+                                    testformatted = datetime.datetime.strptime(test, '%Y-%m-%d').date()
+                                    print("test=%s." % testformatted)
+
+
                                     timestamp = str(result["timestamp"])
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
@@ -170,10 +178,11 @@ def process():
                                     ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     count = str(result["result"]["unique_count"])
 
-                                    if campaign == "exact_match":
-                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                    # event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
+                                    if not keyword:
+                                        event_key = campaign_id + dash + ad_set_id
                                     else:
-                                        event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
+                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)
@@ -213,10 +222,10 @@ def process():
                                     ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     revenue = decimal.Decimal(result["result"]["revenue"])
 
-                                    if campaign == "exact_match":
-                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                    if not keyword:
+                                        event_key = campaign_id + dash + ad_set_id
                                     else:
-                                        event_key = campaign_id + dash + ad_set_name
+                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)
