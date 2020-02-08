@@ -25,7 +25,8 @@ from debug import debug, dprint
 from retry import retry
 
 BIDDING_LOOKBACK = 7 # days
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
+#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
 ###### date and time parameters for bidding lookback ######
@@ -236,7 +237,7 @@ def createUpdatedAdGroupBids(data, client):
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
   total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
                                                          TOTAL_COST_PER_INSTALL_LOOKBACK)
-  dprint("total cpi %s" % str(total_cost_per_install))
+  dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
                  if total_cost_per_install <= ABP["HIGH_CPI_BID_DECREASE_THRESH"] \
@@ -373,16 +374,18 @@ def process():
 
     for campaignId in campaignIds:
       data = getAdgroupReportFromApple(client)
-
       stuff = createUpdatedAdGroupBids(data, client)
 
+      print("runAdgroupBidAdjuster: stuff " + str(stuff))
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
+        print("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
+        print("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
         sent = sendUpdatedBidsToApple(client, updatedBids)
         #if sent:
           # TODO: Pull just the relevant field (defaultCPCBid?) from updatedBids, not the whole thing. --DS, 31-Dec-2018
         clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
-        client.updatedAdgroupBids = numberOfBids
+        client.updatedAdgroupBids(dynamodb, numberOfBids)
 
   emailSummaryReport(summaryReportInfo, sent)
 

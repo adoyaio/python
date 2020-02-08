@@ -7,7 +7,7 @@
 # SMTP_USERNAME = "scott.kaplan@adoya.io"
 # SMTP_PASSWORD = ""
 EMAIL_FROM    = "info@adoya.io"
-TOTAL_COST_PER_INSTALL_LOOKBACK = 7
+TOTAL_COST_PER_INSTALL_LOOKBACK = 3
 HTTP_REQUEST_TIMEOUT = 100
 
 from configuration_apple import APPLE_KEYWORDS_REPORT_URL, \

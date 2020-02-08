@@ -147,7 +147,7 @@ class Client:
         )
 
     def updatedAdgroupBids(self, dynamoResource, newValue):
-        print('Client.updatedAdgroupBids: set value ' + str(newValue));
+        print('Client.updatedAdgroupBids: set value ' + str(newValue))
         print('Client.updatedAdgroupBidsIsStale: is stale ' + str(self._updatedAdgroupBidsIsStale))
 
         if not self._updatedAdgroupBidsIsStale:
@@ -177,7 +177,7 @@ class Client:
         }
 
         # v1 add dynamo db call
-        print("Client.updatedAdgroupBids: adding bids entry:", item)
+        print("Client.positiveKeywordsAdded: adding bids entry:", item)
         table = dynamoResource.Table('positive_keywords')
         table.put_item(
             Item=item
@@ -192,7 +192,7 @@ class Client:
         }
 
         # v1 add dynamo db call
-        print("Client.updatedAdgroupBids: adding bids entry:", item)
+        print("Client.negativeKeywordsAdded: adding bids entry:", item)
         table = dynamoResource.Table('negative_keywords')
         table.put_item(
             Item=item
@@ -351,7 +351,7 @@ class Client:
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
             for i in response[u'Items']:
-                totalCost += float(i['spend'][1:])
+                totalCost += float(i['spend'])
                 totalInstalls += int(i['installs'])
                 #print(json.dumps(i, cls=DecimalEncoder))
             total_cost_per_install = totalCost / totalInstalls

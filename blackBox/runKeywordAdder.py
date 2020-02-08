@@ -21,7 +21,8 @@ from configuration import EMAIL_FROM, \
 from debug import debug, dprint
 from retry import retry
 
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
+#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 JSON_MIME_TYPES  = ("application/json", "text/json")
 DUPLICATE_KEYWORD_REGEX = re.compile("(NegativeKeywordImport|KeywordImport)\[(?P<index>\d+)\]\.text")
 

@@ -1,8 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
-Description: An AWS Serverless Specification template describing your function.
+Description: runAdoya entry point.
 Resources:
-  runAdoyaTest:
+  runAdoya:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: runAdoya.lambda_handler
@@ -10,7 +10,7 @@ Resources:
       CodeUri: .
       Description: ''
       MemorySize: 448
-      Timeout: 60
+      Timeout: 120
       FunctionName: 'runAdoya'
       Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
 #  runBranchIntegration:

@@ -34,7 +34,8 @@ from retry import retry
 import logging
 
 BIDDING_LOOKBACK = 7  # days
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
+EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
+#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
 ###### date and time parameters for bidding lookback ######
 date = datetime.date
