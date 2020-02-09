@@ -353,8 +353,10 @@ class Client:
             for i in response[u'Items']:
                 totalCost += float(i['spend'])
                 totalInstalls += int(i['installs'])
-                #print(json.dumps(i, cls=DecimalEncoder))
-            total_cost_per_install = totalCost / totalInstalls
+                print(json.dumps(i, cls=DecimalEncoder))
+
+                if totalCost > 0 and totalInstalls > 0:
+                    total_cost_per_install = totalCost / totalInstalls
 
         return total_cost_per_install
 
