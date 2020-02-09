@@ -34,8 +34,6 @@ from retry import retry
 import logging
 
 BIDDING_LOOKBACK = 7  # days
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
-#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
 ###### date and time parameters for bidding lookback ######
 date = datetime.date
@@ -89,10 +87,12 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailTo):
     global sendG
     global dynamodb
 
+    global EMAIL_TO
+    EMAIL_TO = emailTo
     if env != "prod":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
@@ -443,13 +443,13 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"])
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailTo'])
     process()
     terminate()
     return {
