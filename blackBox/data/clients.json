@@ -49,13 +49,7 @@
             371894677,
             372047455
         ],
-        "emailAddresses": [
-            {
-                "emailName": "james",
-                "domain": "adoya.io",
-                "name": "james"
-            }
-        ],
+        "emailAddresses": ["test@adoya.io"],
         "pemFilename": "laundrie_api.pem",
         "orgId": 971540,
         "keyFilename": "laundrie_api.key",
@@ -66,14 +60,9 @@
         "orgId": 1105630,
         "disabled": false,
         "clientName": "Covetly",
-        "emailAddresses": [
-            {
-                "name": "james",
-                "emailName": "james",
-                "domain": "adoya.io"
-            }
-        ],
+        "emailAddresses": ["test@adoya.io"],
         "keyFilename": "ssj_covetly.key",
+        "currency": "USD",
         "pemFilename": "ssj_covetly.pem",
         "bidParameters": {
             "STALE_RAISE_IMPRESSION_THRESH": 0.0,
@@ -128,15 +117,10 @@
         "orgId": 1056410,
         "disabled": false,
         "clientName": "HER",
-        "emailAddresses": [
-            {
-                "name": "james",
-                "emailName": "james",
-                "domain": "adoya.io"
-            }
-        ],
+        "emailAddresses": ["test@adoya.io"],
         "keyFilename": "ssj_her.key",
         "pemFilename": "ssj_her.pem",
+        "currency": "USD",
         "bidParameters": {
             "STALE_RAISE_IMPRESSION_THRESH": 0.0,
             "TAP_THRESHOLD": 5.0,
@@ -184,6 +168,9 @@
             "EXACT_MATCH_DEFAULT_BID": 2.0,
             "BROAD_MATCH_DEFAULT_BID": 2.0
         },
-	    "branchIntegrationParameters": {}
+        "branchIntegrationParameters": {
+            "branch_key": "key_live",
+            "branch_secret": "secret_live"
+        }
     }
 ]
