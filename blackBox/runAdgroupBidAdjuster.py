@@ -282,13 +282,13 @@ def sendOneUpdatedBidToAppleHelper(url, cert, json, headers):
 
 # ------------------------------------------------------------------------------
 @debug
-def sendOneUpdatedBidToApple(client, adGroup, headers):
+def sendOneUpdatedBidToApple(client, adGroup, headers, currency):
   campaignId, adGroupId, bid = adGroup["campaignId"], adGroup["id"], adGroup["defaultCPCBid"]
 
   del adGroup["campaignId"]
   del adGroup["id"]
   del adGroup["defaultCPCBid"]
-  adGroup["defaultCpcBid"] = {"amount": "%.2f" % bid, "currency": "USD"}
+  adGroup["defaultCpcBid"] = {"amount": "%.2f" % bid, "currency": currency}
 
   url = APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaignId, adGroupId)
   dprint ("URL is '%s'." % url)
@@ -332,8 +332,7 @@ def sendUpdatedBidsToApple(client, adGroupFileToPost):
   dprint ("PEM='%s'." % client.pemPathname)
   dprint ("KEY='%s'." % client.keyPathname)
 
-  results = [sendOneUpdatedBidToApple(client, item, headers) for item in adGroupFileToPost]
-
+  results = [sendOneUpdatedBidToApple(client, item, headers, client.currency) for item in adGroupFileToPost]
   return True in results # Convert the vector into a scalar.
 
 
@@ -402,7 +401,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 

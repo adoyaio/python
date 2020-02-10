@@ -281,7 +281,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
 # ------------------------------------------------------------------------------
 @debug
-def convertKeywordFileToApplePayload(keyword_file_to_post):
+def convertKeywordFileToApplePayload(keyword_file_to_post, currency):
     '''
 At  https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Keyword_Resources.html I see this:
 
@@ -318,11 +318,12 @@ The keyword_file_to_post parameter is an array of these objects:
       "campaignId"	: 152708992  }
   '''
 
+    print("convertKeywordFileToApplePayload:::currency" + currency)
     payload = [{"importAction": "UPDATE",
                 "id": item["keywordId"],
                 "campaignId": item["campaignId"],
                 "adGroupId": item["adGroupId"],
-                "bidAmount": {"currency": "USD", "amount": str(item["bid"])}
+                "bidAmount": {"currency": currency, "amount": str(item["bid"])}
                 } for item in keyword_file_to_post]
 
     return payload
@@ -337,7 +338,8 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
 # ------------------------------------------------------------------------------
 @debug
 def sendUpdatedBidsToApple(client, keywordFileToPost):
-    payload = convertKeywordFileToApplePayload(keywordFileToPost)
+    print("sendUpdatedBidsToApple:::client.currency " + client.currency)
+    payload = convertKeywordFileToApplePayload(keywordFileToPost, client.currency)
 
     headers = {"Authorization": "orgId=%s" % client.orgId,
                "Content-Type": "application/json",
@@ -418,6 +420,8 @@ def process():
     for client in CLIENTS:
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
+
+        print("process:::client.currency" + client.currency)
 
         for campaignId in campaignIds:
             data = getKeywordReportFromApple(client, campaignId)

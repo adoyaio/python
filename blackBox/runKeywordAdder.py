@@ -119,7 +119,8 @@ def analyzeKeywordsSharedCode(KAP,
                               exact_match_campaign_id,
                               search_match_ad_group_id,
                               broad_match_ad_group_id,
-                              exact_match_ad_group_id):
+                              exact_match_ad_group_id,
+                              currency):
   #deploy negative keywords accross search and broad match campaigns by first creating a dataframe
   #combine negative and targeted keywords as you have to negative exact match all of them
   all_negatives_combined_first_step_df = [targeted_kws_pre_de_dupe_text_only_second_step, negative_kws_pre_de_dupe_text_only_second_step]
@@ -198,7 +199,7 @@ def analyzeKeywordsSharedCode(KAP,
   exact_match_targeted_first_step_df['bidAmount'] = exact_match_targeted_first_step_df.shape[0]*[KAP["EXACT_MATCH_DEFAULT_BID"]]
   
   #add bid column and update value as per apple search api requirement
-  exact_match_targeted_first_step_df['bidAmount'] = exact_match_targeted_first_step_df.shape[0]*[{"amount":""+str(KAP["EXACT_MATCH_DEFAULT_BID"]), "currency":"USD"}]
+  exact_match_targeted_first_step_df['bidAmount'] = exact_match_targeted_first_step_df.shape[0]*[{"amount":""+str(KAP["EXACT_MATCH_DEFAULT_BID"]), "currency":currency}]
   
   #create broad match keyword file for uploading
   #add action type column and update value as per apple broad api requirement
@@ -220,7 +221,7 @@ def analyzeKeywordsSharedCode(KAP,
   broad_match_targeted_first_step_df['bidAmount'] = broad_match_targeted_first_step_df.shape[0]*[KAP["BROAD_MATCH_DEFAULT_BID"]]
   
   #add bid column and update value as per apple search api requirement
-  broad_match_targeted_first_step_df['bidAmount'] = broad_match_targeted_first_step_df.shape[0]*[{"amount":""+str(KAP["BROAD_MATCH_DEFAULT_BID"]), "currency":"USD"}]
+  broad_match_targeted_first_step_df['bidAmount'] = broad_match_targeted_first_step_df.shape[0]*[{"amount":""+str(KAP["BROAD_MATCH_DEFAULT_BID"]), "currency":currency}]
   
   #convert search and broad match targeted dataframes into jsons for uploading
   exact_match_targeted_for_upload = exact_match_targeted_first_step_df.to_json(orient = 'records')
@@ -235,7 +236,7 @@ def analyzeKeywordsSharedCode(KAP,
 
 # ------------------------------------------------------------------------------
 @debug
-def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParameters):
+def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParameters, currency):
   KAP = keywordAdderParameters;
   
   #######mine search match search queries#######
@@ -325,7 +326,8 @@ def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParame
                                    ids["campaignId"]["exact"],
                                    ids["adGroupId"]["search"],
                                    ids["adGroupId"]["broad"],
-                                   ids["adGroupId"]["exact"])
+                                   ids["adGroupId"]["exact"],
+                                   currency)
 
 
 
@@ -584,7 +586,7 @@ def process():
     broadMatchData  = getSearchTermsReportFromApple(client, broadCampaignId)
 
     exactPositive, broadPositive, exactNegative, broadNegative = \
-      analyzeKeywords(searchMatchData, broadMatchData, kAI, client.keywordAdderParameters)
+      analyzeKeywords(searchMatchData, broadMatchData, kAI, client.keywordAdderParameters, client.currency)
 
     sent = convertAnalysisIntoApplePayloadAndSend(client,
                                                   CSRI,
@@ -606,7 +608,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 
