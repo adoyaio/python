@@ -1,12 +1,5 @@
-# SMTP_HOSTNAME = "example.com"
-# SMTP_PORT     =  "25"
-# SMTP_USERNAME = "exampleName"
-# SMTP_PASSWORD = "examplePassword"
-# SMTP_HOSTNAME = "smtp-relay.gmail.com"
-# SMTP_PORT     =  "25"
-# SMTP_USERNAME = "scott.kaplan@adoya.io"
-# SMTP_PASSWORD = ""
-EMAIL_FROM    = "info@adoya.io"
+
+EMAIL_FROM = "info@adoya.io"
 TOTAL_COST_PER_INSTALL_LOOKBACK = 3
 HTTP_REQUEST_TIMEOUT = 100
 

@@ -21,8 +21,6 @@ from configuration import EMAIL_FROM, \
 from debug import debug, dprint
 from retry import retry
 
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
-#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 JSON_MIME_TYPES  = ("application/json", "text/json")
 DUPLICATE_KEYWORD_REGEX = re.compile("(NegativeKeywordImport|KeywordImport)\[(?P<index>\d+)\]\.text")
 
@@ -44,9 +42,12 @@ logger.setLevel(logging.INFO)
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
+    global EMAIL_TO
+
+    EMAIL_TO = emailToInternal
 
     if env != "prod":
         sendG = False
@@ -605,16 +606,16 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
     terminate()
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Branch Integration Complete')
+        'body': json.dumps('Run Bid Adjuster Complete')
     }

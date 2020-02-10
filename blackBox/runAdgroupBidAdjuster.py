@@ -25,8 +25,6 @@ from debug import debug, dprint
 from retry import retry
 
 BIDDING_LOOKBACK = 7 # days
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
-#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
 ###### date and time parameters for bidding lookback ######
@@ -53,9 +51,12 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
+    global EMAIL_TO
+
+    EMAIL_TO = emailToInternal
 
     if env != "prod":
         sendG = False
@@ -407,7 +408,7 @@ if __name__ == "__main__":
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
     terminate()
     return {

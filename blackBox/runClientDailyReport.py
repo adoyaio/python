@@ -23,21 +23,20 @@ from retry import retry
 ONE_DAY = 1
 SEVEN_DAYS = 7
 FOUR_YEARS = 365 * 4  # Ignoring leap years.
-
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
-#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 sendG = False  # Set to True to enable sending email to clients, else a test run.
 
-
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
+    global EMAIL_TO
+
+    EMAIL_TO = emailToInternal
 
     if env != "prod":
         sendG = False
@@ -173,8 +172,10 @@ def sendEmailForACampaign(client, emailBody, now):
         dateString = dateString[1:]
     subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
+    fullEmailList = EMAIL_TO + client.emailAddresses
+    print('sendEmailForACampaign:::fullEmailList' + str(fullEmailList))
     # TODO add sendG logic
-    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, EMAIL_FROM)
+    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, fullEmailList, EMAIL_FROM)
 
 
 # msg = email.message.EmailMessage()
@@ -272,16 +273,16 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
     terminate()
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Client Daily Report Complete')
+        'body': json.dumps('Run Bid Adjuster Complete')
     }

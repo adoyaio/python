@@ -651,9 +651,10 @@ class Client:
 
 CLIENTS = [Client(client["orgId"],
                   client["clientName"],
-                  [Address(emailAddress["name"],
-                           emailAddress["emailName"],
-                           emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
+                  # [Address(emailAddress["name"],
+                  #          emailAddress["emailName"],
+                  #          emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
+                  client["emailAddresses"],
                   client["keyFilename"],
                   client["pemFilename"],
                   client["bidParameters"],

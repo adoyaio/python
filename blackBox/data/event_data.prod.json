@@ -1,5 +1,5 @@
 {
   "env": "prod",
   "dynamoEndpoint": "",
-  "emailToInternal": "[\"james@adoya.io\", \"jarfarri@gmail.com\", \"scott.kaplan@adoya.io\"]"
+  "emailToInternal" : ["james@adoya.io","scott.kaplan@adoya.io"]
 }

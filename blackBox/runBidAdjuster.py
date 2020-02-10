@@ -87,12 +87,12 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 @debug
-def initialize(env, dynamoEndpoint, emailTo):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
-
     global EMAIL_TO
-    EMAIL_TO = emailTo
+
+    EMAIL_TO = emailToInternal
     if env != "prod":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
@@ -100,7 +100,8 @@ def initialize(env, dynamoEndpoint, emailTo):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (sendG, dynamoEndpoint, str(EMAIL_TO)))
+
 
 # ------------------------------------------------------------------------------
 @retry
@@ -443,13 +444,13 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailTo'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
     terminate()
     return {
