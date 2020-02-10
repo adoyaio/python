@@ -46,6 +46,7 @@ class Client:
                  keywordAdderIds,
                  keywordAdderParameters,
                  branchIntegrationParameters,
+                 currency
                  ):
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
@@ -74,6 +75,7 @@ class Client:
         self._keywordAdderIds = keywordAdderIds
         self._keywordAdderParameters = keywordAdderParameters
         self._branchIntegrationParameters = branchIntegrationParameters
+        self._currency = currency
         # The history data is populated when requested.
 
     def __str__(self):
@@ -123,8 +125,12 @@ class Client:
     def branchIntegrationParameters(self):
         return dict(self._branchIntegrationParameters)
 
+    @property
+    def currency(self):
+        return self._currency
+
     def updatedBids(self, dynamoResource, newValue):
-        print('Client.updatedBids: set value ' + str(newValue));
+        print('Client.updatedBids: set value ' + str(newValue))
         print('Client.updatedBids: is stale ' + str(self._updatedBidsIsStale))
 
         if not self._updatedBidsIsStale:
@@ -353,8 +359,10 @@ class Client:
             for i in response[u'Items']:
                 totalCost += float(i['spend'])
                 totalInstalls += int(i['installs'])
-                #print(json.dumps(i, cls=DecimalEncoder))
-            total_cost_per_install = totalCost / totalInstalls
+                print(json.dumps(i, cls=DecimalEncoder))
+
+                if totalCost > 0 and totalInstalls > 0:
+                    total_cost_per_install = totalCost / totalInstalls
 
         return total_cost_per_install
 
@@ -649,9 +657,10 @@ class Client:
 
 CLIENTS = [Client(client["orgId"],
                   client["clientName"],
-                  [Address(emailAddress["name"],
-                           emailAddress["emailName"],
-                           emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
+                  # [Address(emailAddress["name"],
+                  #          emailAddress["emailName"],
+                  #          emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
+                  client["emailAddresses"],
                   client["keyFilename"],
                   client["pemFilename"],
                   client["bidParameters"],
@@ -660,6 +669,7 @@ CLIENTS = [Client(client["orgId"],
                   client["keywordAdderIds"],
                   client["keywordAdderParameters"],
                   client["branchIntegrationParameters"],
+                  client["currency"],
                   )
            for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
            if client.get("disabled", False) == False]

@@ -12,6 +12,7 @@ import sys
 import time
 
 from botocore.exceptions import ClientError
+from dateutil.parser import parse
 
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
@@ -54,9 +55,12 @@ class DecimalEncoder(json.JSONEncoder):
 
 # ------------------------------------------------------------------------------
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
+    global EMAIL_TO
+
+    EMAIL_TO = emailToInternal
 
     if env != "prod":
         sendG = False
@@ -163,14 +167,7 @@ def process():
                                     logger.info("handle unique_count")
                                     dash = "-"
 
-                                    test = str(result["timestamp"]).split('T')
-                                    #print("test=%s." % test)
-
-                                    testformatted = datetime.datetime.strptime(test, '%Y-%m-%d').date()
-                                    print("test=%s." % testformatted)
-
-
-                                    timestamp = str(result["timestamp"])
+                                    timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
                                     keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
@@ -214,7 +211,8 @@ def process():
                                     # TODO refactor revenue to be order angostic, currently revenue must run after count
                                     logger.info("runBranchIntegration:process:::handle revenue aggregation")
                                     dash = "-"
-                                    timestamp = str(result["timestamp"])
+                                    timestamp = result["timestamp"].split('T')[0]
+
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
                                     keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
@@ -267,13 +265,13 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
     terminate()
     return {

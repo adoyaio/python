@@ -34,8 +34,6 @@ from retry import retry
 import logging
 
 BIDDING_LOOKBACK = 7  # days
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com", "scott.kaplan@adoya.io"]
-#EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 
 ###### date and time parameters for bidding lookback ######
 date = datetime.date
@@ -89,10 +87,12 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
+    global EMAIL_TO
 
+    EMAIL_TO = emailToInternal
     if env != "prod":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
@@ -100,7 +100,8 @@ def initialize(env, dynamoEndpoint):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (sendG, dynamoEndpoint, str(EMAIL_TO)))
+
 
 # ------------------------------------------------------------------------------
 @retry
@@ -280,7 +281,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
 # ------------------------------------------------------------------------------
 @debug
-def convertKeywordFileToApplePayload(keyword_file_to_post):
+def convertKeywordFileToApplePayload(keyword_file_to_post, currency):
     '''
 At  https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Keyword_Resources.html I see this:
 
@@ -317,11 +318,12 @@ The keyword_file_to_post parameter is an array of these objects:
       "campaignId"	: 152708992  }
   '''
 
+    print("convertKeywordFileToApplePayload:::currency" + currency)
     payload = [{"importAction": "UPDATE",
                 "id": item["keywordId"],
                 "campaignId": item["campaignId"],
                 "adGroupId": item["adGroupId"],
-                "bidAmount": {"currency": "USD", "amount": str(item["bid"])}
+                "bidAmount": {"currency": currency, "amount": str(item["bid"])}
                 } for item in keyword_file_to_post]
 
     return payload
@@ -336,7 +338,8 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
 # ------------------------------------------------------------------------------
 @debug
 def sendUpdatedBidsToApple(client, keywordFileToPost):
-    payload = convertKeywordFileToApplePayload(keywordFileToPost)
+    print("sendUpdatedBidsToApple:::client.currency " + client.currency)
+    payload = convertKeywordFileToApplePayload(keywordFileToPost, client.currency)
 
     headers = {"Authorization": "orgId=%s" % client.orgId,
                "Content-Type": "application/json",
@@ -418,6 +421,8 @@ def process():
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
 
+        print("process:::client.currency" + client.currency)
+
         for campaignId in campaignIds:
             data = getKeywordReportFromApple(client, campaignId)
 
@@ -443,13 +448,13 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
     terminate()
     return {
