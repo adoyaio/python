@@ -46,7 +46,10 @@ class Client:
                  keywordAdderIds,
                  keywordAdderParameters,
                  branchIntegrationParameters,
+                 currency
                  ):
+        self._updatedBidsIsStale = False
+        self._updatedAdgroupBidsIsStale = False
         if "campaignId" not in keywordAdderIds or \
                 "adGroupId" not in keywordAdderIds:
             raise NameError("Missing campaignId or adGroupId in keywordAdderIds")
@@ -71,11 +74,8 @@ class Client:
         self._campaignIds = campaignIds
         self._keywordAdderIds = keywordAdderIds
         self._keywordAdderParameters = keywordAdderParameters
-        self._updatedBidsCount = self._readUpdatedBidsCount()
-        self._updatedAdgroupBidsCount = self._readUpdatedAdgroupBidsCount()
-        self._positiveKeywordsAdded = self._readPositiveKeywordsAdded()
-        self._negativeKeywordsAdded = self._readNegativeKeywordsAdded()
         self._branchIntegrationParameters = branchIntegrationParameters
+        self._currency = currency
         # The history data is populated when requested.
 
     def __str__(self):
@@ -94,12 +94,10 @@ class Client:
         return list(self._emailAddresses)
 
     @property
-    # def keyPathname(self)            : return os.path.join(self._getCertificatesPath(), self._keyFilename)
     def keyPathname(self):
         return os.path.join(CERT_DIR, self._keyFilename)
 
     @property
-    # def pemPathname(self)            : return os.path.join(self._getCertificatesPath(), self._pemFilename)
     def pemPathname(self):
         return os.path.join(CERT_DIR, self._pemFilename)
 
@@ -124,76 +122,87 @@ class Client:
         return tuple(self._campaignIds)
 
     @property
-    def updatedBids(self):
-        return self._updatedBidsCount
-
-    @property
     def branchIntegrationParameters(self):
         return dict(self._branchIntegrationParameters)
 
-    @updatedBids.setter
-    def updatedBids(self, newValue):
-        if self._updatedBidsIsStale == False:
-            self._updatedBidsCount = newValue
+    @property
+    def currency(self):
+        return self._currency
+
+    def updatedBids(self, dynamoResource, newValue):
+        print('Client.updatedBids: set value ' + str(newValue))
+        print('Client.updatedBids: is stale ' + str(self._updatedBidsIsStale))
+
+        if not self._updatedBidsIsStale:
             self._updatedBidsIsStale = True
-
+            print('Client.updatedBids: set updatedBidsIsStale ' + str(self._updatedBidsIsStale))
         else:
-            self._updatedBidsCount += newValue
+            print('Client.updatedBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedBidsCount(dynamoResource))
+            newValue = int(newValue) + int(self.readUpdatedBidsCount(dynamoResource))
 
-        self._writeStateInformation(self._getUpdatedBidsCountPathname(), self._updatedBidsCount)
+        item = {
+            "org_id": str(self.orgId),
+            "bids": str(newValue)
+        }
 
-    @property
-    def updatedAdgroupBids(self):
-        return self._updatedAdgroupBidsCount
+        # v1 code
+        print("Client.updatedBids: adding bids entry:", item)
+        table = dynamoResource.Table('bids')
+        table.put_item(
+            Item=item
+        )
 
-    @updatedAdgroupBids.setter
-    def updatedAdgroupBids(self, newValue):
-        if self._updatedAdgroupBidsIsStale == False:
-            self._updatedAdgroupBidsCount = newValue
+    def updatedAdgroupBids(self, dynamoResource, newValue):
+        print('Client.updatedAdgroupBids: set value ' + str(newValue))
+        print('Client.updatedAdgroupBidsIsStale: is stale ' + str(self._updatedAdgroupBidsIsStale))
+
+        if not self._updatedAdgroupBidsIsStale:
             self._updatedAdgroupBidsIsStale = True
-
+            print('Client.updatedAdgroupBids: set updatedBidsIsStale ' + str(self._updatedAdgroupBidsIsStale))
         else:
-            self._updatedAdgroupBidsCount += newValue
+            print('Client.updatedAdgroupBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedAdgroupBidsCount(dynamoResource))
+            newValue = int(newValue) + int(self.readUpdatedAdgroupBidsCount(dynamoResource))
 
-        self._writeStateInformation(self._getUpdatedAdgroupBidsCountPathname(), self._updatedAdgroupBidsCount)
+        item = {
+            "org_id": str(self.orgId),
+            "bids": str(newValue)
+        }
 
-    @property
-    def positiveKeywordsAdded(self):
-        return self._positiveKeywordsAdded
+        # v1 code
+        print("Client.updatedAdgroupBids: adding bids entry:", item)
+        table = dynamoResource.Table('adgroup_bids')
+        table.put_item(
+            Item=item
+        )
 
-    @property
-    def negativeKeywordsAdded(self):
-        return self._negativeKeywordsAdded
+    def positiveKeywordsAdded(self, dynamoResource, newValue):
+        print('Client.positiveKeywordsAdded: set value ' + str(newValue));
+        item = {
+            "org_id": str(self.orgId),
+            "keywords": newValue
+        }
 
-    @positiveKeywordsAdded.setter
-    def positiveKeywordsAdded(self, newValue):
-        self._positiveKeywordsAdded = newValue
-        self._writeStateInformation(self._getPositiveKeywordsPathname(), self._positiveKeywordsAdded)
+        # v1 add dynamo db call
+        print("Client.positiveKeywordsAdded: adding bids entry:", item)
+        table = dynamoResource.Table('positive_keywords')
+        table.put_item(
+            Item=item
+        )
 
-    @negativeKeywordsAdded.setter
-    def negativeKeywordsAdded(self, newValue):
-        self._negativeKeywordsAdded = newValue
-        self._writeStateInformation(self._getNegativeKeywordsPathname(), self._negativeKeywordsAdded)
+    def negativeKeywordsAdded(self, dynamoResource, newValue):
 
-    # @property def campaignData(self)  : return self._campaignData
-    # def setCampaignData(self, campaignData) : self._campaignData = campaignData
+        print('Client.positiveKeywordsAdded: set value ' + str(newValue));
+        item = {
+            "org_id": str(self.orgId),
+            "keywords": str(newValue)
+        }
 
-    def _getUpdatedBidsCountPathname(self):
-        return os.path.join(DATA_DIR, CLIENT_UPDATED_BIDS_FILENAME_TEMPLATE % self.orgId)
-
-    def _getUpdatedAdgroupBidsCountPathname(self):
-        return os.path.join(DATA_DIR, CLIENT_UPDATED_ADGROUP_BIDS_FILENAME_TEMPLATE % self.orgId)
-
-    def _getPositiveKeywordsPathname(self):
-        return os.path.join(DATA_DIR, CLIENT_POSITIVE_KEYWORDS_FILENAME_TEMPLATE % self.orgId)
-
-    def _getNegativeKeywordsPathname(self):
-        return os.path.join(DATA_DIR, CLIENT_NEGATIVE_KEYWORDS_FILENAME_TEMPLATE % self.orgId)
-
-    def _writeStateInformation(self, pathname, newValue):
-        # TODO: Convert this to store/retrieve the data to a database, not files. --DS, 28-Aug-2018
-        with open(pathname, "w") as handle:
-            json.dump(newValue, handle)
+        # v1 add dynamo db call
+        print("Client.negativeKeywordsAdded: adding bids entry:", item)
+        table = dynamoResource.Table('negative_keywords')
+        table.put_item(
+            Item=item
+        )
 
     def _readStateInformation(self, pathname, defaultValue):
         if os.path.exists(pathname):
@@ -205,19 +214,49 @@ class Client:
 
         return result
 
-    def _readUpdatedBidsCount(self):
-        self._updatedBidsIsStale = False
-        return self._readStateInformation(self._getUpdatedBidsCountPathname(), 0)
+    def readUpdatedBidsCount(self, dynamoResource):
+        table = dynamoResource.Table('bids')
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId))
+        )
+        #print('_readUpdatedBidsCount' + str(response));
+        # print('_readUpdatedBidsCount bids' + bids);
 
-    def _readUpdatedAdgroupBidsCount(self):
-        self._updatedAdgroupBidsIsStale = False
-        return self._readStateInformation(self._getUpdatedAdgroupBidsCountPathname(), 0)
+        if len(response['Items']) > 0:
+            bids = response['Items'][0]["bids"]
+        else:
+            bids = 0
 
-    def _readPositiveKeywordsAdded(self):
-        return self._readStateInformation(self._getPositiveKeywordsPathname(), [])
+        return bids
 
-    def _readNegativeKeywordsAdded(self):
-        return self._readStateInformation(self._getNegativeKeywordsPathname(), [])
+    def readUpdatedAdgroupBidsCount(self, dynamoResource):
+        table = dynamoResource.Table('adgroup_bids')
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId))
+        )
+        if len(response['Items']) > 0:
+            bids = response['Items'][0]["bids"]
+        else:
+            bids = 0
+
+        return bids
+
+    def readPositiveKeywordsAdded(self, dynamoResource):
+        table = dynamoResource.Table('positive_keywords')
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId))
+        )
+
+        if len(response['Items']) > 0:
+            return response['Items'][0]["keywords"]
+
+    def readNegativeKeywordsAdded(self, dynamoResource):
+        table = dynamoResource.Table('negative_keywords')
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId))
+        )
+        if len(response['Items']) > 0:
+            return response['Items'][0]["keywords"]
 
     # ^  # ----------------------------------------------------------------------------
     # ^  @property
@@ -306,8 +345,8 @@ class Client:
 
     # V1 code to use dynamo
     # ----------------------------------------------------------------------------
-    def getTotalCostPerInstall(self, dynamodb, start_date, end_date, daysToLookBack):
-        table = dynamodb.Table('cpi_history')
+    def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
+        table = dynamoResource.Table('cpi_history')
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
@@ -318,10 +357,12 @@ class Client:
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
             for i in response[u'Items']:
-                totalCost += float(i['spend'][1:])
+                totalCost += float(i['spend'])
                 totalInstalls += int(i['installs'])
-                #print(json.dumps(i, cls=DecimalEncoder))
-            total_cost_per_install = totalCost / totalInstalls
+                print(json.dumps(i, cls=DecimalEncoder))
+
+                if totalCost > 0 and totalInstalls > 0:
+                    total_cost_per_install = totalCost / totalInstalls
 
         return total_cost_per_install
 
@@ -616,9 +657,10 @@ class Client:
 
 CLIENTS = [Client(client["orgId"],
                   client["clientName"],
-                  [Address(emailAddress["name"],
-                           emailAddress["emailName"],
-                           emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
+                  # [Address(emailAddress["name"],
+                  #          emailAddress["emailName"],
+                  #          emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
+                  client["emailAddresses"],
                   client["keyFilename"],
                   client["pemFilename"],
                   client["bidParameters"],
@@ -627,6 +669,7 @@ CLIENTS = [Client(client["orgId"],
                   client["keywordAdderIds"],
                   client["keywordAdderParameters"],
                   client["branchIntegrationParameters"],
+                  client["currency"],
                   )
            for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
            if client.get("disabled", False) == False]

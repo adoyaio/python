@@ -25,7 +25,6 @@ from debug import debug, dprint
 from retry import retry
 
 BIDDING_LOOKBACK = 7 # days
-EMAIL_TO = ["james@adoya.io", "jarfarri@gmail.com"]
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
 ###### date and time parameters for bidding lookback ######
@@ -33,12 +32,12 @@ date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
 start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
-#start_date = today - start_date_delta
-#end_date = today - end_date_delta
+start_date = today - start_date_delta
+end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
-end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
+#start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
+#end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -52,9 +51,12 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
+    global EMAIL_TO
+
+    EMAIL_TO = emailToInternal
 
     if env != "prod":
         sendG = False
@@ -236,7 +238,7 @@ def createUpdatedAdGroupBids(data, client):
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
   total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
                                                          TOTAL_COST_PER_INSTALL_LOOKBACK)
-  dprint("total cpi %s" % str(total_cost_per_install))
+  dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
                  if total_cost_per_install <= ABP["HIGH_CPI_BID_DECREASE_THRESH"] \
@@ -280,13 +282,13 @@ def sendOneUpdatedBidToAppleHelper(url, cert, json, headers):
 
 # ------------------------------------------------------------------------------
 @debug
-def sendOneUpdatedBidToApple(client, adGroup, headers):
+def sendOneUpdatedBidToApple(client, adGroup, headers, currency):
   campaignId, adGroupId, bid = adGroup["campaignId"], adGroup["id"], adGroup["defaultCPCBid"]
 
   del adGroup["campaignId"]
   del adGroup["id"]
   del adGroup["defaultCPCBid"]
-  adGroup["defaultCpcBid"] = {"amount": "%.2f" % bid, "currency": "USD"}
+  adGroup["defaultCpcBid"] = {"amount": "%.2f" % bid, "currency": currency}
 
   url = APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaignId, adGroupId)
   dprint ("URL is '%s'." % url)
@@ -330,8 +332,7 @@ def sendUpdatedBidsToApple(client, adGroupFileToPost):
   dprint ("PEM='%s'." % client.pemPathname)
   dprint ("KEY='%s'." % client.keyPathname)
 
-  results = [sendOneUpdatedBidToApple(client, item, headers) for item in adGroupFileToPost]
-
+  results = [sendOneUpdatedBidToApple(client, item, headers, client.currency) for item in adGroupFileToPost]
   return True in results # Convert the vector into a scalar.
 
 
@@ -373,16 +374,18 @@ def process():
 
     for campaignId in campaignIds:
       data = getAdgroupReportFromApple(client)
-
       stuff = createUpdatedAdGroupBids(data, client)
 
+      print("runAdgroupBidAdjuster: stuff " + str(stuff))
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
+        print("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
+        print("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
         sent = sendUpdatedBidsToApple(client, updatedBids)
-        if sent:
+        #if sent:
           # TODO: Pull just the relevant field (defaultCPCBid?) from updatedBids, not the whole thing. --DS, 31-Dec-2018
-          clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
-          client.updatedAdgroupBids = numberOfBids
+        clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
+        client.updatedAdgroupBids(dynamodb, numberOfBids)
 
   emailSummaryReport(summaryReportInfo, sent)
 
@@ -398,16 +401,16 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'])
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
     terminate()
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Branch Integration Complete')
+        'body': json.dumps('Run Adgroup Bid Adjuster Complete')
     }
