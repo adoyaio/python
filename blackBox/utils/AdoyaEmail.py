@@ -37,7 +37,7 @@ CHARSET = "UTF-8"
 # Create a new SES resource and specify a region.
 client = boto3.client('ses', region_name=AWS_REGION)
 
-def sendEmailForACampaign(emailBody, emailSubject, emailRecipients, emailFrom):
+def sendEmailForACampaign(emailBody, emailSubject, emailRecipients, emailBccRecipients, emailFrom):
   # Try to send the email.
   try:
       # Provide the contents of the email.
@@ -48,7 +48,8 @@ def sendEmailForACampaign(emailBody, emailSubject, emailRecipients, emailFrom):
           #     ],
           # },
           Destination={
-              'ToAddresses': emailRecipients
+              'ToAddresses': emailRecipients,
+              'BccAddresses': emailBccRecipients
           },
           Message={
               'Body': {

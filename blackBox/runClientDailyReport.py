@@ -172,10 +172,11 @@ def sendEmailForACampaign(client, emailBody, now):
         dateString = dateString[1:]
     subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
-    fullEmailList = EMAIL_TO + client.emailAddresses
-    print('sendEmailForACampaign:::fullEmailList' + str(fullEmailList))
+    #fullEmailList = EMAIL_TO + client.emailAddresses
+
+    #print('sendEmailForACampaign:::fullEmailList' + str(fullEmailList))
     # TODO add sendG logic
-    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, fullEmailList, EMAIL_FROM)
+    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, client.emailAddresses, EMAIL_TO, EMAIL_FROM)
 
 
 # msg = email.message.EmailMessage()
