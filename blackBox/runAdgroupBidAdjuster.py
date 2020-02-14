@@ -360,7 +360,7 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Ad Group Bid Adjuster summary for %s" % dateString
-    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, EMAIL_FROM)
+    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 @debug
