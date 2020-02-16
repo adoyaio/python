@@ -133,10 +133,19 @@ def process():
     # summaryReportInfo = {}
     for client in CLIENTS:
         # summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = { }
+        branch_key = {}
+        branch_secret = {}
+
         try:
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]
+            run_branch = True
 
+        except KeyError as error:
+            logger.info("runBranchIntegration:process:::no branch config skipping " + str(client.orgId))
+            run_branch = False
+
+        if run_branch:
             for data_source in data_sources.keys():
                 # key field of db table (slice off the last character)
                 data_source_key = data_source[:-1] + "_key"
@@ -145,7 +154,6 @@ def process():
 
                 if table:
                     logger.info("runBranchIntegration:process:::found table " + data_source)
-
                     branch_job_aggregations = aggregations[branch_job]
 
                     for aggregation in branch_job_aggregations:
@@ -155,31 +163,27 @@ def process():
                         results = data[aggregation]['results']
 
                         if len(results) == 0:
-                            # return False  # EARLY RETURN
+                            #return False  # EARLY RETURN
                             logger.info("runBranchIntegration:process:::no results from " + branch_job)
 
                         for result in results:
-
                             if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
-
                                 if aggregation != "revenue":
-
-                                    logger.info("handle unique_count")
+                                    logger.info(branch_job + ":::handle unique_count")
                                     dash = "-"
-
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-                                    keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
                                     ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
                                     ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     count = str(result["result"]["unique_count"])
 
                                     # event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
-                                    if not keyword:
-                                        event_key = campaign_id + dash + ad_set_id
-                                    else:
+                                    if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
+                                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
                                         event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                    else:
+                                        event_key = campaign_id + dash + ad_set_id
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)
@@ -209,21 +213,20 @@ def process():
 
                                 else:
                                     # TODO refactor revenue to be order angostic, currently revenue must run after count
-                                    logger.info("runBranchIntegration:process:::handle revenue aggregation")
+                                    logger.info(branch_job + ":::handle revenue aggregation")
                                     dash = "-"
                                     timestamp = result["timestamp"].split('T')[0]
-
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-                                    keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
                                     ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
                                     ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     revenue = decimal.Decimal(result["result"]["revenue"])
 
-                                    if not keyword:
-                                        event_key = campaign_id + dash + ad_set_id
-                                    else:
+                                    if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
+                                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
                                         event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                    else:
+                                        event_key = campaign_id + dash + ad_set_id
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)
@@ -252,8 +255,6 @@ def process():
                                 logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
                 else:
                     logger.info("runBranchIntegration:process:::issue connecting to " + data_source)
-        except KeyError as error:
-            logger.info("runBranchIntegration:process:::no branch config skipping " + str(client.orgId))
 
 # ------------------------------------------------------------------------------
 @debug
