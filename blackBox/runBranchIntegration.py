@@ -30,7 +30,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ###### date and time parameters for bidding lookback ######
-BIDDING_LOOKBACK = 7  # days
+BIDDING_LOOKBACK = 7  # days #make this 2
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -168,6 +168,15 @@ def process():
 
                         for result in results:
                             if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
+
+                                # initialize branch facets
+                                timestamp = ""
+                                campaign = ""
+                                campaign_id = ""
+                                ad_set_id = ""
+                                ad_set_name = ""
+                                keyword = ""
+
                                 if aggregation != "revenue":
                                     logger.info(branch_job + ":::handle unique_count")
                                     dash = "-"
@@ -183,6 +192,7 @@ def process():
                                         keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
                                         event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
                                     else:
+                                        keyword = "n/a"
                                         event_key = campaign_id + dash + ad_set_id
 
                                     # enable for local debugging
@@ -249,8 +259,10 @@ def process():
                                         )
                                     except ClientError as e:
                                         logger.info("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                                        # enable for local debugging
+                                        #print(json.dumps(response, indent=4, cls=DecimalEncoder))
                                     else:
-                                        print(json.dumps(response, indent=4, cls=DecimalEncoder))
+                                        logger.info("runBranchIntegration:process:::PutItem succeeded:")
                             else:
                                 logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
                 else:
