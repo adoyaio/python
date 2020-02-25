@@ -46,7 +46,10 @@ class Client:
                  keywordAdderIds,
                  keywordAdderParameters,
                  branchIntegrationParameters,
-                 currency
+                 currency,
+                 appName,
+                 appID,
+                 campaignName
                  ):
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
@@ -76,6 +79,9 @@ class Client:
         self._keywordAdderParameters = keywordAdderParameters
         self._branchIntegrationParameters = branchIntegrationParameters
         self._currency = currency
+        self.appName = appName
+        self.appID = appID
+        self.campaignName = campaignName
         # The history data is populated when requested.
 
     def __str__(self):
@@ -670,6 +676,9 @@ CLIENTS = [Client(client["orgId"],
                   client["keywordAdderParameters"],
                   client["branchIntegrationParameters"],
                   client["currency"],
+                  client["appName"],
+                  client["appID"],
+                  client["campaignName"]
                   )
            for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
            if client.get("disabled", False) == False]
