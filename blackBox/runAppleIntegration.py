@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 import logging
 import decimal
+from decimal import *
 from collections import defaultdict
 from datetime import datetime as dt
 import datetime
@@ -12,6 +13,13 @@ import requests
 import time
 import boto3
 from boto3.dynamodb.conditions import Key
+
+#TODO this was to eliminate the inexact and rounding errors
+from boto3.dynamodb.types import DYNAMODB_CONTEXT
+# Inhibit Inexact Exceptions
+DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
+# Inhibit Rounded Exceptions
+DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
 from datetime import date
 
@@ -25,6 +33,7 @@ from configuration import EMAIL_FROM, \
 
 from debug import debug, dprint
 from retry import retry
+
 
 BIDDING_LOOKBACK = 7 # days
 sendG = False # Set to True to enable sending data to Apple, else a test run.
@@ -44,12 +53,18 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+
 # Helper class to convert a DynamoDB item to JSON.
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, decimal.Decimal):
-            return str(o)
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
         return super(DecimalEncoder, self).default(o)
+
+
 
 
 @debug
@@ -160,7 +175,7 @@ def getAdgroupReportFromApple(client, start_date, end_date):
   #TODO uncomment the following line
   #dprint ("Response is %s." % response)
 
-  return json.loads(response.text) 
+  return json.loads(response.text, parse_float=decimal.Decimal) 
 
 
 def calc_date_range_list(start_date, end_date, maximum_dates = 90):
@@ -229,60 +244,102 @@ def loadAppleAdGroupToDynamo(data, client, start_date, end_date, adgroup_table):
   #compile data from json library and put into dataframe
   adGroup_info = defaultdict(list)
   for i in range(len(rows[0]['granularity'])):
-      #TODO The original date is in format "2019-11-13T00:00:00.000", but the split("T") command is hacky
-      adGroup_info['creationDate']           .append(rows[0]['metadata']['startTime'].split("T")[0])
-      adGroup_info['Date']                   .append(rows[0]['granularity'][i]["date"])
-      #TODO all of these client fields should be read from the configuration script 
-      adGroup_info['App Name']	             .append(client.appName)
-      adGroup_info['App ID']                 .append(client.appID)
-      adGroup_info['campaignName']           .append(client.campaignName)
-      adGroup_info['campaignId']             .append(client.keywordAdderIds["campaignId"]["search"])
-      adGroup_info['adGroupName']            .append(rows[0]['metadata']['adGroupName'])
-      adGroup_info['adGroupId']              .append(rows[0]['metadata']['adGroupId'])
-      adGroup_info['bid']                    .append(rows[0]['metadata']['defaultCpcBid']['amount'])
-      adGroup_info['deleted']                .append(rows[0]['metadata']['deleted'])
-      adGroup_info['modificationTime']       .append(rows[0]['metadata']['modificationTime'].split("T")[0])
       #Get the daily values
       #TODO if there is only 1 date, then the totals will not be in a list. Instead, they will simply be in a dictionary
       if type(rows[0][field_key]) == dict:
-        adGroup_info['impressions']            .append(rows[0][field_key]['impressions'])
-        adGroup_info['taps']                   .append(rows[0][field_key]['taps'])
-        adGroup_info['conversions']            .append(rows[0][field_key]['conversions'])
-        adGroup_info['ttr']                    .append(rows[0][field_key]['ttr'])
-        adGroup_info['installs']               .append(rows[0][field_key]['conversionsRedownloads'] + rows[0][field_key]['conversionsNewDownloads'])
-        adGroup_info['newDownloads']           .append(rows[0][field_key]['conversionsNewDownloads'])
-        adGroup_info['redownloads']            .append(rows[0][field_key]['conversionsRedownloads'])
-        adGroup_info['latOnInstalls']          .append(rows[0][field_key]['conversionsLATOn'])
-        adGroup_info['latOffInstalls']         .append(rows[0][field_key]['conversionsLATOff'])     
-        adGroup_info['avgCPA']                 .append(rows[0][field_key]['avgCPA']['amount'])
-        adGroup_info['conversionRate']         .append(rows[0][field_key]['conversionRate'])
-        adGroup_info['localSpend']             .append(rows[0][field_key]['localSpend']['amount'])	
-        adGroup_info['avgCPT']                 .append(rows[0][field_key]['avgCPT']['amount'])
+        #put the data into the table
+        adgroup_table.put_item(
+              Item={
+                  #TODO The original date is in format "2019-11-13T00:00:00.000", but the split("T") command is hacky
+                  'creation_date': rows[0]['metadata']['startTime'].split("T")[0],
+                  'date' : str(rows[0]['granularity'][i]["date"]),
+                  #TODO all of these client fields should be read from the configuration script 
+                  'app_name': client.appName,
+                  'app_id': str(client.appID),
+                  'campaign_name': client.campaignName,
+                  'campaign_id': str(client.keywordAdderIds["campaignId"]["search"]),
+                  'adgroup_name': rows[0]['metadata']['adGroupName'],
+                  'adgroup_id': str(rows[0]['metadata']['adGroupId']),
+                  'bid': decimal.Decimal(str(rows[0]['metadata']['defaultCpcBid']['amount'])),
+                  'deleted': rows[0]['metadata']['deleted'],
+                  'modification_time': rows[0]['metadata']['modificationTime'].split("T")[0],
+                  'impressions': rows[0][field_key]['impressions'],
+                  'taps': rows[0][field_key]['taps'],
+                  'conversions': rows[0][field_key]['conversions'],
+                  'ttr': rows[0][field_key]['ttr'],
+                  'installs': rows[0][field_key]['conversionsRedownloads'] + rows[0][field_key]['conversionsNewDownloads'],
+                  'new_downloads': rows[0][field_key]['conversionsNewDownloads'],
+                  're_downloads': rows[0][field_key]['conversionsRedownloads'],
+                  'lat_on_installs': rows[0][field_key]['conversionsLATOn'],
+                  'lat_off_installs': rows[0][field_key]['conversionsLATOff'],
+                  'avg_cpa': decimal.Decimal(str(rows[0][field_key]['avgCPA']['amount'])),
+                  'conversion_rate': decimal.Decimal(str(rows[0][field_key]['conversionRate'])),
+                  'local_spend': decimal.Decimal(str(rows[0][field_key]['localSpend']['amount'])),
+                  'avg_cpt': str(rows[0][field_key]['avgCPT']['amount'])
 
+              }
+          )
       else:
-        adGroup_info['impressions']            .append(rows[0][field_key][i]['impressions'])
-        adGroup_info['taps']                   .append(rows[0][field_key][i]['taps'])
-        adGroup_info['conversions']            .append(rows[0][field_key][i]['conversions'])
-        adGroup_info['ttr']                    .append(rows[0][field_key][i]['ttr'])
-        adGroup_info['installs']               .append(rows[0][field_key][i]['conversionsRedownloads'] + rows[0][field_key][i]['conversionsNewDownloads'])
-        adGroup_info['newDownloads']           .append(rows[0][field_key][i]['conversionsNewDownloads'])
-        adGroup_info['redownloads']            .append(rows[0][field_key][i]['conversionsRedownloads'])
-        adGroup_info['latOnInstalls']          .append(rows[0][field_key][i]['conversionsLATOn'])
-        adGroup_info['latOffInstalls']         .append(rows[0][field_key][i]['conversionsLATOff'])     
-        adGroup_info['avgCPA']                 .append(rows[0][field_key][i]['avgCPA']['amount'])
-        adGroup_info['conversionRate']         .append(rows[0][field_key][i]['conversionRate'])
-        adGroup_info['localSpend']             .append(rows[0][field_key][i]['localSpend']['amount'])	
-        adGroup_info['avgCPT']                 .append(rows[0][field_key][i]['avgCPT']['amount'])
+        #put the data into the table
+        adgroup_table.put_item(
+              Item={
+                  'creation_date': rows[0]['metadata']['startTime'].split("T")[0],
+                  'date' : str(rows[0]['granularity'][i]["date"]),
+                  #TODO all of these client fields should be read from the configuration script 
+                  'app_name': client.appName,
+                  'app_id': str(client.appID),
+                  'campaign_name': client.campaignName,
+                  'campaign_id': str(client.keywordAdderIds["campaignId"]["search"]),
+                  'adgroup_name': rows[0]['metadata']['adGroupName'],
+                  'adgroup_id': str(rows[0]['metadata']['adGroupId']),
+                  'bid': decimal.Decimal(str(rows[0]['metadata']['defaultCpcBid']['amount'])),
+                  'deleted': rows[0]['metadata']['deleted'],
+                  'modification_time': rows[0]['metadata']['modificationTime'].split("T")[0],
+                  'impressions': rows[0][field_key][i]['impressions'],
+                  'taps': rows[0][field_key][i]['taps'],
+                  'conversions': rows[0][field_key][i]['conversions'],
+                  'ttr': rows[0][field_key][i]['ttr'],
+                  'installs': rows[0][field_key][i]['conversionsRedownloads'] + rows[0][field_key][i]['conversionsNewDownloads'],
+                  'new_downloads': rows[0][field_key][i]['conversionsNewDownloads'],
+                  're_downloads': rows[0][field_key][i]['conversionsRedownloads'],
+                  'lat_on_installs': rows[0][field_key][i]['conversionsLATOn'],
+                  'lat_off_installs': rows[0][field_key][i]['conversionsLATOff'],
+                  'avg_cpa': decimal.Decimal(str(rows[0][field_key][i]['avgCPA']['amount'])),
+                  'conversion_rate': decimal.Decimal(str(rows[0][field_key][i]['conversionRate'])),
+                  'local_spend': decimal.Decimal(str(rows[0][field_key][i]['localSpend']['amount'])),
+                  'avg_cpt': decimal.Decimal(str(rows[0][field_key][i]['avgCPT']['amount']))
 
-
-
-
-  #convert to dataframe    
-  adGroup_info = pd.DataFrame(adGroup_info)
-  adGroup_info.to_csv("data/QC_AdGroupData/{}_{}_{}.csv".format(str(client.clientName), str(start_date), str(end_date)), index=False)
+              }
+          )
+      
 
   return True
 
+
+def get_max_date(item_list):
+  '''
+  This function takes a list of items returned from a dynamoDB table, and it returns the max_date from the list.
+
+  Example:
+
+  [
+    {'date': '2019-03-04', 'lat_on_installs': Decimal('0')},
+    {'date': '2019-03-05', 'lat_on_installs': Decimal('0')}
+  ]
+
+  Should return '2019-03-05'
+
+  '''
+  #Initialize a max date
+  max_date = dt.strptime("2000-01-01", "%Y-%m-%d").date()
+
+  for elmt in item_list:
+    elmt_date = dt.strptime(elmt["date"], "%Y-%m-%d").date()
+    print(elmt_date)
+    if elmt_date > max_date:
+      max_date = elmt_date
+
+  return max_date
 
 
 
@@ -303,21 +360,42 @@ def process():
     print(client.campaignName)
 
     
-    #Will there be only 1 adGroupId per client?
-
-    #start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
-    #end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
     
     #TODO this is a major todo. We need to figure out where to get the campaign id's from
     for campaign_id in [client.keywordAdderIds["campaignId"]["search"]]:
-  
-      date_results = adgroup_table.scan(FilterExpression=Key('campaign_id').eq(campaign_id))
+
+      date_results = adgroup_table.scan(FilterExpression=Key('campaign_id').eq(str(campaign_id)))
+
+      print(len(date_results["Items"]))
+
+
       if len(date_results["Items"]) == 0:
         start_date = datetime.date.today() - datetime.timedelta(days=adgroup_loading_lookback)
         end_date = datetime.date.today()
       else:
-        print("TODO need to figure out how to get the max date")
-        return None
+        
+        #Get the start date from the maximum date in the table
+        start_date = get_max_date(date_results["Items"])
+        end_date = datetime.date.today()
+
+
+        print(start_date)
+        print(end_date)
+
+
+        #if the start date matches 2000-01-01, then none of the values in the able were later than that date 
+        #TODO this might be a bad implementation
+        if start_date == dt.strptime("2000-01-01", "%Y-%m-%d").date():
+          print("There was an error with getting the maximum date")
+
+          break
+
+        #if the start_date and the end_date are equal, then the table is up to date
+        elif start_date == end_date:
+          print("The apple_adgroup table are up to date for {}".format(str(campaign_id)))
+
+          break
+
 
       date_ranges = calc_date_range_list(start_date, end_date, maximum_dates = 90)
       
