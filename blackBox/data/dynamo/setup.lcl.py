@@ -473,3 +473,196 @@ if 'positive_keywords' not in existing_tables:
         BillingMode="PAY_PER_REQUEST",
     )
     print("Table status:", table.table_name, table.table_status)
+
+
+
+if 'cpi_history' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='cpi_history',
+        KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        },
+        {
+            'AttributeName': 'timestamp',
+            'KeyType': 'RANGE'  #Sort key
+        },
+        ],
+        AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'timestamp',
+            'AttributeType': 'S'
+        }
+        ],
+        BillingMode="PAY_PER_REQUEST"
+    )
+    print("Table status:", table.table_name, table.table_status)
+
+
+if 'apple_adGroup' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='apple_adGroup',
+        KeySchema=[
+        {
+            'AttributeName': 'adGroupId',
+            'KeyType': 'HASH'  #Partition key
+        },
+        {
+            'AttributeName': 'Date',
+            'KeyType': 'RANGE'  #Sort key
+        },
+        ],
+        AttributeDefinitions=[
+
+        {
+            'AttributeName': 'Date',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'App ID',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'campaignId',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'adGroupId',
+            'AttributeType': 'S'
+        }
+        ],
+        GlobalSecondaryIndexes=[
+        {
+            'IndexName': 'campaignId-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'campaignId',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'Date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'AppID-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'App ID',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'Date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        }
+        ],
+        BillingMode="PAY_PER_REQUEST"
+    )
+    print("Table status:", table.table_name, table.table_status)
+
+
+
+if 'apple_keyWord' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='apple_keyWord',
+        KeySchema=[
+        {
+            'AttributeName': 'keywordId',
+            'KeyType': 'HASH'  #Partition key
+        },
+        {
+            'AttributeName': 'Date',
+            'KeyType': 'RANGE'  #Sort key
+        },
+        ],
+        AttributeDefinitions=[
+
+        {
+            'AttributeName': 'keywordId',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'Date',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'App ID',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'campaignId',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'adGroupId',
+            'AttributeType': 'S'
+        }
+        ],
+        GlobalSecondaryIndexes=[
+        {
+            'IndexName': 'campaignId-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'campaignId',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'Date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'AppID-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'App ID',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'Date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'adGroupId-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'adGroupId',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'Date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        }
+        ],
+        BillingMode="PAY_PER_REQUEST"
+    )
+    print("Table status:", table.table_name, table.table_status)
+
