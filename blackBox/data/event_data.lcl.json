@@ -1,5 +1,5 @@
 {
   "env": "lcl",
   "dynamoEndpoint": "http://dynamodb:8000",
-  "emailToInternal" : ["james@adoya.io","scott.kaplan@adoya.io"]
+  "emailToInternal" : ["james@adoya.io"]
 }
