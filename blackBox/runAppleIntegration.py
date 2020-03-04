@@ -343,6 +343,13 @@ def get_max_date(item_list):
 
 
 
+def export_dict_to_csv(raw_dict, filename):
+  '''
+  This function takes a json and a filename, and it exports the json as a csv to the given filename.
+  '''
+  df = pd.DataFrame.from_dict(raw_dict)
+  df.to_csv(filename, index = None)
+
 # ------------------------------------------------------------------------------
 @debug
 def process():
@@ -351,6 +358,11 @@ def process():
   #TODO We want to go back a year, but Apple is only allowing 90 days
   adgroup_loading_lookback = 365
   adgroup_table = dynamodb.Table('apple_adgroup')
+
+
+  #TODOTo output the adgroup_table use the following command. For QC only.
+  #export_dict_to_csv(adgroup_table.scan()["Items"], "/home/kenny/adoya/python/blackBox/data/dynamo/apple_adgroup_qc.txt")
+  #input()
 
   for client in CLIENTS:
     print("Loading Adgroup Date for: " + str(client.clientName))
