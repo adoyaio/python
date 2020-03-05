@@ -474,7 +474,6 @@ if 'positive_keywords' not in existing_tables:
     )
     print("Table status:", table.table_name, table.table_status)
 
-
 if 'apple_adgroup' not in existing_tables:
     table = dynamodb.create_table(
         TableName='apple_adgroup',
@@ -489,7 +488,6 @@ if 'apple_adgroup' not in existing_tables:
         },
         ],
         AttributeDefinitions=[
-
         {
             'AttributeName': 'date',
             'AttributeType': 'S'
