@@ -446,5 +446,5 @@ def lambda_handler(event, context):
     terminate()
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Adgroup Bid Adjuster Complete')
+        'body': json.dumps('Run Apple Integration Complete')
     }

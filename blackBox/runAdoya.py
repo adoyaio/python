@@ -1,5 +1,7 @@
 import json
 import boto3
+
+import runAppleIntegration
 import runBranchIntegration
 import runBidAdjuster
 import runAdgroupBidAdjuster
@@ -15,6 +17,9 @@ def lambda_handler(event, context):
     #         LogType='None',
     #         Payload=json.dumps(event)
     # )
+    invoke_response_branch = runAppleIntegration.lambda_handler(event, context)
+    print(json.dumps(invoke_response_branch))
+
     invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
     print(json.dumps(invoke_response_branch))
 
