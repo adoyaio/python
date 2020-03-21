@@ -100,7 +100,7 @@ if 'branch_commerce_events' not in existing_tables:
     )
     print("Table status:", table.table_name, table.table_status)
 
-if 'branch_commerce_events' not in existing_tables:
+if 'branch_opens' not in existing_tables:
     table = dynamodb.create_table(
         TableName='branch_opens',
         KeySchema=[
