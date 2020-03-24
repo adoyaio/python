@@ -76,7 +76,7 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
         "returnRecordsWithNoMetrics": True,
         "selector": {
             "orderBy": [{"field": "localSpend", "sortOrder": "DESCENDING"}],
-            "fields": ["localSpend", "taps", "impressions", "conversions", "avgCPA", "avgCPT", "ttr", "conversionRate"],
+            "fields": ["localSpend", "taps", "impressions", "installs", "avgCPA", "avgCPT", "ttr", "conversionRate"],
             "pagination": {"offset": 0, "limit": 1000}
         },
         # "groupBy"                    : [ "COUNTRY_CODE" ],
@@ -112,27 +112,27 @@ def createOneRowOfHistory(data):
     #  utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
     #  timestamp = datetime.datetime.now().replace(tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
     #
-    #  return utcTimestamp, timestamp, str(data["spend"]), str(data["conversions"])
+    #  return utcTimestamp, timestamp, str(data["spend"]), str(data["installs"])
     print('createOneRowOfHistory:' + str(data))
-    if int(data["conversions"]) > 0:
+    if int(data["installs"]) > 0:
         return str(datetime.datetime.now().date()), \
            "%s" % round(data["spend"], 2), \
-           str(data["conversions"]), \
-           "%.2f" % round(data["spend"] / float(data["conversions"]), 2)
+           str(data["installs"]), \
+           "%.2f" % round(data["spend"] / float(data["installs"]), 2)
     else:
         print('createOneRowOfHistory:::adding line of history with 0s check values')
         return str(datetime.datetime.now().date()), \
            "%s" % round(0, 2), \
-           str(data["conversions"]), \
+           str(data["installs"]), \
            "%.2f" % round(0), 2
 
 
 # ------------------------------------------------------------------------------
 @debug
 def createOneRowOfTable(data, label):
-    cpi = "N/A" if data["conversions"] < 1 else ("{: 6,.2f}".format((0.0 + data["spend"]) / data["conversions"]))
+    cpi = "N/A" if data["installs"] < 1 else ("{: 6,.2f}".format((0.0 + data["spend"]) / data["installs"]))
 
-    return """{:s}\t{:>9,.2f}\t{:>8,d}\t{:>s}""".format(label, data["spend"], data["conversions"], cpi)
+    return """{:s}\t{:>9,.2f}\t{:>8,d}\t{:>s}""".format(label, data["spend"], data["installs"], cpi)
 
 
 # ------------------------------------------------------------------------------
@@ -212,28 +212,28 @@ def sendEmailForACampaign(client, emailBody, now):
 # ------------------------------------------------------------------------------
 @debug
 def sendEmailReport(client, dataForVariousTimes):
-    summary = {ONE_DAY: {"conversions": 0, "spend": 0.0},
-               SEVEN_DAYS: {"conversions": 0, "spend": 0.0},
-               FOUR_YEARS: {"conversions": 0, "spend": 0.0},
+    summary = {ONE_DAY: {"installs": 0, "spend": 0.0},
+               SEVEN_DAYS: {"installs": 0, "spend": 0.0},
+               FOUR_YEARS: {"installs": 0, "spend": 0.0},
                }
 
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
-        summary[someTime] = {"conversions": 0,
+        summary[someTime] = {"installs": 0,
                              "spend": 0.0}
 
         for campaign in campaignsForThatTime:
             totals = campaign["total"]
-            conversions, spend = totals["conversions"], float(totals["localSpend"]["amount"])
-            dprint("For %d (%s), campaign %s over %d days has %d conversions, %f spend." % \
-                   (client.orgId, client.clientName, campaign["metadata"]["campaignId"], someTime, conversions, spend))
-            summary[someTime]["conversions"] += totals["conversions"]
+            installs, spend = totals["installs"], float(totals["localSpend"]["amount"])
+            dprint("For %d (%s), campaign %s over %d days has %d installs, %f spend." % \
+                   (client.orgId, client.clientName, campaign["metadata"]["campaignId"], someTime, installs, spend))
+            summary[someTime]["installs"] += totals["installs"]
             summary[someTime]["spend"] += float(totals["localSpend"]["amount"])
 
     now = time.time()
 
     # TODO updated to use dynamo, no header row needed
     # client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]),
-    #                        ["Date", "Spend", "Conversions", "Cost per Install"])
+    #                        ["Date", "Spend", "installs", "Cost per Install"])
 
     client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb)
     emailBody = createEmailBodyForACampaign(client, summary, now)

@@ -121,7 +121,7 @@ def getKeywordReportFromApple(client, campaignId):
                             "fields": ["localSpend",
                                        "taps",
                                        "impressions",
-                                       "conversions",
+                                       "installs",
                                        "avgCPA",
                                        "avgCPT",
                                        "ttr",
@@ -188,11 +188,11 @@ def createUpdatedKeywordBids(data, campaignId, client):
         keyword_info["impressions"].append(totals["impressions"])
         keyword_info["taps"].append(totals["taps"])
         keyword_info["ttr"].append(totals["ttr"])
-        keyword_info["conversions"].append(totals["conversions"])
-        keyword_info["conversionsNewDownloads"].append(totals["conversionsNewDownloads"])
-        keyword_info["conversionsRedownloads"].append(totals["conversionsRedownloads"])
-        keyword_info["conversionsLATOn"].append(totals["conversionsLATOn"])
-        keyword_info["conversionsLATOff"].append(totals["conversionsLATOff"])
+        keyword_info["installs"].append(totals["installs"])
+        keyword_info["newDownloads"].append(totals["newDownloads"])
+        keyword_info["redownloads"].append(totals["redownloads"])
+        keyword_info["latOnInstalls"].append(totals["latOnInstalls"])
+        keyword_info["latOffInstalls"].append(totals["latOffInstalls"])
         keyword_info["avgCPA"].append(totals["avgCPA"]["amount"])
         keyword_info["conversionRate"].append(totals["conversionRate"])
         keyword_info["localSpend"].append(totals["localSpend"]["amount"])
@@ -217,7 +217,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
                                        "keywordId",
                                        "impressions",
                                        "taps",
-                                       "conversions",
+                                       "installs",
                                        "avgCPA",
                                        "localSpend",
                                        "bid"]]
@@ -238,13 +238,13 @@ def createUpdatedKeywordBids(data, campaignId, client):
     # subset keywords for bid increase
     low_cpa_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
                                        (ex_keyword_info["avgCPA"] <= BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
-                                       (ex_keyword_info["conversions"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])]
+                                       (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])]
 
     # subset keywords for bid decrease
     high_cpa_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
                                         (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"])]
     no_install_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-                                          (ex_keyword_info["conversions"] == BP["NO_INSTALL_BID_DECREASE_THRESH"])]
+                                          (ex_keyword_info["installs"] == BP["NO_INSTALL_BID_DECREASE_THRESH"])]
 
     # raise bids for stale raise keywords
     stale_raise_kws["bid"] = stale_raise_kws["bid"] * BP["STALE_RAISE_BID_BOOST"]
@@ -310,7 +310,7 @@ The keyword_file_to_post parameter is an array of these objects:
       "keywordId"	: 152834423,
       "impressions"	: 0,
       "taps"		: 0,
-      "conversions"	: 0,
+      "installs"	: 0,
       "avgCPA"		: 0.0,
       "localSpend"	: "0",
       "bid"			: 12.0,
@@ -319,14 +319,34 @@ The keyword_file_to_post parameter is an array of these objects:
   '''
 
     print("convertKeywordFileToApplePayload:::currency" + currency)
-    payload = [{"importAction": "UPDATE",
-                "id": item["keywordId"],
-                "campaignId": item["campaignId"],
-                "adGroupId": item["adGroupId"],
+    # payload = [{"importAction": "UPDATE",
+    #             "id": item["keywordId"],
+    #             "campaignId": item["campaignId"],
+    #             "adGroupId": item["adGroupId"],
+    #             "bidAmount": {"currency": currency, "amount": str(item["bid"])}
+    #             } for item in keyword_file_to_post]
+
+    # pull the campaign and adgroup ids into an array and check if there are
+
+    payload = [{"id": item["keywordId"],
                 "bidAmount": {"currency": currency, "amount": str(item["bid"])}
                 } for item in keyword_file_to_post]
 
     return payload
+
+# JF quick fix for V2 update to urls.
+# TODO can we assume adgroup Id is always consistent for this cal though
+def getAppleKeywordsEndpoint(keyword_file_to_post):
+    url = ""
+    print("james test" + str(keyword_file_to_post))
+    for item in keyword_file_to_post:
+        adGroupId = item["adGroupId"]
+        campaignIdForEndpoint = item["campaignId"]
+        url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignIdForEndpoint, adGroupId)
+        break;
+
+    print("getAppleKeywordsEndpoint:::found url" + url)
+    return url
 
 
 # ------------------------------------------------------------------------------
@@ -339,29 +359,32 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
 @debug
 def sendUpdatedBidsToApple(client, keywordFileToPost):
     print("sendUpdatedBidsToApple:::client.currency " + client.currency)
+    url = getAppleKeywordsEndpoint(keywordFileToPost)
     payload = convertKeywordFileToApplePayload(keywordFileToPost, client.currency)
 
     headers = {"Authorization": "orgId=%s" % client.orgId,
                "Content-Type": "application/json",
                "Accept": "application/json",
                }
-
-    dprint("URL is '%s'." % APPLE_UPDATE_POSITIVE_KEYWORDS_URL)
+    #url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (keywordFileToPost, keywordFileToPost)
+    dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
     dprint("PEM='%s'." % client.pemPathname)
     dprint("KEY='%s'." % client.keyPathname)
 
-    if sendG:
-        response = sendUpdatedBidsToAppleHelper(APPLE_UPDATE_POSITIVE_KEYWORDS_URL,
+    if url and payload:
+
+        if sendG:
+            response = sendUpdatedBidsToAppleHelper(url,
                                                 cert=(client.pemPathname, client.keyPathname),
                                                 json=payload,
                                                 headers=headers)
 
-    else:
-        response = "Not actually sending anything to Apple."
+        else:
+            response = "Not actually sending anything to Apple."
 
-    print("The result of sending the update to Apple: %s" % response)
+        print("The result of sending the update to Apple: %s" % response)
 
     return sendG
 
