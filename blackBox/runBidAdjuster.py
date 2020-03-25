@@ -352,7 +352,7 @@ def getAppleKeywordsEndpoint(keyword_file_to_post):
 # ------------------------------------------------------------------------------
 @retry
 def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
-    return requests.post(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+    return requests.put(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
 
 
 # ------------------------------------------------------------------------------
