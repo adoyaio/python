@@ -100,12 +100,11 @@ def getAdgroupReportFromApple(client):
                                                        'avgCPT': {'amount': '0',
                                                                   'currency': 'USD'},
                                                        'conversionRate': 0.0,
-                                                       'conversions': 0,
-                                                       'conversionsLATOff': 0,
-                                                       'conversionsLATOn': 0,
-                                                       'conversionsNewDownloads': 0,
-                                                       'conversionsRedownloads': 0,
-                                                       'impressions': 0,
+                                                       'installs': 0,
+                                                       'latOffInstalls': 0,
+                                                       'latOnInstalls': 0,
+                                                       'newDownloads': 0,
+                                                       'redownloads': 0,
                                                        'localSpend': {'amount': '0',
                                                                       'currency': 'USD'},
                                                        'taps': 0,
@@ -123,7 +122,7 @@ def getAdgroupReportFromApple(client):
                                                "fields"     :  [ "localSpend",
                                                                  "taps",
                                                                  "impressions",
-                                                                 "conversions",
+                                                                 "installs",
                                                                  "avgCPA",
                                                                  "avgCPT",
                                                                  "ttr",
@@ -180,11 +179,11 @@ def createUpdatedAdGroupBids(data, client):
       adGroup_info['impressions']            .append(row['total']['impressions'])
       adGroup_info['taps']                   .append(row['total']['taps'])
       adGroup_info['ttr']                    .append(row['total']['ttr'])
-      adGroup_info['conversions']            .append(row['total']['conversions'])
-      adGroup_info['conversionsNewDownloads'].append(row['total']['conversionsNewDownloads'])
-      adGroup_info['conversionsRedownloads'] .append(row['total']['conversionsRedownloads'])
-      adGroup_info['conversionsLATOn']       .append(row['total']['conversionsLATOn'])
-      adGroup_info['conversionsLATOff']      .append(row['total']['conversionsLATOff'])
+      adGroup_info['installs']               .append(row['total']['installs'])
+      adGroup_info['newDownloads']           .append(row['total']['newDownloads'])
+      adGroup_info['redownloads']            .append(row['total']['redownloads'])
+      adGroup_info['latOnInstalls']          .append(row['total']['latOnInstalls'])
+      adGroup_info['latOffInstalls']         .append(row['total']['latOffInstalls'])
       adGroup_info['avgCPA']                 .append(row['total']['avgCPA']['amount'])
       adGroup_info['conversionRate']         .append(row['total']['conversionRate'])
       adGroup_info['localSpend']             .append(row['total']['localSpend']['amount'])	
@@ -202,7 +201,7 @@ def createUpdatedAdGroupBids(data, client):
                                'adGroupId', \
                                'impressions', \
                                'taps', \
-                               'conversions', \
+                               'installs', \
                                'avgCPA', \
                                'localSpend',
                                'bid']]    
@@ -210,7 +209,7 @@ def createUpdatedAdGroupBids(data, client):
   #first convert avg cpa to float so you can perform calculations
   adGroup_info['impressions'] = adGroup_info['impressions'].astype(float)
   adGroup_info['taps']        = adGroup_info['taps'].astype(float)
-  adGroup_info['conversions'] = adGroup_info['conversions'].astype(float)
+  adGroup_info['installs']    = adGroup_info['installs'].astype(float)
   adGroup_info['avgCPA']      = adGroup_info['avgCPA'].astype(float)
   adGroup_info['localSpend']  = adGroup_info['localSpend'].astype(float)
   adGroup_info['bid']         = adGroup_info['bid'].astype(float)
@@ -218,11 +217,11 @@ def createUpdatedAdGroupBids(data, client):
   #write your conditional statement for the different scenarios
   adGroup_info_cond = [(adGroup_info.avgCPA      <= ABP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]) & \
-                       (adGroup_info.conversions >  ABP["NO_INSTALL_BID_DECREASE_THRESH"]),
+                       (adGroup_info.installs    >  ABP["NO_INSTALL_BID_DECREASE_THRESH"]),
                        (adGroup_info.avgCPA      >  ABP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]),
                        (adGroup_info.taps        <  ABP["TAP_THRESHOLD"]), 
-                       (adGroup_info.conversions == ABP["NO_INSTALL_BID_DECREASE_THRESH"]) & \
+                       (adGroup_info.installs    == ABP["NO_INSTALL_BID_DECREASE_THRESH"]) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"])]
   
   adGroup_info_choices = [adGroup_info.bid * ABP["LOW_CPA_BID_BOOST"],
