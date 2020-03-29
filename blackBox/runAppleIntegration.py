@@ -51,7 +51,6 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 #end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 
 # Helper class to convert a DynamoDB item to JSON.
@@ -78,11 +77,14 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     if env != "prod":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        logger.setLevel(logging.INFO)
     else:
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
+        # debug.disableDebug() TODO disable debug wrappers in production
 
-    logger.info("In runAdgroupBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    logger.info("In runAppleIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
 @retry

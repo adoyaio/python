@@ -26,8 +26,6 @@ FOUR_YEARS = 365 * 4  # Ignoring leap years.
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 sendG = False  # Set to True to enable sending email to clients, else a test run.
 
 @debug
@@ -41,9 +39,11 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     if env != "prod":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        logger.setLevel(logging.INFO)
     else:
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)  # TODO reduce this in production
 
     logger.info("In runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
@@ -157,57 +157,66 @@ Optimization Summary
 Keyword bids updated today: %s
 Adgroup bids updated today: %s
 Keywords submitted for upload today: %s""" % \
-                          # TODO rm v0 (client.updatedBids, client.updatedAdgroupBids, len(client.positiveKeywordsAdded))
+
+                          # JF release-1 airlift bid counts and keywords to dynamo
                           (client.readUpdatedBidsCount(dynamodb), client.readUpdatedAdgroupBidsCount(dynamodb),
                            len(client.readPositiveKeywordsAdded(dynamodb)))
                           ])
 
 
+def createHtmlEmailBodyForACampaign(client, summary, now):
+
+    # gather values for the html report and replace placeholder values
+    cpiOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    installsOneDay = summary[ONE_DAY]["installs"]
+    spendOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
+
+    cpiSevenDays = "N/A" if summary[SEVEN_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["installs"]))
+    installsSevenDays = summary[SEVEN_DAYS]["installs"]
+    spendSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["spend"])
+
+    cpiFourYears = "N/A" if summary[FOUR_YEARS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[FOUR_YEARS]["spend"]) / summary[FOUR_YEARS]["installs"]))
+    installsFourYears = summary[FOUR_YEARS]["installs"]
+    spendFourYears = "{:>9,.2f}".format(summary[FOUR_YEARS]["spend"])
+
+    htmlBody = ""
+
+    # read email and replace values
+    f = open("./templates/email_template.html", "r")
+    for x in f:
+        x = x.replace("@@YESTERDAY__COST@@", str(spendOneDay))
+        x = x.replace("@@YESTERDAY__INSTALLS@@", str(installsOneDay))
+        x = x.replace("@@YESTERDAY__CPI@@", str(cpiOneDay))
+
+        x = x.replace("@@SEVEN__DAYS__COST@@", str(spendSevenDays))
+        x = x.replace("@@SEVEN__DAYS__INSTALLS@@", str(installsSevenDays))
+        x = x.replace("@@SEVEN__DAYS__CPI@@", str(cpiSevenDays))
+
+        x = x.replace("@@ALL__TIME__COST@@", str(spendFourYears))
+        x = x.replace("@@ALL__TIME__INSTALLS@@", str(installsFourYears))
+        x = x.replace("@@ALL__TIME__CPI@@", str(cpiFourYears))
+
+        x = x.replace("@@KEYWORD__BIDS__TODAY@@", str(client.readUpdatedBidsCount(dynamodb)))
+        x = x.replace("@@ADGROUP__BIDS__TODAY@@", str(client.readUpdatedAdgroupBidsCount(dynamodb)))
+        x = x.replace("@@KEYWORDS__TODAY@@", str(len(client.readPositiveKeywordsAdded(dynamodb))))
+
+        htmlBody = htmlBody + x
+
+    return htmlBody
+
 # ------------------------------------------------------------------------------
 @debug
-def sendEmailForACampaign(client, emailBody, now):
-    messageString = emailBody
+def sendEmailForACampaign(client, emailBody, htmlBody, now):
     dateString = time.strftime("%m/%d/%Y", time.localtime(now))
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
     #fullEmailList = EMAIL_TO + client.emailAddresses
-
     #print('sendEmailForACampaign:::fullEmailList' + str(fullEmailList))
-    # TODO add sendG logic
-    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, client.emailAddresses, EMAIL_TO, EMAIL_FROM)
 
-
-# msg = email.message.EmailMessage()
-# msg.set_content(emailBody)
-#
-# dateString = time.strftime("%m/%d/%Y", time.localtime(now))
-# if dateString.startswith("0"):
-#   dateString = dateString[1:]
-#
-# msg['Subject'] = EMAIL_SUBJECT % (client.clientName, dateString)
-# msg['From'] = EMAIL_FROM
-# msg['To'] = client.emailAddresses
-# msg['Bcc'] = EMAIL_BCC
-# msg.replace_header("Content-Type", "text/html")
-
-# msg.add_attachment("".join(client.getHistory(dynamodb)), filename="adoya.csv", subtype="csv")
-
-# dprint("SMTP host/port=%s/%s" % (SMTP_HOSTNAME, SMTP_PORT))
-
-# if sendG:
-# with smtplib.SMTP(host=SMTP_HOSTNAME, port=SMTP_PORT) as smtpServer:
-#   smtpServer.set_debuglevel(2)
-#   smtpServer.starttls()
-#   smtpServer.login(SMTP_USERNAME, SMTP_PASSWORD)
-#   smtpServer.send_message(msg)
-
-# else:
-# with open("deleteme.email.txt", "w") as h:
-#   h.write(msg.as_string())
-# print("Not actually sending any email.  Saved message body in deleteme.email.txt")
-
+    # TODO add sendG logic to remove clients emails in local?
+    AdoyaEmail.sendEmailForACampaign(emailBody, htmlBody, subjectString, client.emailAddresses, EMAIL_TO, EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 @debug
@@ -231,13 +240,10 @@ def sendEmailReport(client, dataForVariousTimes):
 
     now = time.time()
 
-    # TODO updated to use dynamo, no header row needed
-    # client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]),
-    #                        ["Date", "Spend", "installs", "Cost per Install"])
-
     client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb)
     emailBody = createEmailBodyForACampaign(client, summary, now)
-    sendEmailForACampaign(client, emailBody, now)
+    htmlBody = createHtmlEmailBodyForACampaign(client, summary, now)
+    sendEmailForACampaign(client, emailBody, htmlBody, now)
 
 
 # ------------------------------------------------------------------------------

@@ -12,16 +12,6 @@ import boto3
 from utils import AdoyaEmail
 from boto3.dynamodb.conditions import Key, Attr
 
-# TODO rm v0 code
-# if sys.platform == "linux":
-#   os.chdir("/Users/james/Documents/adoya/python")
-#
-# else:
-#   PATH_ADDEND = "C:\\Users\A\\Desktop\\apple_search_ads_api\\bid_adjuster"
-#   print("Adding '%s' to sys.path." % PATH_ADDEND);
-#   sys.path.append(PATH_ADDEND)
-
-
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
@@ -44,8 +34,8 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-#start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
-#end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
+# start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
+# end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 # url to api server for keywords report
 # From https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Reporting_Methods.html:
@@ -73,9 +63,8 @@ end_date = today - end_date_delta
 #      -X POST "https://api.searchads.apple.com/api/v1/keywords/targeting"
 
 
-sendG = False  # Set to True to enable sending data to Apple, else a test run.
+sendG = False  # Set to True to enable sending data to Apple, else a test run
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 
 # Helper class to convert a DynamoDB item to JSON.
@@ -96,11 +85,15 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     if env != "prod":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        logger.setLevel(logging.INFO)
     else:
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
+        # debug.disableDebug() TODO disable debug wrappers in production
 
-    logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (sendG, dynamoEndpoint, str(EMAIL_TO)))
+    logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
+    sendG, dynamoEndpoint, str(EMAIL_TO)))
 
 
 # ------------------------------------------------------------------------------
@@ -110,7 +103,7 @@ def getKeywordReportFromAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def getKeywordReportFromApple(client, campaignId):
     payload = {"startTime": str(start_date),
                "endTime": str(end_date),
@@ -153,7 +146,7 @@ def getKeywordReportFromApple(client, campaignId):
 
 
 # ------------------------------------------------------------------------------
-@debug
+# @debug
 def createUpdatedKeywordBids(data, campaignId, client):
     rows = data["data"]["reportingDataResponse"]["row"]
 
@@ -280,7 +273,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
 
 # ------------------------------------------------------------------------------
-@debug
+# @debug
 def convertKeywordFileToApplePayload(keyword_file_to_post, currency):
     '''
 At  https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Keyword_Resources.html I see this:
@@ -334,11 +327,11 @@ The keyword_file_to_post parameter is an array of these objects:
 
     return payload
 
+
 # JF quick fix for V2 update to urls.
 # TODO can we assume adgroup Id is always consistent for this cal though
 def getAppleKeywordsEndpoint(keyword_file_to_post):
     url = ""
-    print("james test" + str(keyword_file_to_post))
     for item in keyword_file_to_post:
         adGroupId = item["adGroupId"]
         campaignIdForEndpoint = item["campaignId"]
@@ -366,7 +359,7 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
                "Content-Type": "application/json",
                "Accept": "application/json",
                }
-    #url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (keywordFileToPost, keywordFileToPost)
+    # url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (keywordFileToPost, keywordFileToPost)
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
@@ -377,9 +370,9 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
 
         if sendG:
             response = sendUpdatedBidsToAppleHelper(url,
-                                                cert=(client.pemPathname, client.keyPathname),
-                                                json=payload,
-                                                headers=headers)
+                                                    cert=(client.pemPathname, client.keyPathname),
+                                                    json=payload,
+                                                    headers=headers)
 
         else:
             response = "Not actually sending anything to Apple."
@@ -390,7 +383,7 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
 
 
 # ------------------------------------------------------------------------------
-@debug
+# @debug
 def createEmailBody(data, sent):
     """Take data like this:
 
@@ -426,14 +419,15 @@ def createEmailBody(data, sent):
 
 
 # ------------------------------------------------------------------------------
-@debug
+# @debug
 def emailSummaryReport(data, sent):
     messageString = createEmailBody(data, sent);
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString =  "Bid Adjuster summary for %s" % dateString
-    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+    subjectString = "Bid Adjuster summary for %s" % dateString
+    AdoyaEmail.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+
 
 # ------------------------------------------------------------------------------
 @debug
@@ -454,8 +448,8 @@ def process():
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
                 sent = sendUpdatedBidsToApple(client, keywordFileToPost)
-                #if sent:
-                #client.updatedBids = numberOfUpdatedBids
+                # if sent:
+                # client.updatedBids = numberOfUpdatedBids
                 client.updatedBids(dynamodb, numberOfUpdatedBids)
 
     emailSummaryReport(summaryReportInfo, sent)
