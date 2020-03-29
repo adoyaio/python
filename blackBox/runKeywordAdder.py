@@ -66,7 +66,7 @@ def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def getSearchTermsReportFromApple(client, campaignId):
   payload = { "startTime"                  : str(start_date), 
               "endTime"                    : str(end_date),
@@ -110,7 +110,7 @@ def getSearchTermsReportFromApple(client, campaignId):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def analyzeKeywordsSharedCode(KAP,
                               targeted_kws_pre_de_dupe_text_only_second_step,
                               negative_kws_pre_de_dupe_text_only_second_step,
@@ -257,7 +257,7 @@ def analyzeKeywordsSharedCode(KAP,
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParameters, currency):
   KAP = keywordAdderParameters;
   
@@ -531,7 +531,7 @@ def sendToApple(client, payloads):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def createEmailBody(data, sent):
   content = ["""Keywords Added Report""",
              """Sent to Apple is %s.""" % sent,
@@ -559,10 +559,10 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString ="Keyword Adder summary for %s" % dateString
-    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+    AdoyaEmail.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def convertAnalysisIntoApplePayloadAndSend(client,
                                            CSRI,
                                            exactPositive,
@@ -593,10 +593,7 @@ def convertAnalysisIntoApplePayloadAndSend(client,
     sent = sendToApple(client, ((exactPositive, exactPositiveUrl), (broadPositive, broadPositiveUrl)))
     sendToApple(client, ((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
 
-    # TODO rm v0 code
-    #client.positiveKeywordsAdded = exactPositiveText + broadPositiveText
-    #client.negativeKeywordsAdded = exactNegativeText + broadNegativeText
-
+    # JF release-1 airlift bid counts and keywords to dynamo
     client.positiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
     client.negativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
 
