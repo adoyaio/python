@@ -119,11 +119,11 @@ def getAdgroupReportFromApple(client, start_date, end_date):
                                                        'avgCPT': {'amount': '0',
                                                                   'currency': 'USD'},
                                                        'conversionRate': 0.0,
-                                                       'conversions': 0,
-                                                       'conversionsLATOff': 0,
-                                                       'conversionsLATOn': 0,
-                                                       'conversionsNewDownloads': 0,
-                                                       'conversionsRedownloads': 0,
+                                                       'installs': 0,
+                                                       'latOffInstalls': 0,
+                                                       'latOnInstalls': 0,
+                                                       'newDownloads': 0,
+                                                       'redownloads': 0,
                                                        'impressions': 0,
                                                        'localSpend': {'amount': '0',
                                                                       'currency': 'USD'},
@@ -142,11 +142,11 @@ def getAdgroupReportFromApple(client, start_date, end_date):
                                                                 } ], 
                                                "fields"     :  ["localSpend",
                                                                  "taps",
-                                                                 "impressions",
-                                                                 "conversionsNewDownloads",
-                                                                 "conversionsRedownloads",
-                                                                 "conversionsLATOn",
-                                                                 "conversionsLATOff",
+                                                                 "impressions", #TODO is this right?
+                                                                 "newDownloads",
+                                                                 "redownloads",
+                                                                 "latOnInstalls",
+                                                                 "latOffInstalls",
                                                                  "avgCPA",
                                                                  "avgCPT",
                                                                  "ttr",
@@ -174,8 +174,8 @@ def getAdgroupReportFromApple(client, start_date, end_date):
                                              cert=(client.pemPathname, client.keyPathname),
                                              json=payload,
                                              headers=headers)
-  #TODO uncomment the following line
-  #dprint ("Response is %s." % response)
+
+  logger.debug("Response is " + str(response))
 
   return json.loads(response.text, parse_float=decimal.Decimal) 
 
@@ -267,13 +267,13 @@ def loadAppleAdGroupToDynamo(data, client, start_date, end_date, adgroup_table):
                   'modification_time': rows[0]['metadata']['modificationTime'].split("T")[0],
                   'impressions': rows[0][field_key]['impressions'],
                   'taps': rows[0][field_key]['taps'],
-                  'conversions': rows[0][field_key]['conversions'],
+                  'conversions': rows[0][field_key]['installs'],
                   'ttr': rows[0][field_key]['ttr'],
-                  'installs': rows[0][field_key]['conversionsRedownloads'] + rows[0][field_key]['conversionsNewDownloads'],
-                  'new_downloads': rows[0][field_key]['conversionsNewDownloads'],
-                  're_downloads': rows[0][field_key]['conversionsRedownloads'],
-                  'lat_on_installs': rows[0][field_key]['conversionsLATOn'],
-                  'lat_off_installs': rows[0][field_key]['conversionsLATOff'],
+                  'installs': rows[0][field_key]['redownloads'] + rows[0][field_key]['newDownloads'],
+                  'new_downloads': rows[0][field_key]['newDownloads'],
+                  're_downloads': rows[0][field_key]['redownloads'],
+                  'lat_on_installs': rows[0][field_key]['latOnInstalls'],
+                  'lat_off_installs': rows[0][field_key]['latOffInstalls'],
                   'avg_cpa': decimal.Decimal(str(rows[0][field_key]['avgCPA']['amount'])),
                   'conversion_rate': decimal.Decimal(str(rows[0][field_key]['conversionRate'])),
                   'local_spend': decimal.Decimal(str(rows[0][field_key]['localSpend']['amount'])),
@@ -299,13 +299,13 @@ def loadAppleAdGroupToDynamo(data, client, start_date, end_date, adgroup_table):
                   'modification_time': rows[0]['metadata']['modificationTime'].split("T")[0],
                   'impressions': rows[0][field_key][i]['impressions'],
                   'taps': rows[0][field_key][i]['taps'],
-                  'conversions': rows[0][field_key][i]['conversions'],
+                  'conversions': rows[0][field_key][i]['installs'],
                   'ttr': rows[0][field_key][i]['ttr'],
-                  'installs': rows[0][field_key][i]['conversionsRedownloads'] + rows[0][field_key][i]['conversionsNewDownloads'],
-                  'new_downloads': rows[0][field_key][i]['conversionsNewDownloads'],
-                  're_downloads': rows[0][field_key][i]['conversionsRedownloads'],
-                  'lat_on_installs': rows[0][field_key][i]['conversionsLATOn'],
-                  'lat_off_installs': rows[0][field_key][i]['conversionsLATOff'],
+                  'installs': rows[0][field_key][i]['redownloads'] + rows[0][field_key][i]['newDownloads'],
+                  'new_downloads': rows[0][field_key][i]['newDownloads'],
+                  're_downloads': rows[0][field_key][i]['redownloads'],
+                  'lat_on_installs': rows[0][field_key][i]['latOnInstalls'],
+                  'lat_off_installs': rows[0][field_key][i]['latOffInstalls'],
                   'avg_cpa': decimal.Decimal(str(rows[0][field_key][i]['avgCPA']['amount'])),
                   'conversion_rate': decimal.Decimal(str(rows[0][field_key][i]['conversionRate'])),
                   'local_spend': decimal.Decimal(str(rows[0][field_key][i]['localSpend']['amount'])),
@@ -353,7 +353,7 @@ def export_dict_to_csv(raw_dict, filename):
   df.to_csv(filename, index = None)
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def process():
 
   #This first for loop is to load all the adgroup date
@@ -374,9 +374,8 @@ def process():
     print(client.campaignName)
 
     
-    
-    #TODO this is a major todo. We need to figure out where to get the campaign id's from
-    for campaign_id in [client.keywordAdderIds["campaignId"]["search"]]:
+
+    for campaign_id in [client.keywordAdderIds["campaignId"]["search"]]:   #TODO iterate all campaigns
 
       date_results = adgroup_table.scan(FilterExpression=Key('campaign_id').eq(str(campaign_id)))
 
