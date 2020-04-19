@@ -137,8 +137,11 @@ def process():
                     keyword_info["branch_commerce_event_count"].append(branch_commerce_event_count)
                     keyword_info["branch_revenue"].append(branch_revenue)
 
-                df_keyword_info = pd.DataFrame(keyword_info)
-                dprint("df_keyword_info=%s." % str(df_keyword_info))
+                #df_keyword_info = pd.DataFrame(keyword_info)
+                #dprint("df_keyword_info=%s." % str(df_keyword_info))
+                dprint("keyword_info=%s." % pprint.pformat(keyword_info))
+
+
 
 
 # ------------------------------------------------------------------------------
