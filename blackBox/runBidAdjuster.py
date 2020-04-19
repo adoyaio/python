@@ -9,7 +9,7 @@ import pprint
 import requests
 import time
 import boto3
-from utils import AdoyaEmail
+from utils import EmailUtils
 from boto3.dynamodb.conditions import Key, Attr
 
 from Client import CLIENTS
@@ -103,7 +103,7 @@ def getKeywordReportFromAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-#@debug
+@debug
 def getKeywordReportFromApple(client, campaignId):
     payload = {"startTime": str(start_date),
                "endTime": str(end_date),
@@ -129,7 +129,6 @@ def getKeywordReportFromApple(client, campaignId):
                "returnRecordsWithNoMetrics": True
                }
     url = APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
-
     headers = {"Authorization": "orgId=%s" % client.orgId}
 
     dprint("URL is '%s'." % url)
@@ -141,12 +140,11 @@ def getKeywordReportFromApple(client, campaignId):
                                                json=payload,
                                                headers=headers)
     dprint("Response is %s." % response)
-
     return json.loads(response.text)
 
 
 # ------------------------------------------------------------------------------
-# @debug
+@debug
 def createUpdatedKeywordBids(data, campaignId, client):
     rows = data["data"]["reportingDataResponse"]["row"]
 
@@ -191,11 +189,11 @@ def createUpdatedKeywordBids(data, campaignId, client):
         keyword_info["localSpend"].append(totals["localSpend"]["amount"])
         keyword_info["avgCPT"].append(totals["avgCPT"]["amount"])
 
-    dprint("keyword_info=%s." % pprint.pformat(keyword_info))
+    #TODO JF this extremely verbose don't use in PROD
+    #dprint("keyword_info=%s." % pprint.pformat(keyword_info))
 
     # convert to dataframe
     df_keyword_info = pd.DataFrame(keyword_info)
-
     dprint("df_keyword_info=%s." % str(df_keyword_info))
 
     # pull in active keywords only
@@ -218,7 +216,6 @@ def createUpdatedKeywordBids(data, campaignId, client):
     dprint("ex_keyword_info=%s." % str(ex_keyword_info))
 
     ######make bid adjustments######
-
     BP = client.bidParameters;
 
     # first convert avg cpa to float so you can perform calculations
@@ -349,7 +346,7 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def sendUpdatedBidsToApple(client, keywordFileToPost):
     print("sendUpdatedBidsToApple:::client.currency " + client.currency)
     url = getAppleKeywordsEndpoint(keywordFileToPost)
@@ -426,11 +423,11 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Bid Adjuster summary for %s" % dateString
-    AdoyaEmail.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def process():
     summaryReportInfo = {}
 

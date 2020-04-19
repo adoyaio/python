@@ -24,7 +24,7 @@ DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
 from datetime import date
 
-from utils import AdoyaEmail
+from utils import EmailUtils
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
@@ -37,19 +37,6 @@ from retry import retry
 
 BIDDING_LOOKBACK = 7  # days
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
-
-###### date and time parameters for bidding lookback ######
-date = datetime.date
-today = datetime.date.today()
-end_date_delta = datetime.timedelta(days=1)
-start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
-# start_date = today - start_date_delta
-# end_date = today - end_date_delta
-
-# FOR QA PURPOSES set these fields explicitly
-start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
-end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
-
 logger = logging.getLogger()
 
 
@@ -366,9 +353,12 @@ def process():
 
         for campaign_key in campaign_keys:
 
-            for campaign_id in [client.keywordAdderIds["campaignId"][campaign_key]]:  # TODO iterate all campaigns
+            print("TEST campaign_key in " + str(campaign_key))
 
-                # for campaign_id in [client.keywordAdderIds["campaignId"]["exact"]]:  # TODO iterate all campaigns
+            for campaign_id in [client.keywordAdderIds["campaignId"][campaign_key]]:  # iterate all campaigns
+                # for campaign_id in [client.keywordAdderIds["campaignId"]["exact"]]:  # TODO rm unused block?
+
+                print("TEST campaign_id in " + str(campaign_id))
 
                 date_results = keyword_table.scan(FilterExpression=Key('campaign_id').eq(str(campaign_id)))
 

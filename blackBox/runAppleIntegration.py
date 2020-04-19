@@ -23,7 +23,7 @@ DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
 from datetime import date
 
-from utils import AdoyaEmail
+from utils import EmailUtils
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
                           APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \

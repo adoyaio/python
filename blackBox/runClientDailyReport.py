@@ -10,7 +10,7 @@ import requests
 import smtplib
 import sys
 import time
-from utils import AdoyaEmail
+from utils import EmailUtils
 import boto3
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
@@ -55,7 +55,7 @@ def getCampaignDataHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
     ######enter date and time parameters for bidding lookback######
     # Subtract 1 day because the program runs at 3 am the next day.
@@ -136,10 +136,9 @@ def createOneRowOfTable(data, label):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def createEmailBodyForACampaign(client, summary, now):
     """Format:
-
   Timeframe        |    Cost    |  Installs  |  Cost per Install
   Yesterday        |  $     10  |        2   |   $  5
   Last Seven Days  |  $  1,000  |      100   |   $ 10
@@ -153,7 +152,6 @@ def createEmailBodyForACampaign(client, summary, now):
                           createOneRowOfTable(summary[FOUR_YEARS], "All-Time\t"),
                           """
 Optimization Summary
-
 Keyword bids updated today: %s
 Adgroup bids updated today: %s
 Keywords submitted for upload today: %s""" % \
@@ -181,7 +179,7 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
 
     htmlBody = ""
 
-    # read email and replace values
+    # read email template and replace values
     f = open("./templates/email_template.html", "r")
     for x in f:
         x = x.replace("@@YESTERDAY__COST@@", str(spendOneDay))
@@ -205,7 +203,7 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     return htmlBody
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def sendEmailForACampaign(client, emailBody, htmlBody, now):
     dateString = time.strftime("%m/%d/%Y", time.localtime(now))
     if dateString.startswith("0"):
@@ -216,10 +214,10 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
     #print('sendEmailForACampaign:::fullEmailList' + str(fullEmailList))
 
     # TODO add sendG logic to remove clients emails in local?
-    AdoyaEmail.sendEmailForACampaign(emailBody, htmlBody, subjectString, client.emailAddresses, EMAIL_TO, EMAIL_FROM)
+    EmailUtils.sendEmailForACampaign(emailBody, htmlBody, subjectString, client.emailAddresses, EMAIL_TO, EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def sendEmailReport(client, dataForVariousTimes):
     summary = {ONE_DAY: {"installs": 0, "spend": 0.0},
                SEVEN_DAYS: {"installs": 0, "spend": 0.0},

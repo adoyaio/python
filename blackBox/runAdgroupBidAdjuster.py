@@ -13,7 +13,7 @@ import time
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from utils import AdoyaEmail
+from utils import EmailUtils
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
                           APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
@@ -361,7 +361,7 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Ad Group Bid Adjuster summary for %s" % dateString
-    AdoyaEmail.sendTextEmail(messageString,  subjectString, EMAIL_TO, [], EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 @debug

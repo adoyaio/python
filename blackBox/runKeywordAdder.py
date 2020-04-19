@@ -9,7 +9,7 @@ import pprint
 import re
 import requests
 import time
-from utils import AdoyaEmail
+from utils import EmailUtils
 import boto3
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
@@ -559,7 +559,7 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString ="Keyword Adder summary for %s" % dateString
-    AdoyaEmail.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 #@debug
