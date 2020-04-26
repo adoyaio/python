@@ -3,7 +3,7 @@ import time
 
 INITIAL_SLEEP_TIME = 5 # seconds
 SLEEP_MULTIPLIER   = 1.4
-RETRY_LIMIT        = 20
+RETRY_LIMIT        = 5
 
 def retry(func):
   def wrapper(*args, **kw):

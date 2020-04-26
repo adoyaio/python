@@ -100,7 +100,7 @@ if 'branch_commerce_events' not in existing_tables:
     )
     print("Table status:", table.table_name, table.table_status)
 
-if 'branch_commerce_events' not in existing_tables:
+if 'branch_opens' not in existing_tables:
     table = dynamodb.create_table(
         TableName='branch_opens',
         KeySchema=[
@@ -474,78 +474,47 @@ if 'positive_keywords' not in existing_tables:
     )
     print("Table status:", table.table_name, table.table_status)
 
-
-
-if 'cpi_history' not in existing_tables:
+if 'apple_adgroup' not in existing_tables:
     table = dynamodb.create_table(
-        TableName='cpi_history',
+        TableName='apple_adgroup',
         KeySchema=[
         {
-            'AttributeName': 'org_id',
+            'AttributeName': 'adgroup_id',
             'KeyType': 'HASH'  #Partition key
         },
         {
-            'AttributeName': 'timestamp',
+            'AttributeName': 'date',
             'KeyType': 'RANGE'  #Sort key
         },
         ],
         AttributeDefinitions=[
         {
-            'AttributeName': 'org_id',
+            'AttributeName': 'date',
             'AttributeType': 'S'
         },
         {
-            'AttributeName': 'timestamp',
-            'AttributeType': 'S'
-        }
-        ],
-        BillingMode="PAY_PER_REQUEST"
-    )
-    print("Table status:", table.table_name, table.table_status)
-
-
-if 'apple_adGroup' not in existing_tables:
-    table = dynamodb.create_table(
-        TableName='apple_adGroup',
-        KeySchema=[
-        {
-            'AttributeName': 'adGroupId',
-            'KeyType': 'HASH'  #Partition key
-        },
-        {
-            'AttributeName': 'Date',
-            'KeyType': 'RANGE'  #Sort key
-        },
-        ],
-        AttributeDefinitions=[
-
-        {
-            'AttributeName': 'Date',
+            'AttributeName': 'app_id',
             'AttributeType': 'S'
         },
         {
-            'AttributeName': 'App ID',
+            'AttributeName': 'campaign_id',
             'AttributeType': 'S'
         },
         {
-            'AttributeName': 'campaignId',
-            'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'adGroupId',
+            'AttributeName': 'adgroup_id',
             'AttributeType': 'S'
         }
         ],
         GlobalSecondaryIndexes=[
         {
-            'IndexName': 'campaignId-timestamp-index',
+            'IndexName': 'campaign_id-timestamp-index',
             'KeySchema': [
                 {
-                    'AttributeName': 'campaignId',
+                    'AttributeName': 'campaign_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {
-                    'AttributeName': 'Date',
+                    'AttributeName': 'date',
                     'KeyType': 'RANGE'  # Sort key
                 },
             ],
@@ -554,14 +523,14 @@ if 'apple_adGroup' not in existing_tables:
             }
         },
         {
-            'IndexName': 'AppID-timestamp-index',
+            'IndexName': 'app_id-timestamp-index',
             'KeySchema': [
                 {
-                    'AttributeName': 'App ID',
+                    'AttributeName': 'app_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {
-                    'AttributeName': 'Date',
+                    'AttributeName': 'date',
                     'KeyType': 'RANGE'  # Sort key
                 },
             ],
@@ -575,53 +544,56 @@ if 'apple_adGroup' not in existing_tables:
     print("Table status:", table.table_name, table.table_status)
 
 
-
-if 'apple_keyWord' not in existing_tables:
+if 'apple_keyword' not in existing_tables:
     table = dynamodb.create_table(
-        TableName='apple_keyWord',
+        TableName='apple_keyword',
         KeySchema=[
         {
-            'AttributeName': 'keywordId',
+            'AttributeName': 'keyword_id',
             'KeyType': 'HASH'  #Partition key
         },
         {
-            'AttributeName': 'Date',
+            'AttributeName': 'date',
             'KeyType': 'RANGE'  #Sort key
         },
         ],
         AttributeDefinitions=[
 
         {
-            'AttributeName': 'keywordId',
+            'AttributeName': 'keyword_id',
             'AttributeType': 'S'
         },
         {
-            'AttributeName': 'Date',
+            'AttributeName': 'date',
             'AttributeType': 'S'
         },
         {
-            'AttributeName': 'App ID',
+            'AttributeName': 'app_id',
             'AttributeType': 'S'
         },
         {
-            'AttributeName': 'campaignId',
+            'AttributeName': 'campaign_id',
             'AttributeType': 'S'
         },
         {
-            'AttributeName': 'adGroupId',
+            'AttributeName': 'adgroup_id',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'keyword',
             'AttributeType': 'S'
         }
         ],
         GlobalSecondaryIndexes=[
         {
-            'IndexName': 'campaignId-timestamp-index',
+            'IndexName': 'campaign_id-timestamp-index',
             'KeySchema': [
                 {
-                    'AttributeName': 'campaignId',
+                    'AttributeName': 'campaign_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {
-                    'AttributeName': 'Date',
+                    'AttributeName': 'date',
                     'KeyType': 'RANGE'  # Sort key
                 },
             ],
@@ -630,14 +602,14 @@ if 'apple_keyWord' not in existing_tables:
             }
         },
         {
-            'IndexName': 'AppID-timestamp-index',
+            'IndexName': 'app_id-timestamp-index',
             'KeySchema': [
                 {
-                    'AttributeName': 'App ID',
+                    'AttributeName': 'app_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {
-                    'AttributeName': 'Date',
+                    'AttributeName': 'date',
                     'KeyType': 'RANGE'  # Sort key
                 },
             ],
@@ -646,14 +618,30 @@ if 'apple_keyWord' not in existing_tables:
             }
         },
         {
-            'IndexName': 'adGroupId-timestamp-index',
+            'IndexName': 'adgroup_id-timestamp-index',
             'KeySchema': [
                 {
-                    'AttributeName': 'adGroupId',
+                    'AttributeName': 'adgroup_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {
-                    'AttributeName': 'Date',
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'keyword-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'keyword',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
                     'KeyType': 'RANGE'  # Sort key
                 },
             ],
@@ -665,4 +653,3 @@ if 'apple_keyWord' not in existing_tables:
         BillingMode="PAY_PER_REQUEST"
     )
     print("Table status:", table.table_name, table.table_status)
-
