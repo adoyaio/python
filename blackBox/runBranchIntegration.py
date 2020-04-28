@@ -13,6 +13,7 @@ import time
 
 from botocore.exceptions import ClientError
 from dateutil.parser import parse
+from retry import retry
 
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
@@ -79,7 +80,7 @@ def getKeywordReportFromBranchHelper(url, payload, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+@retry
 def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation):
     payload = {
         "branch_key": branch_key,

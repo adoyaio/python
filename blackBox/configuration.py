@@ -1,7 +1,7 @@
 
 EMAIL_FROM = "info@adoya.io"
 TOTAL_COST_PER_INSTALL_LOOKBACK = 3
-HTTP_REQUEST_TIMEOUT = 100
+HTTP_REQUEST_TIMEOUT = 600
 
 from configuration_apple import APPLE_KEYWORDS_REPORT_URL, \
                                 APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \

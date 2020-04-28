@@ -95,7 +95,10 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
                                      headers=headers)
 
     dprint("Response: '%s'" % response)
-    return json.loads(response.text)
+    if(response.text):
+        return json.loads(response.text)
+    else:
+        return 'false'
 
 
 # ------------------------------------------------------------------------------
@@ -256,16 +259,17 @@ def process():
                                            client.keyPathname,
                                            daysToGoBack)
 
-            dataArray = campaignData["data"]["reportingDataResponse"]["row"]
-            print('runClientDailyReport:::dataArray' + str(dataArray))
+            if(campaignData != 'false'):
+                dataArray = campaignData["data"]["reportingDataResponse"]["row"]
+                print('runClientDailyReport:::dataArray' + str(dataArray))
 
-            dprint("For %d (%s), there are %d campaigns in the campaign data." % \
-                   (client.orgId, client.clientName, len(dataArray)))
+                dprint("For %d (%s), there are %d campaigns in the campaign data." % \
+                    (client.orgId, client.clientName, len(dataArray)))
 
-            dataForVariousTimes[daysToGoBack] = dataArray
+                dataForVariousTimes[daysToGoBack] = dataArray
 
-        print('runClientDailyReport:::dataForVariousTimes' + str(dataForVariousTimes))
-        sendEmailReport(client, dataForVariousTimes)
+                print('runClientDailyReport:::dataForVariousTimes' + str(dataForVariousTimes))
+                sendEmailReport(client, dataForVariousTimes)
 
 
 # ------------------------------------------------------------------------------

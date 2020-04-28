@@ -103,7 +103,7 @@ def getKeywordReportFromAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+@retry
 def getKeywordReportFromApple(client, campaignId):
     payload = {"startTime": str(start_date),
                "endTime": str(end_date),
