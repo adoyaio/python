@@ -37,7 +37,7 @@ CHARSET = "UTF-8"
 # Create a new SES resource and specify a region.
 client = boto3.client('ses', region_name=AWS_REGION)
 
-def sendEmailForACampaign(emailBody, emailSubject, emailRecipients, emailBccRecipients, emailFrom):
+def sendEmailForACampaign(emailBody, htmlBody, emailSubject, emailRecipients, emailBccRecipients, emailFrom):
   # Try to send the email.
   try:
       # Provide the contents of the email.
@@ -53,10 +53,10 @@ def sendEmailForACampaign(emailBody, emailSubject, emailRecipients, emailBccReci
           },
           Message={
               'Body': {
-                  # 'Html': {
-                  #     'Charset': CHARSET,
-                  #     'Data': emailBody,
-                  # },
+                  'Html': {
+                      'Charset': CHARSET,
+                      'Data': htmlBody,
+                  },
                   'Text': {
                       'Charset': CHARSET,
                       'Data': emailBody,
@@ -79,3 +79,41 @@ def sendEmailForACampaign(emailBody, emailSubject, emailRecipients, emailBccReci
       print("Email sent! Message ID:"),
       print(response['MessageId'])
 
+
+def sendTextEmail(emailBody, emailSubject, emailRecipients, emailBccRecipients, emailFrom):
+  # Try to send the email.
+  try:
+      # Provide the contents of the email.
+      response = client.send_email(
+          # Destination={
+          #     'ToAddresses': [
+          #         RECIPIENT,
+          #     ],
+          # },
+          Destination={
+              'ToAddresses': emailRecipients,
+              'BccAddresses': emailBccRecipients
+          },
+          Message={
+              'Body': {
+                  'Text': {
+                      'Charset': CHARSET,
+                      'Data': emailBody,
+                  },
+              },
+              'Subject': {
+                  'Charset': CHARSET,
+                  'Data': emailSubject,
+              },
+          },
+          Source=emailFrom,
+          # If you are not using a configuration set, comment or delete the
+          # following line
+          # ConfigurationSetName=CONFIGURATION_SET,
+      )
+  # Display an error if something goes wrong.
+  except ClientError as e:
+      print(e.response['Error']['Message'])
+  else:
+      print("Email sent! Message ID:"),
+      print(response['MessageId'])

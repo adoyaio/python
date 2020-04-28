@@ -601,22 +601,23 @@ if 'apple_keyword' not in existing_tables:
                 'ProjectionType': 'ALL'
             }
         },
-        {
-            'IndexName': 'app_id-timestamp-index',
-            'KeySchema': [
-                {
-                    'AttributeName': 'app_id',
-                    'KeyType': 'HASH'  # Partition key
-                },
-                {
-                    'AttributeName': 'date',
-                    'KeyType': 'RANGE'  # Sort key
-                },
-            ],
-            'Projection': {
-                'ProjectionType': 'ALL'
-            }
-        },
+        # TODO JF remove this app_id isn't needed
+        # {
+        #     'IndexName': 'app_id-timestamp-index',
+        #     'KeySchema': [
+        #         {
+        #             'AttributeName': 'app_id',
+        #             'KeyType': 'HASH'  # Partition key
+        #         },
+        #         {
+        #             'AttributeName': 'date',
+        #             'KeyType': 'RANGE'  # Sort key
+        #         },
+        #     ],
+        #     'Projection': {
+        #         'ProjectionType': 'ALL'
+        #     }
+        # },
         {
             'IndexName': 'adgroup_id-timestamp-index',
             'KeySchema': [

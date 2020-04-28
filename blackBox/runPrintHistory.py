@@ -48,7 +48,8 @@ def initialize(env, dynamoEndpoint):
 
     if env != "prod":
         sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
     else:
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -61,7 +62,10 @@ def initialize(env, dynamoEndpoint):
 def process():
 
     for client in CLIENTS:
-
+        print("Print CPI history for: " + str(client.clientName))
+        print(client.orgId)
+        history = client.getHistory(dynamodb);
+        print(str(history));
 
 # ------------------------------------------------------------------------------
 @debug

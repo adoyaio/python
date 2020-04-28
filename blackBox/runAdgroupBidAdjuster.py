@@ -13,7 +13,7 @@ import time
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from utils import AdoyaEmail
+from utils import EmailUtils
 from Client import CLIENTS
 from configuration import EMAIL_FROM, \
                           APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
@@ -40,7 +40,6 @@ end_date = today - end_date_delta
 #end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
 
 # Helper class to convert a DynamoDB item to JSON.
 class DecimalEncoder(json.JSONEncoder):
@@ -61,9 +60,12 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     if env != "prod":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        logger.setLevel(logging.INFO)
     else:
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
+        # debug.disableDebug() TODO disable debug wrappers in production
 
     logger.info("In runAdgroupBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
@@ -75,7 +77,7 @@ def getAdgroupReportFromAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def getAdgroupReportFromApple(client):
   """The data from Apple looks like this (Pythonically):
 
@@ -155,7 +157,7 @@ def getAdgroupReportFromApple(client):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def createUpdatedAdGroupBids(data, client):
   rows = data["data"]["reportingDataResponse"]["row"]
 
@@ -359,7 +361,7 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Ad Group Bid Adjuster summary for %s" % dateString
-    AdoyaEmail.sendEmailForACampaign(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 @debug
@@ -400,7 +402,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 
