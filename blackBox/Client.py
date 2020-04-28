@@ -1,16 +1,12 @@
 import datetime
 import decimal
-from email.headerregistry import Address
 import json
 import os
-# import requests
-import sys
 
 import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
 
-from debug import debug, dprint
 
 DATA_DIR = "data"
 CERT_DIR = "cert"
@@ -31,10 +27,6 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 class Client:
-    # _LINUX_OS_PLATFORM = "linux"
-    # _MAC_OS_PLATFORM = "darwin"
-    #  _GET_REPORTS_URL   = "https://api.searchads.apple.com/api/v1/reports/campaigns"
-
     def __init__(self,
                  orgId,
                  clientName,
@@ -196,7 +188,6 @@ class Client:
         )
 
     def negativeKeywordsAdded(self, dynamoResource, newValue):
-
         print('Client.positiveKeywordsAdded: set value ' + str(newValue));
         item = {
             "org_id": str(self.orgId),
@@ -210,23 +201,22 @@ class Client:
             Item=item
         )
 
-    def _readStateInformation(self, pathname, defaultValue):
-        if os.path.exists(pathname):
-            with open(pathname) as handle:
-                result = json.load(handle)
-
-        else:
-            result = defaultValue
-
-        return result
+    # TODO rm v0 code
+    # def _readStateInformation(self, pathname, defaultValue):
+    #     if os.path.exists(pathname):
+    #         with open(pathname) as handle:
+    #             result = json.load(handle)
+    #
+    #     else:
+    #         result = defaultValue
+    #
+    #     return result
 
     def readUpdatedBidsCount(self, dynamoResource):
         table = dynamoResource.Table('bids')
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId))
         )
-        #print('_readUpdatedBidsCount' + str(response));
-        # print('_readUpdatedBidsCount bids' + bids);
 
         if len(response['Items']) > 0:
             bids = response['Items'][0]["bids"]
@@ -306,9 +296,9 @@ class Client:
     #          'C:/Users/A/Desktop/apple_search_ads_api'
 
     # TODO delete V0 code after migration
-    # ----------------------------------------------------------------------------
-    def _getHistoryPathname(self):
-        return os.path.join(DATA_DIR, CLIENT_HISTORY_FILENAME_TEMPLATE % self.orgId)
+    # # ----------------------------------------------------------------------------
+    # def _getHistoryPathname(self):
+    #     return os.path.join(DATA_DIR, CLIENT_HISTORY_FILENAME_TEMPLATE % self.orgId)
 
     # V1 code to use dynamo
     # ----------------------------------------------------------------------------
@@ -371,6 +361,7 @@ class Client:
                     total_cost_per_install = totalCost / totalInstalls
 
         return total_cost_per_install
+
 
     # ----------------------------------------------------------------------------
     @staticmethod
