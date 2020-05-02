@@ -66,7 +66,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 
-@debug
+#@debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
@@ -427,7 +427,7 @@ def process():
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def terminate():
   pass
 

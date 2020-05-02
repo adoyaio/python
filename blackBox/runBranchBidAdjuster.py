@@ -72,18 +72,25 @@ def initialize(env, dynamoEndpoint):
 @debug
 def process():
 
+
+
+
     for client in CLIENTS:
         print("Apple and Branch keyword data from : " + str(client.clientName))
         print(client.orgId)
         adgroup_keys = client.keywordAdderIds["adGroupId"].keys()
 
         for adgroup_key in adgroup_keys:
-            for adgroup_id in [client.keywordAdderIds["adGroupId"][adgroup_key]]:  # TODO iterate all adgroups
+            for adgroup_id in [client.keywordAdderIds["adGroupId"][adgroup_key]]:  # iterate all adgroups
                 print("pulling adgroup_id " + str(adgroup_id))
 
                 #get apple data
                 kw_response = DynamoUtils.getAppleKeywordData(dynamodb, adgroup_id, start_date, end_date)
+                print("querying with :::" + str(start_date))
+                print("querying with :::" + str(end_date))
+                print("got back:::" + str(kw_response["Count"]))
 
+                #print("kw_response::::" + str(kw_response))
                 #initialize the dict which will end up as our dataframe
                 keyword_info = defaultdict(list)
 
@@ -91,6 +98,8 @@ def process():
                     #print(json.dumps(kw_data, cls=DecimalEncoder))
                     keyword = kw_data['keyword']
                     date = kw_data['date']
+                    branch_revenue = 0
+                    branch_commerce_event_count = 0
 
                     #get branch data
                     print("check branch data for " + keyword + " " + date)
@@ -98,15 +107,11 @@ def process():
                     for j in branch_response[u'Items']:
                         print("found branch result:::")
                         print(json.dumps(j, cls=DecimalEncoder))
+                        if len(branch_response['Items']) > 0:
+                            branch_revenue = branch_response['Items'][0]["revenue"]
+                            branch_commerce_event_count = branch_response['Items'][0]["count"]
 
-                    branch_revenue = 0
-                    branch_commerce_event_count = 0
-
-                    if len(branch_response['Items']) > 0:
-                        branch_revenue = branch_response['Items'][0]["revenue"]
-                        branch_commerce_event_count = branch_response['Items'][0]["count"]
-
-                     # initialize data frame
+                    # initialize data frame
                     keyword_info["keyword"].append(kw_data["keyword"])
                     keyword_info["keywordId"].append(kw_data["keyword_id"])
                     keyword_info["keywordStatus"].append(kw_data["keywordStatus"])
@@ -120,29 +125,36 @@ def process():
                     #  keyword_info["keywordDisplayStatus"].append(kw_data["keywordDisplayStatus"])
                     keyword_info["modificationTime"].append(kw_data["modification_time"])
                     keyword_info["date"].append(kw_data["date"])
-                    keyword_info["impressions"].append(kw_data["impressions"])
-                    keyword_info["taps"].append(kw_data["taps"])
-                    keyword_info["ttr"].append(kw_data["ttr"])
-                    keyword_info["installs"].append(kw_data["installs"])
-                    keyword_info["newDownloads"].append(kw_data["new_downloads"])
-                    keyword_info["redownloads"].append(kw_data["re_downloads"])
-                    keyword_info["latOnInstalls"].append(kw_data["lat_on_installs"])
-                    keyword_info["latOffInstalls"].append(kw_data["lat_off_installs"])
-                    keyword_info["avgCPA"].append(kw_data["avg_cpa"])
-                    keyword_info["conversionRate"].append(kw_data["conversion_rate"])
-                    keyword_info["localSpend"].append(kw_data["local_spend"])
-                    keyword_info["avgCPT"].append(kw_data["avg_cpt"])
+                    # keyword_info["impressions"].append(kw_data["impressions"])
+                    # keyword_info["taps"].append(kw_data["taps"])
+                    # keyword_info["ttr"].append(kw_data["ttr"])
+                    # keyword_info["installs"].append(kw_data["installs"])
+                    # keyword_info["newDownloads"].append(kw_data["new_downloads"])
+                    # keyword_info["redownloads"].append(kw_data["re_downloads"])
+                    # keyword_info["latOnInstalls"].append(kw_data["lat_on_installs"])
+                    # keyword_info["latOffInstalls"].append(kw_data["lat_off_installs"])
+                    # keyword_info["avgCPA"].append(kw_data["avg_cpa"])
+                    # keyword_info["conversionRate"].append(kw_data["conversion_rate"])
+                    # keyword_info["localSpend"].append(kw_data["local_spend"])
+                    # keyword_info["avgCPT"].append(kw_data["avg_cpt"])
 
                     # BRANCH fields
                     keyword_info["branch_commerce_event_count"].append(branch_commerce_event_count)
                     keyword_info["branch_revenue"].append(branch_revenue)
 
-                #df_keyword_info = pd.DataFrame(keyword_info)
-                #dprint("df_keyword_info=%s." % str(df_keyword_info))
-                dprint("keyword_info=%s." % pprint.pformat(keyword_info))
+                    #df_keyword_info = pd.DataFrame(keyword_info)
+                    #dprint("df_keyword_info=%s." % str(df_keyword_info))
+
+                    #dprint("keyword_info=%s." % pprint.pformat(keyword_info))
+                    export_dict_to_csv(keyword_info, str(adgroup_id) + 'keyword_info.csv')
 
 
-
+def export_dict_to_csv(raw_dict, filename):
+  '''
+  This function takes a json and a filename, and it exports the json as a csv to the given filename.
+  '''
+  df = pd.DataFrame.from_dict(raw_dict)
+  df.to_csv(filename, index = None)
 
 # ------------------------------------------------------------------------------
 @debug
