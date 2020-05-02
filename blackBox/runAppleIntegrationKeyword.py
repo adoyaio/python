@@ -18,6 +18,8 @@ from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import DYNAMODB_CONTEXT
 
 # Inhibit Inexact Exceptions
+from botocore.exceptions import ClientError
+
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 # Inhibit Rounded Exceptions
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
@@ -234,16 +236,15 @@ def loadAppleKeywordToDynamo(data, keyword_table):
             # print("loadAppleKeywordToDynamo::keyword:::" + row['metadata']['keyword'])
             print("loadAppleKeywordToDynamo:::row:::" + str(row))
 
-            if "total" in rows.keys():
+            if "total" in row.keys():
                 field_key = "total"
             else:
                 field_key = "granularity"
 
             print("loadAppleKeywordToDynamo:::using field key:::" + field_key)
-
             for granularity in row["granularity"]:
                 dprint("granularity=%s" % granularity)
-                # initialize apple  facets
+                # initialize apple facets
                 date = ""
                 keyword = ""
                 keyword_id = ""
@@ -255,31 +256,31 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                 bid = ""
                 deleted = ""
                 modification_time = ""
-                impressions = ""
-                taps = ""
-                installs = ""
-                ttr = ""
-                new_downloads = ""
-                re_downloads = ""
-                lat_on_installs = ""
-                avg_cpa = ""
-                conversion_rate = ""
-                local_spend = ""
-                avg_cpt = ""
+                impressions = 0
+                taps = 0
+                installs = 0
+                ttr = 0
+                new_downloads = 0
+                re_downloads = 0
+                lat_on_installs = 0
+                avg_cpa = 0
+                conversion_rate = 0
+                local_spend = 0
+                avg_cpt = 0
 
                 # always pull date from granularity
                 date = str(granularity['date'])
 
                 # always pull from meta
-                keyword = str(row['metadata']['keyword']),
-                keyword_id = str(row['metadata']['keywordId']),
-                keywordStatus = row['metadata']['keywordStatus'],
-                matchType = row['metadata']['matchType'],
-                adgroup_name = row['metadata']['adGroupName'],
-                adgroup_id = str(row['metadata']['adGroupId']),
-                adgroup_deleted = str(row['metadata']['adGroupDeleted']),
-                bid = decimal.Decimal(str(row['metadata']['bidAmount']['amount'])),
-                deleted = row['metadata']['deleted'],
+                keyword = str(row['metadata']['keyword'])
+                keyword_id = str(row['metadata']['keywordId'])
+                keywordStatus = row['metadata']['keywordStatus']
+                matchType = row['metadata']['matchType']
+                adgroup_name = row['metadata']['adGroupName']
+                adgroup_id = str(row['metadata']['adGroupId'])
+                adgroup_deleted = str(row['metadata']['adGroupDeleted'])
+                bid = decimal.Decimal(str(row['metadata']['bidAmount']['amount']))
+                deleted = row['metadata']['deleted']
                 modification_time = row['metadata']['modificationTime'].split("T")[0]
 
                 if field_key == "total":
@@ -295,6 +296,21 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     conversion_rate = decimal.Decimal(str(row[field_key]['conversionRate']))
                     local_spend = decimal.Decimal(str(row[field_key]['localSpend']['amount']))
                     avg_cpt = decimal.Decimal(str(row[field_key]['avgCPT']['amount']))
+
+                    # enable for local debugging
+                    # dprint("date=%s" % date)
+                    # dprint("impressions=%s" % impressions)
+                    # dprint("taps=%s" % taps)
+                    # dprint("installs=%s" % installs)
+                    # dprint("ttr=%s" % ttr)
+                    # dprint("new_downloads=%s" % new_downloads)
+                    # dprint("re_downloads=%s" % re_downloads)
+                    #dprint("avg_cpt=%s" % avg_cpt)
+                    # print("avg_cpt" + str(avg_cpt))
+                    # print("local_spend" + str(local_spend))
+                    # print("conversion_rate" + str(conversion_rate))
+                    # print("avg_cpa" + str(avg_cpa))
+
                 else:
                     impressions = granularity['impressions']
                     taps = granularity['taps']
@@ -309,18 +325,39 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     local_spend = decimal.Decimal(str(granularity['localSpend']['amount']))
                     avg_cpt = decimal.Decimal(str(granularity['avgCPT']['amount']))
 
-
-                # enable for local debugging
-                dprint("date=%s" % date)
-                dprint("impressions=%s" % impressions)
-                dprint("taps=%s" % taps)
-                dprint("installs=%s" % installs)
-                dprint("ttr=%s" % ttr)
-                dprint("new_downloads=%s" % new_downloads)
-                dprint("re_downloads=%s" % re_downloads)
-                dprint("lat_on_installs=%s" % lat_on_installs)
-
                 #now put the item into db
+                try:
+                    response = keyword_table.put_item(
+                        Item={
+                            'date': date,
+                            'keyword': keyword,
+                            'keyword_id': keyword_id,
+                            'keywordStatus': keywordStatus,
+                            'matchType': matchType,
+                            'adgroup_name': adgroup_name,
+                            'adgroup_id' : adgroup_id,
+                            'adgroup_deleted': adgroup_deleted,
+                            'bid': bid,
+                            'deleted': deleted,
+                            'modification_time': modification_time,
+                            'impressions': impressions,
+                            'taps': taps,
+                            'installs': installs,
+                            'ttr': ttr,
+                            'new_downloads': new_downloads,
+                            're_downloads': re_downloads,
+                            'lat_on_installs': lat_on_installs,
+                            'lat_off_installs': lat_off_installs,
+                            'avg_cpa': avg_cpa,
+                            'conversion_rate': conversion_rate,
+                            'local_spend': local_spend,
+                            'avg_cpt': avg_cpt
+                        }
+                    )
+                except ClientError as e:
+                    logger.info("runAppleIntegrationKeyword:process:::PutItem failed due to" + e.response['Error']['Message'])
+                else:
+                    logger.info("runAppleIntegrationKeyword:process:::PutItem succeeded:")
 
     return True
 
