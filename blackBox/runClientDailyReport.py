@@ -95,7 +95,7 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
                                      headers=headers)
 
     dprint("Response: '%s'" % response)
-    if(response.text):
+    if response.status_code == 200:
         return json.loads(response.text)
     else:
         return 'false'
@@ -262,14 +262,13 @@ def process():
             if(campaignData != 'false'):
                 dataArray = campaignData["data"]["reportingDataResponse"]["row"]
                 print('runClientDailyReport:::dataArray' + str(dataArray))
-
                 dprint("For %d (%s), there are %d campaigns in the campaign data." % \
                     (client.orgId, client.clientName, len(dataArray)))
 
                 dataForVariousTimes[daysToGoBack] = dataArray
-
                 print('runClientDailyReport:::dataForVariousTimes' + str(dataForVariousTimes))
-                sendEmailReport(client, dataForVariousTimes)
+
+        sendEmailReport(client, dataForVariousTimes)
 
 
 # ------------------------------------------------------------------------------

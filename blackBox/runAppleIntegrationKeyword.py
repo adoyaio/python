@@ -344,7 +344,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                             'taps': taps,
                             'installs': installs,
                             'ttr': ttr,
-                            'new_downloads': new_downloads,
+                            # 'new_downloads': new_downloads,
                             're_downloads': re_downloads,
                             'lat_on_installs': lat_on_installs,
                             'lat_off_installs': lat_off_installs,
