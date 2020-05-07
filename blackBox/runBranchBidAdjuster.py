@@ -72,9 +72,6 @@ def initialize(env, dynamoEndpoint):
 @debug
 def process():
 
-
-
-
     for client in CLIENTS:
         print("Apple and Branch keyword data from : " + str(client.clientName))
         print(client.orgId)
@@ -89,7 +86,6 @@ def process():
                 print("querying with :::" + str(start_date))
                 print("querying with :::" + str(end_date))
                 print("got back:::" + str(kw_response["Count"]))
-
                 #print("kw_response::::" + str(kw_response))
                 #initialize the dict which will end up as our dataframe
                 keyword_info = defaultdict(list)
@@ -121,8 +117,7 @@ def process():
                     keyword_info["adGroupDeleted"].append(kw_data["adgroup_deleted"])
                     keyword_info["bid"].append(kw_data["bid"])
                     keyword_info["deleted"].append(kw_data["deleted"])
-                    # TODO not seeing this in dynamo
-                    #  keyword_info["keywordDisplayStatus"].append(kw_data["keywordDisplayStatus"])
+                    keyword_info["keywordDisplayStatus"].append(kw_data["keywordDisplayStatus"])
                     keyword_info["modificationTime"].append(kw_data["modification_time"])
                     keyword_info["date"].append(kw_data["date"])
                     keyword_info["impressions"].append(kw_data["impressions"])
@@ -144,7 +139,6 @@ def process():
 
                     #df_keyword_info = pd.DataFrame(keyword_info)
                     #dprint("df_keyword_info=%s." % str(df_keyword_info))
-
                     #dprint("keyword_info=%s." % pprint.pformat(keyword_info))
                     export_dict_to_csv(keyword_info, str(adgroup_id) + 'keyword_info.csv')
 

@@ -147,7 +147,6 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     url = APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
     print(url)
 
-
     headers = {"Authorization": "orgId=%s" % client.orgId}
 
     dprint("URL is '%s'." % url)
@@ -161,15 +160,10 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
 
     print("runAppleIntegrationKeyword:::Response is " + str(response))
 
-    #print("james test::::" + str((json.loads(response.text, parse_float=decimal.Decimal))))
-    #print("james test:::" + response.text)
-    #return json.loads(response.text, parse_float=decimal.Decimal)
-
     if response.status_code == 200:
         return json.loads(response.text, parse_float=decimal.Decimal)
     else:
         return 'false'
-
 
 def calc_date_range_list(start_date, end_date, maximum_dates=90):
     '''
@@ -218,24 +212,8 @@ def loadAppleKeywordToDynamo(data, keyword_table):
         print("loadAppleKeywordToDynamo::NO ROWS")
         return False  # EARLY RETURN
 
-    # If there aren't any daily values, then all the fields will be totaled. Otherwise, the daily values will be in the
-    # "granularity" fields.
-
-    # compile data from json library and put into dataframe
-    #for i in range(len(rows[0]['granularity'])):
-    # Get the daily values
-
-    #  JF assume multiple dates
-    #  if there is only 1 date, then the totals will not be in a list. Instead, they will simply be in a dictionary
-    #if type(rows[0][field_key]) == dict:
-        # put the data into the table
-        #print("JAMES TEST:::" + str(rows))
-        # rows_parsed = json.loads(rows)
-
     for row in rows:
-            # print("loadAppleKeywordToDynamo::keyword:::" + row['metadata']['keyword'])
-            print("loadAppleKeywordToDynamo:::row:::" + str(row))
-
+            logger.debug("loadAppleKeywordToDynamo:::row:::" + str(row))
             if "total" in row.keys():
                 field_key = "total"
             else:
@@ -243,30 +221,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
 
             print("loadAppleKeywordToDynamo:::using field key:::" + field_key)
             for granularity in row["granularity"]:
-                dprint("granularity=%s" % granularity)
-                # initialize apple facets
-                date = ""
-                keyword = ""
-                keyword_id = ""
-                keywordStatus = ""
-                matchType = ""
-                adgroup_name = ""
-                adgroup_id = ""
-                adgroup_deleted = ""
-                bid = ""
-                deleted = ""
-                modification_time = ""
-                impressions = 0
-                taps = 0
-                installs = 0
-                ttr = 0
-                new_downloads = 0
-                re_downloads = 0
-                lat_on_installs = 0
-                avg_cpa = 0
-                conversion_rate = 0
-                local_spend = 0
-                avg_cpt = 0
+                logger.debug("granularity:" + str(granularity))
 
                 # always pull date from granularity
                 date = str(granularity['date'])
@@ -275,6 +230,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                 keyword = str(row['metadata']['keyword'])
                 keyword_id = str(row['metadata']['keywordId'])
                 keywordStatus = row['metadata']['keywordStatus']
+                keywordDisplayStatus = row['metadata']['keywordDisplayStatus']
                 matchType = row['metadata']['matchType']
                 adgroup_name = row['metadata']['adGroupName']
                 adgroup_id = str(row['metadata']['adGroupId'])
@@ -305,7 +261,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     # dprint("ttr=%s" % ttr)
                     # dprint("new_downloads=%s" % new_downloads)
                     # dprint("re_downloads=%s" % re_downloads)
-                    #dprint("avg_cpt=%s" % avg_cpt)
+                    # dprint("avg_cpt=%s" % avg_cpt)
                     # print("avg_cpt" + str(avg_cpt))
                     # print("local_spend" + str(local_spend))
                     # print("conversion_rate" + str(conversion_rate))
@@ -333,6 +289,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                             'keyword': keyword,
                             'keyword_id': keyword_id,
                             'keywordStatus': keywordStatus,
+                            'keywordDisplayStatus': keywordDisplayStatus,
                             'matchType': matchType,
                             'adgroup_name': adgroup_name,
                             'adgroup_id' : adgroup_id,
@@ -344,7 +301,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                             'taps': taps,
                             'installs': installs,
                             'ttr': ttr,
-                            # 'new_downloads': new_downloads,
+                            'new_downloads': new_downloads,
                             're_downloads': re_downloads,
                             'lat_on_installs': lat_on_installs,
                             'lat_off_installs': lat_off_installs,
@@ -365,16 +322,12 @@ def loadAppleKeywordToDynamo(data, keyword_table):
 def get_max_date(item_list):
     '''
     This function takes a list of items returned from a dynamoDB table, and it returns the max_date from the list.
-
     Example:
-
     [
       {'date': '2019-03-04', 'lat_on_installs': Decimal('0')},
       {'date': '2019-03-05', 'lat_on_installs': Decimal('0')}
     ]
-
     Should return '2019-03-05'
-
     '''
     # Initialize a max date
     max_date = dt.strptime("2000-01-01", "%Y-%m-%d").date()
@@ -401,7 +354,7 @@ def export_dict_to_csv(raw_dict, filename):
 def process():
     # This first for loop is to load all the keyword data
     # TODO We want to go back a year, but Apple is only allowing 90 days
-    keyword_loading_lookback = 7
+    keyword_loading_lookback = 14
     keyword_table = dynamodb.Table('apple_keyword')
 
     # TODO To output the keyword_table use the following command. For QC only.
@@ -412,76 +365,45 @@ def process():
         print("Loading Keyword Data for: " + str(client.clientName))
         print(client.orgId)
 
-        # TODO remove unused keys
-        # print(client.appName)
-        # print(client.appID)
-        # print(client.campaignName)
-
         campaign_keys = client.keywordAdderIds["campaignId"].keys()
 
         for campaign_key in campaign_keys:
-            print("TEST campaign_key in " + str(campaign_key))
+            print("campaign_key in " + str(campaign_key))
 
             for campaign_id in [client.keywordAdderIds["campaignId"][campaign_key]]:  # iterate all campaigns
-
-                logger.debug("TEST campaign_id in " + str(campaign_id))
-
+                logger.debug("campaign_id in " + str(campaign_id))
                 date_results = keyword_table.scan(FilterExpression=Key('campaign_id').eq(str(campaign_id)))
-
                 logger.debug("date results:::" + str(len(date_results["Items"])))
                 logger.debug("date results:::" + str(date_results["Count"]))
-
 
                 if len(date_results["Items"]) == 0:
                     start_date = datetime.date.today() - datetime.timedelta(days=keyword_loading_lookback)
                     end_date = datetime.date.today()
                 else:
-
                     # Get the start date from the maximum date in the table
                     start_date = get_max_date(date_results["Items"])
                     end_date = datetime.date.today()
 
                 print("START_DATE::: " + str(start_date))
-                print("end::: " + str(end_date))
+                print("END_DATE::: " + str(end_date))
 
                 # if the start date matches 2000-01-01, then none of the values in the able were later than that date
                 # TODO this might be a bad implementation
                 if start_date == dt.strptime("2000-01-01", "%Y-%m-%d").date():
                     print("There was an error with getting the maximum date")
-
                     break
 
                 # if the start_date and the end_date are equal, then the table is up to date
                 elif start_date == end_date:
                     print("The apple_keyword table are up to date for {}".format(str(campaign_id)))
-
                     break
 
-                # data = getKeywordReportFromApple(client, date_range[0], date_range[1])
                 data = getKeywordReportFromApple(client, campaign_id, start_date, end_date)
                 # load the data into Dynamo
-
                 if (data is not None) and (data != 'false'):
                     loaded = loadAppleKeywordToDynamo(data, keyword_table)
                 else:
                     print("There was no data returned.")
-
-                # TODO this doesn't seem to be working
-                # date_ranges = calc_date_range_list(start_date, end_date, maximum_dates=90)
-                #
-                # # each of the indexes in the date_ranges list is a tuple with the (start_date, end_date) for each request
-                # for date_range in date_ranges:
-                #     # Get the data from Apple
-                #
-                #     #data = getKeywordReportFromApple(client, date_range[0], date_range[1])
-                #     data = getKeywordReportFromApple(client, campaign_id, date_range[0], date_range[1])
-                #     # load the data into Dynamo
-                #
-                #     if data is not None:
-                #         loaded = loadAppleKeywordToDynamo(data, client, date_range[0], date_range[1], keyword_table)
-                #     else:
-                #         print("There was no data returned.")
-
 
 # ------------------------------------------------------------------------------
 #@debug
