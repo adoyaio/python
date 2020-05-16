@@ -185,7 +185,7 @@ def process():
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
                                     ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                                    ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                                    # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     count = str(result["result"]["unique_count"])
 
                                     # event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
@@ -213,7 +213,7 @@ def process():
                                                 'campaign_id': campaign_id,
                                                 'keyword': keyword,
                                                 'ad_set_id': ad_set_id,
-                                                'ad_set_name': ad_set_name,
+                                                # 'ad_set_name': ad_set_name,
                                                 'count': count
                                             }
                                         )
