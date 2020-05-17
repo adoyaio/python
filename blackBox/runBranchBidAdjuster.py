@@ -11,7 +11,9 @@ import pprint
 import requests
 import sys
 import time
-from utils import DynamoUtils
+
+from retry import retry
+from utils import DynamoUtils, EmailUtils
 
 from botocore.exceptions import ClientError
 
@@ -53,13 +55,15 @@ class DecimalEncoder(json.JSONEncoder):
 
 # ------------------------------------------------------------------------------
 @debug
-def initialize(env, dynamoEndpoint):
+def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
+    global EMAIL_TO
+
+    EMAIL_TO = emailToInternal
 
     if env != "prod":
         sendG = False
-        # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
     else:
         sendG = True
@@ -185,9 +189,9 @@ def create_json_from_dataFrame(filtered_dataframe):
         output_adGroupId_dict[adGroupId] = []
         for ind in filtered_dataframe[filtered_dataframe["adGroupId"] == adGroupId].index:
             output_adGroupId_dict[adGroupId].append({ \
-                "id": filtered_dataframe["keywordId"][ind], \
+                "id": int(filtered_dataframe["keywordId"][ind]), \
                 "bidAmount": { \
-                    "amount": float(round(filtered_dataframe["adjusted_bid"][ind], 2)), \
+                    "amount": str(round(filtered_dataframe["adjusted_bid"][ind], 2)), \
                     "currency": "USD" \
                     } \
                 })
@@ -195,7 +199,7 @@ def create_json_from_dataFrame(filtered_dataframe):
 
 
 def create_put_request_string(campaign_id, adgroup_id):
-    return "PUT https://api.searchads.apple.com/api/v2/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
+    return "https://api.searchads.apple.com/api/v2/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
         campaign_id, adgroup_id)
 
 
@@ -214,7 +218,12 @@ def write_request_file(put_request_string, request_json, request_output_filename
 # ------------------------------------------------------------------------------
 @debug
 def process():
+    summaryReportInfo = {}
+
     for client in CLIENTS:
+
+        summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
+
         print("Apple and Branch keyword data from : " + str(client.clientName))
         print(client.orgId)
         adgroup_keys = client.keywordAdderIds["adGroupId"].keys()
@@ -237,6 +246,8 @@ def process():
             for adgroup_key in adgroup_keys:
                 for adgroup_id in [client.keywordAdderIds["adGroupId"][adgroup_key]]:  # iterate all adgroups
                     print("pulling adgroup_id " + str(adgroup_id))
+                    print("campaign id " + str(client.keywordAdderIds["campaignId"][adgroup_key]))
+                    campaign_id = str(client.keywordAdderIds["campaignId"][adgroup_key])
 
                     # get apple data
                     kw_response = DynamoUtils.getAppleKeywordData(dynamodb, adgroup_id, start_date, end_date)
@@ -257,7 +268,7 @@ def process():
                             branch_commerce_event_count = 0
 
                             # get branch data
-                            print("check branch data for " + keyword + " " + date)
+                            #print("check branch data for " + keyword + " " + date)
                             branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, adgroup_id, keyword, date)
                             for j in branch_response[u'Items']:
                                 print("found branch result:::")
@@ -300,12 +311,10 @@ def process():
                         # print("JAMES TEST " + str(raw_data_df))
                         # dprint("df_keyword_info=%s." % str(df_keyword_info))
                         # dprint("keyword_info=%s." % pprint.pformat(keyword_info))
-                        export_dict_to_csv(keyword_info, str(adgroup_id) + 'keyword_info.csv')
+                        # export_dict_to_csv(keyword_info, str(adgroup_id) + 'keyword_info.csv')
 
-                        # raw_data_df = read_file_to_dataFrame(raw_data_file_path)  # SK: don't think we need this anymore.
-                        # TODO cleanup this
-                        campaign_id = 123456789  # SK: don't think we need this anymore.
-                        min_apple_installs = 10  # SK: need in client.json
+                        BBP = client.branchBidParameters
+                        min_apple_installs = BBP["min_apple_installs"]
 
                         if raw_data_df.empty:
                             print("Error: There was an issue reading the data to a dataFrame")
@@ -320,16 +329,16 @@ def process():
                                 pass
 
                             else:
-                                # this fits into client.json
                                 print("There were keywords that met the initial filtering criteria")
-                                branch_optimization_goal = "cost_per_purchase"  # SK: need in client.json
-                                branch_min_bid = 0.1  # SK: need in client.json
-                                # branch_bid_adjustment = 0.3  # SK: need in client.json
-                                branch_bid_adjustment = decimal.Decimal.from_float(float('0.3'))
-                                cost_per_purchase_threshold = 20  # SK: need in client.json
-                                cost_per_purchase_threshold_buffer = 0.25  # SK: need in client.json
-                                revenue_over_ad_spend_threshold = 1  # SK: need in client.json
-                                revenue_over_ad_spend_threshold_buffer = 0.25  # SK: need in client.json
+                                # read bid params from client.json
+                                branch_optimization_goal = BBP["branch_optimization_goal"]
+                                branch_min_bid = BBP["branch_min_bid"]
+                                branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
+                                cost_per_purchase_threshold = BBP["cost_per_purchase_threshold"]
+                                cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
+                                revenue_over_ad_spend_threshold = BBP["revenue_over_ad_spend_threshold"]
+                                revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
+
                                 adjusted_bids = return_adjusted_bids(branch_optimization_goal, \
                                                                      active_keywords, \
                                                                      branch_min_bid, \
@@ -344,15 +353,82 @@ def process():
                                     return None
                                 else:
                                     json_data = create_json_from_dataFrame(adjusted_bids)
+                                    clientSummaryReportInfo[campaign_id] = json.dumps(json_data)
                                     for adGroupId in json_data.keys():
                                         put_request_string = create_put_request_string(campaign_id, str(adGroupId))
                                         request_json = json_data[adGroupId]
                                         request_output_filename = "{}_adjusted_bid_keyword_request.txt".format(
                                             str(adGroupId))
-                                        write_request_file(put_request_string, request_json, request_output_filename)
 
-                                    print("The output file has been created")
+                                        sendUpdatedBidsToApple(client, put_request_string, request_json)
 
+                                        # TODO rm
+                                        # if sendG:
+                                        #     sendUpdatedBidsToApple(client,put_request_string,request_json)
+                                        # else:
+                                        #     write_request_file(put_request_string, request_json, request_output_filename)
+                                        #     print("The output file has been created")
+    emailSummaryReport(summaryReportInfo, sendG)
+
+# ------------------------------------------------------------------------------
+@retry
+def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
+    return requests.put(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+
+
+# ------------------------------------------------------------------------------
+def sendUpdatedBidsToApple(client, url, payload):
+
+    headers = {"Authorization": "orgId=%s" % client.orgId,
+               "Content-Type": "application/json",
+               "Accept": "application/json",
+               }
+    # url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (keywordFileToPost, keywordFileToPost)
+    dprint("URL is '%s'." % url)
+    dprint("Payload is '%s'." % payload)
+    dprint("Headers are %s." % headers)
+    dprint("PEM='%s'." % client.pemPathname)
+    dprint("KEY='%s'." % client.keyPathname)
+
+    if url and payload:
+        if sendG:
+            response = sendUpdatedBidsToAppleHelper(url,
+                                                    cert=(client.pemPathname, client.keyPathname),
+                                                    json=payload,
+                                                    headers=headers)
+
+        else:
+            response = "Not actually sending anything to Apple."
+
+        print("The result of sending the update to Apple: %s" % response)
+
+    return sendG
+
+
+# ------------------------------------------------------------------------------
+@debug
+def createEmailBody(data, sent):
+  content = ["""Sent to Apple is %s.""" % sent,
+             """\t""".join(["Client", "Campaign", "Updated Branch Bids"])]
+
+  for client, clientData in data.items():
+    content.append(client)
+    for campaignId, payload in clientData.items():
+      content.append("""\t%s\t%s""" % (campaignId, payload))
+
+  return "\n".join(content)
+
+
+
+# ------------------------------------------------------------------------------
+@debug
+def emailSummaryReport(data, sent):
+    messageString = createEmailBody(data, sent);
+    dateString = time.strftime("%m/%d/%Y")
+    if dateString.startswith("0"):
+        dateString = dateString[1:]
+    subjectString = "Branch Bid Adjuster summary for %s" % dateString
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
 
 def export_dict_to_csv(raw_dict, filename):
     '''
@@ -372,10 +448,16 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 
-    # initialize('prod', 'http://localhost:8000')
-    # process()
-    # terminate()
+
+def lambda_handler(event, context):
+    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
+    process()
+    terminate()
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Branch Bid Adjuster Complete')
+    }

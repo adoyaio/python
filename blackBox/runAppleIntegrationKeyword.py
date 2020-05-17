@@ -414,11 +414,14 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
+# if __name__ == "__main__":
+#     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+#     process()
+#     terminate()
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
-
 
 def lambda_handler(event, context):
     initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])

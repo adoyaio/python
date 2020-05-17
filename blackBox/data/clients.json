@@ -33,6 +33,16 @@
             "MAX_BID": 3.0,
             "MIN_BID": 0.1
         },
+      "branchBidParameters": {
+            "branch_optimization_goal": "cost_per_purchase",
+            "branch_min_bid": 0.1,
+            "branch_bid_adjustment": 0.3,
+            "cost_per_purchase_threshold": 20,
+            "cost_per_purchase_threshold_buffer": 0.25,
+            "revenue_over_ad_spend_threshold": 1,
+            "revenue_over_ad_spend_threshold_buffer": 0.25,
+            "min_apple_installs": 10
+        },
         "campaignIds": [
             158675458,
             187214904
@@ -92,6 +102,16 @@
             "HIGH_CPA_BID_DECREASE": 0.85,
             "MAX_BID": 6.0,
             "MIN_BID": 0.1
+        },
+        "branchBidParameters": {
+            "branch_optimization_goal": "cost_per_purchase",
+            "branch_min_bid": 0.1,
+            "branch_bid_adjustment": 0.3,
+            "cost_per_purchase_threshold": 20,
+            "cost_per_purchase_threshold_buffer": 0.25,
+            "revenue_over_ad_spend_threshold": 1,
+            "revenue_over_ad_spend_threshold_buffer": 0.25,
+            "min_apple_installs": 10
         },
         "campaignIds": [
             197913328,

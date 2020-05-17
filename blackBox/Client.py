@@ -34,6 +34,7 @@ class Client:
                  keyFilename, pemFilename,
                  bidParameters,
                  adgroupBidParameters,
+                 branchBidParameters,
                  campaignIds,
                  keywordAdderIds,
                  keywordAdderParameters,
@@ -66,6 +67,7 @@ class Client:
         self._pemFilename = pemFilename
         self._bidParameters = bidParameters
         self._adgroupBidParameters = adgroupBidParameters
+        self._branchBidParameters = branchBidParameters
         self._campaignIds = campaignIds
         self._keywordAdderIds = keywordAdderIds
         self._keywordAdderParameters = keywordAdderParameters
@@ -106,6 +108,10 @@ class Client:
     @property
     def adgroupBidParameters(self):
         return dict(self._adgroupBidParameters)
+
+    @property
+    def branchBidParameters(self):
+        return dict(self._branchBidParameters)
 
     @property
     def keywordAdderIds(self):
@@ -201,17 +207,6 @@ class Client:
             Item=item
         )
 
-    # TODO rm v0 code
-    # def _readStateInformation(self, pathname, defaultValue):
-    #     if os.path.exists(pathname):
-    #         with open(pathname) as handle:
-    #             result = json.load(handle)
-    #
-    #     else:
-    #         result = defaultValue
-    #
-    #     return result
-
     def readUpdatedBidsCount(self, dynamoResource):
         table = dynamoResource.Table('bids')
         response = table.query(
@@ -288,17 +283,6 @@ class Client:
     # ^    dprint("Response: '%s'" % response)
     # ^
     # ^    return [ item["metadata"]["campaignId"] for item in json.loads(response.text)["data"]["reportingDataResponse"]["row"] ]
-
-    # TODO delete V0 code
-    # ----------------------------------------------------------------------------
-    # def _getCertificatesPath(self) :
-    # return '/home/scott/ScottKaplan/Certificates' if sys.platform == Client._LINUX_OS_PLATFORM or sys.platform == Client._MAC_OS_PLATFORM else \
-    #          'C:/Users/A/Desktop/apple_search_ads_api'
-
-    # TODO delete V0 code after migration
-    # # ----------------------------------------------------------------------------
-    # def _getHistoryPathname(self):
-    #     return os.path.join(DATA_DIR, CLIENT_HISTORY_FILENAME_TEMPLATE % self.orgId)
 
     # V1 code to use dynamo
     # ----------------------------------------------------------------------------
@@ -662,6 +646,7 @@ CLIENTS = [Client(client["orgId"],
                   client["pemFilename"],
                   client["bidParameters"],
                   client["adgroupBidParameters"],
+                  client["branchBidParameters"],
                   client["campaignIds"],
                   client["keywordAdderIds"],
                   client["keywordAdderParameters"],
