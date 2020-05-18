@@ -180,6 +180,25 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     installsFourYears = summary[FOUR_YEARS]["installs"]
     spendFourYears = "{:>9,.2f}".format(summary[FOUR_YEARS]["spend"])
 
+    # gather the post install metrics from post install summary
+    cppOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    revenueCostOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    purchaseOneDay = summary[ONE_DAY]["installs"]
+    revenueOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
+
+    cppSevenDays = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    revenueCostSevenDays = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    purchaseSevenDays = summary[ONE_DAY]["installs"]
+    revenueSevenDays = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
+
+    cppFourYears = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    revenueCostFourYears = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    purchaseFourYears = summary[ONE_DAY]["installs"]
+    revenueFourYears = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
+
     htmlBody = ""
 
     # read email template and replace values
@@ -197,9 +216,25 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
         x = x.replace("@@ALL__TIME__INSTALLS@@", str(installsFourYears))
         x = x.replace("@@ALL__TIME__CPI@@", str(cpiFourYears))
 
-        x = x.replace("@@KEYWORD__BIDS__TODAY@@", str(client.readUpdatedBidsCount(dynamodb)))
-        x = x.replace("@@ADGROUP__BIDS__TODAY@@", str(client.readUpdatedAdgroupBidsCount(dynamodb)))
-        x = x.replace("@@KEYWORDS__TODAY@@", str(len(client.readPositiveKeywordsAdded(dynamodb))))
+        x = x.replace("@@YESTERDAY__PURCHASE@@", str(purchaseOneDay))
+        x = x.replace("@@YESTERDAY__REVENUE@@", str(installsOneDay))
+        x = x.replace("@@YESTERDAY__CPP@@", str(cppOneDay))
+        x = x.replace("@@YESTERDAY__REVENUE__COST@@", str(revenueCostOneDay))
+
+        x = x.replace("@@SEVEN__DAYS__PURCHASE@@", str(purchaseSevenDays))
+        x = x.replace("@@SEVEN__DAYS__REVENUE@@", str(installsSevenDays))
+        x = x.replace("@@SEVEN__DAYS__CPP@@", str(cppSevenDays))
+        x = x.replace("@@SEVEN__DAYS__REVENUE__COST@@", str(revenueCostSevenDays))
+
+        x = x.replace("@@ALL__TIME__PURCHASE@@", str(purchaseFourYears))
+        x = x.replace("@@ALL__TIME__REVENUE@@", str(installsFourYears))
+        x = x.replace("@@ALL__TIME__CPP@@", str(cppFourYears))
+        x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(revenueCostFourYears))
+
+        # JF release-2 unused
+        # x = x.replace("@@KEYWORD__BIDS__TODAY@@", str(client.readUpdatedBidsCount(dynamodb)))
+        # x = x.replace("@@ADGROUP__BIDS__TODAY@@", str(client.readUpdatedAdgroupBidsCount(dynamodb)))
+        # x = x.replace("@@KEYWORDS__TODAY@@", str(len(client.readPositiveKeywordsAdded(dynamodb))))
 
         htmlBody = htmlBody + x
 
