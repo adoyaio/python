@@ -7,6 +7,7 @@ import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
 
+from utils import DynamoUtils
 
 DATA_DIR = "data"
 CERT_DIR = "cert"
@@ -346,6 +347,13 @@ class Client:
 
         return total_cost_per_install
 
+    def getTotalBranchEvents(self, dynamoResource, start_date, end_date):
+        total_branch_events = 0
+        for id in self.campaignIds:
+            print("getTotalBranchRevenue:::" + str(id))
+            total_branch_events = total_branch_events + DynamoUtils.getBranchCommerceEventsForTimeperiod(dynamoResource, id, start_date, end_date)
+
+        return total_branch_events
 
     # ----------------------------------------------------------------------------
     @staticmethod

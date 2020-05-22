@@ -87,7 +87,7 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
 
     dprint("Headers: %s\n" % headers)
     dprint("Payload: %s\n" % payload)
-    # dprint("Apple URL: %s\n" % APPLE_KEYWORDS_REPORT_URL)
+    dprint("Apple URL: %s\n" % APPLE_KEYWORDS_REPORT_URL)
 
     response = getCampaignDataHelper(APPLE_KEYWORDS_REPORT_URL,
                                      cert=(pemPathname, keyPathname),
@@ -184,19 +184,19 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     cppOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
     revenueCostOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
         "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    purchaseOneDay = summary[ONE_DAY]["installs"]
+    purchaseOneDay = summary[ONE_DAY]["purchases"]
     revenueOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
 
     cppSevenDays = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
     revenueCostSevenDays = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
         "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    purchaseSevenDays = summary[ONE_DAY]["installs"]
+    purchaseSevenDays = summary[ONE_DAY]["purchases"]
     revenueSevenDays = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
 
     cppFourYears = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
     revenueCostFourYears = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
         "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    purchaseFourYears = summary[ONE_DAY]["installs"]
+    purchaseFourYears = summary[ONE_DAY]["purchases"]
     revenueFourYears = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
 
     htmlBody = ""
@@ -217,17 +217,17 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
         x = x.replace("@@ALL__TIME__CPI@@", str(cpiFourYears))
 
         x = x.replace("@@YESTERDAY__PURCHASE@@", str(purchaseOneDay))
-        x = x.replace("@@YESTERDAY__REVENUE@@", str(installsOneDay))
+        x = x.replace("@@YESTERDAY__REVENUE@@", str(revenueOneDay))
         x = x.replace("@@YESTERDAY__CPP@@", str(cppOneDay))
         x = x.replace("@@YESTERDAY__REVENUE__COST@@", str(revenueCostOneDay))
 
         x = x.replace("@@SEVEN__DAYS__PURCHASE@@", str(purchaseSevenDays))
-        x = x.replace("@@SEVEN__DAYS__REVENUE@@", str(installsSevenDays))
+        x = x.replace("@@SEVEN__DAYS__REVENUE@@", str(revenueSevenDays))
         x = x.replace("@@SEVEN__DAYS__CPP@@", str(cppSevenDays))
         x = x.replace("@@SEVEN__DAYS__REVENUE__COST@@", str(revenueCostSevenDays))
 
         x = x.replace("@@ALL__TIME__PURCHASE@@", str(purchaseFourYears))
-        x = x.replace("@@ALL__TIME__REVENUE@@", str(installsFourYears))
+        x = x.replace("@@ALL__TIME__REVENUE@@", str(revenueFourYears))
         x = x.replace("@@ALL__TIME__CPP@@", str(cppFourYears))
         x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(revenueCostFourYears))
 
@@ -257,15 +257,18 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
 # ------------------------------------------------------------------------------
 #@debug
 def sendEmailReport(client, dataForVariousTimes):
-    summary = {ONE_DAY: {"installs": 0, "spend": 0.0},
-               SEVEN_DAYS: {"installs": 0, "spend": 0.0},
-               FOUR_YEARS: {"installs": 0, "spend": 0.0},
+    today = datetime.date.today()
+
+
+    summary = {ONE_DAY: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
+               SEVEN_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
+               FOUR_YEARS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0}
                }
 
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
-        summary[someTime] = {"installs": 0,
-                             "spend": 0.0}
+        summary[someTime] = {"installs": 0, "spend": 0.0}
 
+        # Iterate each campaign and get totals
         for campaign in campaignsForThatTime:
             totals = campaign["total"]
             installs, spend = totals["installs"], float(totals["localSpend"]["amount"])
@@ -273,6 +276,14 @@ def sendEmailReport(client, dataForVariousTimes):
                    (client.orgId, client.clientName, campaign["metadata"]["campaignId"], someTime, installs, spend))
             summary[someTime]["installs"] += totals["installs"]
             summary[someTime]["spend"] += float(totals["localSpend"]["amount"])
+
+        # Add branch events
+        end_date_delta = datetime.timedelta(days=1)
+        start_date_delta = datetime.timedelta(1 + someTime)
+        start_date = today - start_date_delta
+        end_date = today - end_date_delta
+        summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
+
 
     now = time.time()
 
@@ -302,6 +313,7 @@ def process():
 
                 dataForVariousTimes[daysToGoBack] = dataArray
                 print('runClientDailyReport:::dataForVariousTimes' + str(dataForVariousTimes))
+
 
         sendEmailReport(client, dataForVariousTimes)
 
