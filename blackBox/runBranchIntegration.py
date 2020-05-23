@@ -179,7 +179,7 @@ def process():
                                 keyword = ""
 
                                 if aggregation != "revenue":
-                                    logger.info(branch_job + ":::handle unique_count")
+                                    logger.debug(branch_job + ":::handle unique_count")
                                     dash = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
@@ -218,13 +218,13 @@ def process():
                                             }
                                         )
                                     except ClientError as e:
-                                        logger.info("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                                        logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
                                     else:
-                                        logger.info("runBranchIntegration:process:::PutItem succeeded:")
+                                        logger.debug("runBranchIntegration:process:::PutItem succeeded:")
 
                                 else:
                                     # TODO refactor revenue to be order angostic, currently revenue must run after count
-                                    logger.info(branch_job + ":::handle revenue aggregation")
+                                    logger.debug(branch_job + ":::handle revenue aggregation")
                                     dash = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
@@ -259,11 +259,11 @@ def process():
                                             }
                                         )
                                     except ClientError as e:
-                                        logger.info("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                                        logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
                                         # enable for local debugging
                                         #print(json.dumps(response, indent=4, cls=DecimalEncoder))
                                     else:
-                                        logger.info("runBranchIntegration:process:::PutItem succeeded:")
+                                        logger.debug("runBranchIntegration:process:::PutItem succeeded:")
                             else:
                                 logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
                 else:

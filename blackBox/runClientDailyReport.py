@@ -39,8 +39,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
     if env != "prod":
         sendG = False
-        #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
         logger.setLevel(logging.INFO)
     else:
         sendG = True
@@ -169,36 +168,43 @@ Keywords submitted for upload today: %s""" % \
 
 def createHtmlEmailBodyForACampaign(client, summary, now):
 
+    #handle currency
+    if client.currency == 'USD':
+        currencySymbol = '$'
+    elif client.currency == 'EUR':
+        currencySymbol = '€'
+
     # gather values for the html report and replace placeholder values
     cpiOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    installsOneDay = summary[ONE_DAY]["installs"]
+    installsOneDay = "{: 6,.0f}".format(summary[ONE_DAY]["installs"])
     spendOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
 
     cpiSevenDays = "N/A" if summary[SEVEN_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["installs"]))
-    installsSevenDays = summary[SEVEN_DAYS]["installs"]
+    installsSevenDays = "{: 6,.0f}".format(summary[SEVEN_DAYS]["installs"])
     spendSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["spend"])
 
     cpiFourYears = "N/A" if summary[THIRTY_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["installs"]))
-    installsFourYears = summary[THIRTY_DAYS]["installs"]
+    installsFourYears = "{: 6,.0f}".format(summary[THIRTY_DAYS]["installs"])
+
     spendFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["spend"])
 
     # gather branch metrics for post install summary
     cppOneDay = "N/A" if summary[ONE_DAY]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["purchases"]))
     revenueCostOneDay = "N/A" if summary[ONE_DAY]["revenue"] < 1 else (
         "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["revenue"]) / summary[ONE_DAY]["spend"]))
-    purchaseOneDay = summary[ONE_DAY]["purchases"]
+    purchaseOneDay = "{: 6,.0f}".format(summary[ONE_DAY]["purchases"])
     revenueOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["revenue"])
 
     cppSevenDays = "N/A" if summary[SEVEN_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["purchases"]))
     revenueCostSevenDays = "N/A" if summary[SEVEN_DAYS]["revenue"] < 1 else (
         "{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["revenue"]) / summary[SEVEN_DAYS]["spend"]))
-    purchaseSevenDays = summary[SEVEN_DAYS]["purchases"]
+    purchaseSevenDays = "{: 6,.0f}".format(summary[SEVEN_DAYS]["purchases"])
     revenueSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["revenue"])
 
     cppFourYears = "N/A" if summary[THIRTY_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["purchases"]))
     revenueCostFourYears = "N/A" if summary[THIRTY_DAYS]["revenue"] < 1 else (
         "{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["revenue"]) / summary[THIRTY_DAYS]["spend"]))
-    purchaseFourYears = summary[THIRTY_DAYS]["purchases"]
+    purchaseFourYears = "{: 6,.0f}".format(summary[THIRTY_DAYS]["purchases"])
     revenueFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["revenue"])
 
     htmlBody = ""
@@ -206,38 +212,63 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     # read email template and replace values
     f = open("./templates/email_template.html", "r")
     for x in f:
-        x = x.replace("@@YESTERDAY__COST@@", str(spendOneDay))
+        # install summary
+        x = x.replace("@@YESTERDAY__COST@@", str(currencySymbol+spendOneDay))
         x = x.replace("@@YESTERDAY__INSTALLS@@", str(installsOneDay))
-        x = x.replace("@@YESTERDAY__CPI@@", str(cpiOneDay))
+        x = x.replace("@@YESTERDAY__CPI@@", str(currencySymbol+cpiOneDay))
 
-        x = x.replace("@@SEVEN__DAYS__COST@@", str(spendSevenDays))
+        x = x.replace("@@SEVEN__DAYS__COST@@", str(currencySymbol+spendSevenDays))
         x = x.replace("@@SEVEN__DAYS__INSTALLS@@", str(installsSevenDays))
-        x = x.replace("@@SEVEN__DAYS__CPI@@", str(cpiSevenDays))
+        x = x.replace("@@SEVEN__DAYS__CPI@@", str(currencySymbol+cpiSevenDays))
 
-        x = x.replace("@@ALL__TIME__COST@@", str(spendFourYears))
+        x = x.replace("@@ALL__TIME__COST@@", str(currencySymbol+spendFourYears))
         x = x.replace("@@ALL__TIME__INSTALLS@@", str(installsFourYears))
-        x = x.replace("@@ALL__TIME__CPI@@", str(cpiFourYears))
+        x = x.replace("@@ALL__TIME__CPI@@", str(currencySymbol+cpiFourYears))
 
+        # post-install summary
         x = x.replace("@@YESTERDAY__PURCHASE@@", str(purchaseOneDay))
-        x = x.replace("@@YESTERDAY__REVENUE@@", str(revenueOneDay))
-        x = x.replace("@@YESTERDAY__CPP@@", str(cppOneDay))
-        x = x.replace("@@YESTERDAY__REVENUE__COST@@", str(revenueCostOneDay))
+        x = x.replace("@@YESTERDAY__REVENUE@@", str(currencySymbol+revenueOneDay))
+
+        if(cppOneDay == "N/A"):
+            x = x.replace("@@YESTERDAY__CPP@@", str(cppOneDay))
+        else:
+            x = x.replace("@@YESTERDAY__CPP@@", str(currencySymbol + cppOneDay))
+
+        if(revenueCostOneDay == 'N/A'):
+            x = x.replace("@@YESTERDAY__REVENUE__COST@@", str(revenueCostOneDay))
+        else:
+            x = x.replace("@@YESTERDAY__REVENUE__COST@@", str(currencySymbol + revenueCostOneDay))
 
         x = x.replace("@@SEVEN__DAYS__PURCHASE@@", str(purchaseSevenDays))
-        x = x.replace("@@SEVEN__DAYS__REVENUE@@", str(revenueSevenDays))
-        x = x.replace("@@SEVEN__DAYS__CPP@@", str(cppSevenDays))
-        x = x.replace("@@SEVEN__DAYS__REVENUE__COST@@", str(revenueCostSevenDays))
+        x = x.replace("@@SEVEN__DAYS__REVENUE@@", str(currencySymbol+revenueSevenDays))
+
+        if(cppSevenDays == "N/A"):
+            x = x.replace("@@SEVEN__DAYS__CPP@@", str(cppSevenDays))
+        else:
+            x = x.replace("@@SEVEN__DAYS__CPP@@", str(currencySymbol + cppSevenDays))
+
+        if(revenueCostSevenDays == "N/A"):
+            x = x.replace("@@SEVEN__DAYS__REVENUE__COST@@", str(revenueCostSevenDays))
+        else:
+            x = x.replace("@@SEVEN__DAYS__REVENUE__COST@@", str(currencySymbol+revenueCostSevenDays))
 
         x = x.replace("@@ALL__TIME__PURCHASE@@", str(purchaseFourYears))
-        x = x.replace("@@ALL__TIME__REVENUE@@", str(revenueFourYears))
-        x = x.replace("@@ALL__TIME__CPP@@", str(cppFourYears))
-        x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(revenueCostFourYears))
+        x = x.replace("@@ALL__TIME__REVENUE@@", str(currencySymbol+revenueFourYears))
+
+        if(cppFourYears == "N/A"):
+            x = x.replace("@@ALL__TIME__CPP@@", str(cppFourYears))
+        else:
+            x = x.replace("@@ALL__TIME__CPP@@", str(currencySymbol + cppFourYears))
+
+        if (revenueCostFourYears == "N/A"):
+            x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(revenueCostFourYears))
+        else:
+            x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(currencySymbol+revenueCostFourYears))
 
         # JF release-2 unused
         # x = x.replace("@@KEYWORD__BIDS__TODAY@@", str(client.readUpdatedBidsCount(dynamodb)))
         # x = x.replace("@@ADGROUP__BIDS__TODAY@@", str(client.readUpdatedAdgroupBidsCount(dynamodb)))
         # x = x.replace("@@KEYWORDS__TODAY@@", str(len(client.readPositiveKeywordsAdded(dynamodb))))
-
         htmlBody = htmlBody + x
 
     return htmlBody
@@ -333,8 +364,8 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io","scott.kaplan@adoya.io"])
-    #initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    #initialize('lcl', 'http://localhost:8000', ["james@adoya.io","scott.kaplan@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 

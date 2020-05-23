@@ -1,9 +1,7 @@
 APPLE_SEARCHADS_URL_BASE                = "https://api.searchads.apple.com/api/v2/"
 
 APPLE_KEYWORDS_REPORT_URL               = APPLE_SEARCHADS_URL_BASE + "reports/campaigns"
-# TODO remove v1 endpoints
-# APPLE_UPDATE_POSITIVE_KEYWORDS_URL      = APPLE_SEARCHADS_URL_BASE + "keywords/targeting"
-# APPLE_UPDATE_NEGATIVE_KEYWORDS_URL      = APPLE_SEARCHADS_URL_BASE + "keywords/negative"
+
 APPLE_UPDATE_POSITIVE_KEYWORDS_URL      = APPLE_SEARCHADS_URL_BASE + "campaigns/%s/adgroups/%s/targetingkeywords/bulk"
 APPLE_UPDATE_NEGATIVE_KEYWORDS_URL      = APPLE_SEARCHADS_URL_BASE + "campaigns/%s/adgroups/%s/negativekeywords/bulk"
 APPLE_KEYWORD_REPORTING_URL_TEMPLATE    = APPLE_SEARCHADS_URL_BASE + "reports/campaigns/%s/keywords"

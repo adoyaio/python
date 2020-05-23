@@ -209,7 +209,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
 
     rows = data["data"]["reportingDataResponse"]["row"]
     if len(rows) == 0:
-        print("loadAppleKeywordToDynamo::NO ROWS")
+        logger.debug("loadAppleKeywordToDynamo::NO ROWS")
         return False  # EARLY RETURN
 
     for row in rows:
@@ -219,7 +219,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
             else:
                 field_key = "granularity"
 
-            print("loadAppleKeywordToDynamo:::using field key:::" + field_key)
+            logger.debug("loadAppleKeywordToDynamo:::using field key:::" + field_key)
             for granularity in row["granularity"]:
                 logger.debug("granularity:" + str(granularity))
 
@@ -314,7 +314,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                 except ClientError as e:
                     logger.info("runAppleIntegrationKeyword:process:::PutItem failed due to" + e.response['Error']['Message'])
                 else:
-                    logger.info("runAppleIntegrationKeyword:process:::PutItem succeeded:")
+                    logger.debug("runAppleIntegrationKeyword:process:::PutItem succeeded:")
 
     return True
 
@@ -353,11 +353,10 @@ def export_dict_to_csv(raw_dict, filename):
 # @debug
 def process():
     # This first for loop is to load all the keyword data
-    # TODO We want to go back a year, but Apple is only allowing 90 days
     keyword_loading_lookback = 14
     keyword_table = dynamodb.Table('apple_keyword')
 
-    # TODO To output the keyword_table use the following command. For QC only.
+    # To output the keyword_table use the following command. For QC only.
     # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
     # input()
 

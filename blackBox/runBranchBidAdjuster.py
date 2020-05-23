@@ -109,11 +109,6 @@ def return_cost_per_purchase_optimized_bid(active_keywords_dataFrame, branch_min
     #                                                  active_keywords_dataFrame["branch_commerce_event_count"]
     cpp = []
     for row in active_keywords_dataFrame.itertuples():
-        # if (row.branch_commerce_event_count == 0) or (row.localSpend == 0):
-        #     cpp.append(0)
-        # else:
-        #     cpp.append(active_keywords_dataFrame["localSpend"] /
-        #                active_keywords_dataFrame["branch_commerce_event_count"])
         if (row.branch_commerce_event_count == 0) or (row.localSpend == 0):
             cpp.append(0)
         else:
