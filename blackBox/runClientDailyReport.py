@@ -180,24 +180,24 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     installsFourYears = summary[FOUR_YEARS]["installs"]
     spendFourYears = "{:>9,.2f}".format(summary[FOUR_YEARS]["spend"])
 
-    # gather the post install metrics from post install summary
-    cppOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    revenueCostOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
-        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    # gather branch metrics for post install summary
+    cppOneDay = "N/A" if summary[ONE_DAY]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["purchases"]))
+    revenueCostOneDay = "N/A" if summary[ONE_DAY]["revenue"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["revenue"]) / summary[ONE_DAY]["spend"]))
     purchaseOneDay = summary[ONE_DAY]["purchases"]
-    revenueOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
+    revenueOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["revenue"])
 
-    cppSevenDays = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    revenueCostSevenDays = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
-        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    purchaseSevenDays = summary[ONE_DAY]["purchases"]
-    revenueSevenDays = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
+    cppSevenDays = "N/A" if summary[SEVEN_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["purchases"]))
+    revenueCostSevenDays = "N/A" if summary[SEVEN_DAYS]["revenue"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["revenue"]) / summary[SEVEN_DAYS]["spend"]))
+    purchaseSevenDays = summary[SEVEN_DAYS]["purchases"]
+    revenueSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["revenue"])
 
-    cppFourYears = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    revenueCostFourYears = "N/A" if summary[ONE_DAY]["installs"] < 1 else (
-        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    purchaseFourYears = summary[ONE_DAY]["purchases"]
-    revenueFourYears = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
+    cppFourYears = "N/A" if summary[FOUR_YEARS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[FOUR_YEARS]["spend"]) / summary[FOUR_YEARS]["purchases"]))
+    revenueCostFourYears = "N/A" if summary[FOUR_YEARS]["revenue"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[FOUR_YEARS]["revenue"]) / summary[FOUR_YEARS]["spend"]))
+    purchaseFourYears = summary[FOUR_YEARS]["purchases"]
+    revenueFourYears = "{:>9,.2f}".format(summary[FOUR_YEARS]["revenue"])
 
     htmlBody = ""
 
@@ -283,6 +283,7 @@ def sendEmailReport(client, dataForVariousTimes):
         start_date = today - start_date_delta
         end_date = today - end_date_delta
         summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
+        summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
 
 
     now = time.time()
@@ -328,7 +329,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io","scott.kaplan@adoya.io"])
     process()
     terminate()
 

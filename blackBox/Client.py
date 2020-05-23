@@ -324,8 +324,7 @@ class Client:
         return response['Items']
 
 
-    # V1 code to use dynamo
-    # ----------------------------------------------------------------------------
+    # gets total cost per install for the lookback period
     def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
         table = dynamoResource.Table('cpi_history')
         response = table.query(
@@ -347,13 +346,23 @@ class Client:
 
         return total_cost_per_install
 
+    # gets total number of branch commerce events for lookback period
     def getTotalBranchEvents(self, dynamoResource, start_date, end_date):
         total_branch_events = 0
         for id in self.campaignIds:
-            print("getTotalBranchRevenue:::" + str(id))
-            total_branch_events = total_branch_events + DynamoUtils.getBranchCommerceEventsForTimeperiod(dynamoResource, id, start_date, end_date)
+            print("Client:::getTotalBranchEvents:::" + str(id))
+            total_branch_events = total_branch_events + DynamoUtils.getBranchPurchasesForTimeperiod(dynamoResource, id, start_date, end_date)
 
         return total_branch_events
+
+    # gets total revenue for lookback period
+    def getTotalBranchRevenue(self, dynamoResource, start_date, end_date):
+        total_branch_revenue = 0.0
+        for id in self.campaignIds:
+            print("Client:::getTotalBranchRevenue:::" + str(id))
+            total_branch_revenue = total_branch_revenue + DynamoUtils.getBranchRevenueForTimeperiod(dynamoResource, id, start_date, end_date)
+
+        return total_branch_revenue
 
     # ----------------------------------------------------------------------------
     @staticmethod
