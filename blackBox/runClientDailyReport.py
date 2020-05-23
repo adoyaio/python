@@ -22,6 +22,7 @@ from retry import retry
 
 ONE_DAY = 1
 SEVEN_DAYS = 7
+THIRTY_DAYS = 30
 FOUR_YEARS = 365 * 4  # Ignoring leap years.
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
@@ -152,7 +153,7 @@ def createEmailBodyForACampaign(client, summary, now):
                           """\t""".join(["Timeframe\t", "   Cost", "\tInstalls", "Cost per Install"]),
                           createOneRowOfTable(summary[ONE_DAY], "Yesterday\t"),
                           createOneRowOfTable(summary[SEVEN_DAYS], "Last Seven Days"),
-                          createOneRowOfTable(summary[FOUR_YEARS], "All-Time\t"),
+                          createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days"),
                           """
 Optimization Summary
 Keyword bids updated today: %s
@@ -176,9 +177,9 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     installsSevenDays = summary[SEVEN_DAYS]["installs"]
     spendSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["spend"])
 
-    cpiFourYears = "N/A" if summary[FOUR_YEARS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[FOUR_YEARS]["spend"]) / summary[FOUR_YEARS]["installs"]))
-    installsFourYears = summary[FOUR_YEARS]["installs"]
-    spendFourYears = "{:>9,.2f}".format(summary[FOUR_YEARS]["spend"])
+    cpiFourYears = "N/A" if summary[THIRTY_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["installs"]))
+    installsFourYears = summary[THIRTY_DAYS]["installs"]
+    spendFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["spend"])
 
     # gather branch metrics for post install summary
     cppOneDay = "N/A" if summary[ONE_DAY]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["purchases"]))
@@ -193,11 +194,11 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     purchaseSevenDays = summary[SEVEN_DAYS]["purchases"]
     revenueSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["revenue"])
 
-    cppFourYears = "N/A" if summary[FOUR_YEARS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[FOUR_YEARS]["spend"]) / summary[FOUR_YEARS]["purchases"]))
-    revenueCostFourYears = "N/A" if summary[FOUR_YEARS]["revenue"] < 1 else (
-        "{: 6,.2f}".format((0.0 + summary[FOUR_YEARS]["revenue"]) / summary[FOUR_YEARS]["spend"]))
-    purchaseFourYears = summary[FOUR_YEARS]["purchases"]
-    revenueFourYears = "{:>9,.2f}".format(summary[FOUR_YEARS]["revenue"])
+    cppFourYears = "N/A" if summary[THIRTY_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["purchases"]))
+    revenueCostFourYears = "N/A" if summary[THIRTY_DAYS]["revenue"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["revenue"]) / summary[THIRTY_DAYS]["spend"]))
+    purchaseFourYears = summary[THIRTY_DAYS]["purchases"]
+    revenueFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["revenue"])
 
     htmlBody = ""
 
@@ -262,7 +263,7 @@ def sendEmailReport(client, dataForVariousTimes):
 
     summary = {ONE_DAY: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
                SEVEN_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
-               FOUR_YEARS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0}
+               THIRTY_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0}
                }
 
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
@@ -300,7 +301,7 @@ def process():
     for client in CLIENTS:
         dataForVariousTimes = {}
 
-        for daysToGoBack in (ONE_DAY, SEVEN_DAYS, FOUR_YEARS):
+        for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
             campaignData = getCampaignData(client.orgId,
                                            client.pemPathname,
                                            client.keyPathname,
