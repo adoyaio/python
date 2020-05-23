@@ -22,7 +22,7 @@ from retry import retry
 
 ONE_DAY = 1
 SEVEN_DAYS = 7
-THIRTY_DAYS = 30
+THIRTY_DAYS = 30  # JF with branch integration using this rather than 4
 FOUR_YEARS = 365 * 4  # Ignoring leap years.
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
@@ -39,7 +39,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
     if env != "prod":
         sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        #dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
     else:
         sendG = True
@@ -280,9 +281,11 @@ def sendEmailReport(client, dataForVariousTimes):
 
         # Add branch events
         end_date_delta = datetime.timedelta(days=1)
-        start_date_delta = datetime.timedelta(1 + someTime)
+        start_date_delta = datetime.timedelta(days=someTime)
         start_date = today - start_date_delta
         end_date = today - end_date_delta
+        print("branch end_date:::" + str(end_date))
+        print("branch start_date:::" + str(start_date))
         summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
         summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
 
@@ -331,6 +334,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io","scott.kaplan@adoya.io"])
+    #initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 
