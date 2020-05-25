@@ -21,8 +21,8 @@ def lambda_handler(event, context):
     # invoke_response_branch = runAppleIntegration.lambda_handler(event, context)
     # print(json.dumps(invoke_response_branch))
 
-    # invoke_response_branch = runAppleIntegrationKeyword.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_branch))
+    invoke_response_branch = runAppleIntegrationKeyword.lambda_handler(event, context)
+    print(json.dumps(invoke_response_branch))
 
     invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
     print(json.dumps(invoke_response_branch))

@@ -18,6 +18,8 @@ from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import DYNAMODB_CONTEXT
 
 # Inhibit Inexact Exceptions
+from botocore.exceptions import ClientError
+
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 # Inhibit Rounded Exceptions
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
@@ -51,7 +53,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-@debug
+#@debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
@@ -79,7 +81,7 @@ def getKeywordReportFromAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     """The data from Apple looks like this (Pythonically):
 
@@ -127,7 +129,7 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
                                          }],
                             "fields": ["localSpend",
                                        "taps",
-                                       "impressions",  # TODO is this right?
+                                       "impressions",
                                        "installs",
                                        "avgCPA",
                                        "avgCPT",
@@ -145,7 +147,6 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     url = APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
     print(url)
 
-
     headers = {"Authorization": "orgId=%s" % client.orgId}
 
     dprint("URL is '%s'." % url)
@@ -157,10 +158,12 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
                                                json=payload,
                                                headers=headers)
 
-    logger.debug("Response is " + str(response))
+    print("runAppleIntegrationKeyword:::Response is " + str(response))
 
-    return json.loads(response.text, parse_float=decimal.Decimal)
-
+    if response.status_code == 200:
+        return json.loads(response.text, parse_float=decimal.Decimal)
+    else:
+        return 'false'
 
 def calc_date_range_list(start_date, end_date, maximum_dates=90):
     '''
@@ -194,8 +197,8 @@ def calc_date_range_list(start_date, end_date, maximum_dates=90):
 
 
 # ------------------------------------------------------------------------------
-@debug
-def loadAppleKeywordToDynamo(data, client, start_date, end_date, keyword_table):
+#@debug
+def loadAppleKeywordToDynamo(data, keyword_table):
     """
     This data will take the raw data from the Apple API call and it will load the data to a DynamoDB.
 
@@ -205,93 +208,113 @@ def loadAppleKeywordToDynamo(data, client, start_date, end_date, keyword_table):
     """
 
     rows = data["data"]["reportingDataResponse"]["row"]
-
     if len(rows) == 0:
+        logger.debug("loadAppleKeywordToDynamo::NO ROWS")
         return False  # EARLY RETURN
 
-    # In email of 28-Feb-2019, Scott asked use to use bidParameters, not adGroupBidParameters. --DS
-    # ABP = client.adgroupBidParameters;
-    ABP = client.bidParameters;
+    for row in rows:
+            logger.debug("loadAppleKeywordToDynamo:::row:::" + str(row))
+            if "total" in row.keys():
+                field_key = "total"
+            else:
+                field_key = "granularity"
 
-    dprint("Using keyword bid parameters %s." % ABP)
+            logger.debug("loadAppleKeywordToDynamo:::using field key:::" + field_key)
+            for granularity in row["granularity"]:
+                logger.debug("granularity:" + str(granularity))
 
-    # If there aren't any daily values, then all the fields will be totaled. Otherwise, the daily values will be in the
-    # "granularity" fields.
-    if "total" in rows[0].keys():
-        field_key = "total"
-    else:
-        field_key = "granularity"
+                # always pull date from granularity
+                date = str(granularity['date'])
 
-    print("using field key: " + field_key)
+                # always pull from meta
+                keyword = str(row['metadata']['keyword'])
+                keyword_id = str(row['metadata']['keywordId'])
+                keywordStatus = row['metadata']['keywordStatus']
+                keywordDisplayStatus = row['metadata']['keywordDisplayStatus']
+                matchType = row['metadata']['matchType']
+                adgroup_name = row['metadata']['adGroupName']
+                adgroup_id = str(row['metadata']['adGroupId'])
+                adgroup_deleted = str(row['metadata']['adGroupDeleted'])
+                bid = decimal.Decimal(str(row['metadata']['bidAmount']['amount']))
+                deleted = row['metadata']['deleted']
+                modification_time = row['metadata']['modificationTime'].split("T")[0]
 
-    # compile data from json library and put into dataframe
-    for i in range(len(rows[0]['granularity'])):
-        # Get the daily values
-        # TODO if there is only 1 date, then the totals will not be in a list. Instead, they will simply be in a dictionary
-        if type(rows[0][field_key]) == dict:
-            # put the data into the table
-            keyword_table.put_item(
-                Item={
-                    # TODO The original date is in format "2019-11-13T00:00:00.000", but the split("T") command is hacky
-                    # 'creation_date': rows[0]['metadata']['startTime'].split("T")[0],
-                    'date': str(rows[0]['granularity'][i]["date"]),
-                    # TODO all of these client fields should be read from the configuration script
-                    'keyword': str(rows[0]['metadata']['keyword']),
-                    'keyword_id': str(rows[0]['metadata']['keywordId']),
-                    'keywordStatus': rows[0]['metadata']['keywordStatus'],
-                    'matchType': rows[0]['metadata']['matchType'],
-                    'adgroup_name': rows[0]['metadata']['adGroupName'],
-                    'adgroup_id': str(rows[0]['metadata']['adGroupId']),
-                    'adgroup_deleted': str(rows[0]['metadata']['adGroupDeleted']),
-                    'bid': decimal.Decimal(str(rows[0]['metadata']['bidAmount']['amount'])),
-                    'deleted': rows[0]['metadata']['deleted'],
-                    'modification_time': rows[0]['metadata']['modificationTime'].split("T")[0],
-                    'impressions': rows[0][field_key]['impressions'],
-                    'taps': rows[0][field_key]['taps'],
-                    'installs': rows[0][field_key]['installs'],
-                    'ttr': rows[0][field_key]['ttr'],
-                    'new_downloads': rows[0][field_key]['newDownloads'],
-                    're_downloads': rows[0][field_key]['redownloads'],
-                    'lat_on_installs': rows[0][field_key]['latOnInstalls'],
-                    'lat_off_installs': rows[0][field_key]['latOffInstalls'],
-                    'avg_cpa': decimal.Decimal(str(rows[0][field_key]['avgCPA']['amount'])),
-                    'conversion_rate': decimal.Decimal(str(rows[0][field_key]['conversionRate'])),
-                    'local_spend': decimal.Decimal(str(rows[0][field_key]['localSpend']['amount'])),
-                    'avg_cpt': decimal.Decimal(str(rows[0][field_key]['avgCPT']['amount']))
-                }
-            )
-        else:
-            # put the data into the table
-            keyword_table.put_item(
-                Item={
-                    # 'creation_date': rows[0]['metadata']['startTime'].split("T")[0],
-                    'date': str(rows[0]['granularity'][i]["date"]),
-                    # TODO all of these client fields should be read from the configuration script
-                    'keyword': str(rows[0]['metadata']['keyword']),
-                    'keyword_id': str(rows[0]['metadata']['keywordId']),
-                    'keywordStatus': rows[0]['metadata']['keywordStatus'],
-                    'matchType': rows[0]['metadata']['matchType'],
-                    'adgroup_name': rows[0]['metadata']['adGroupName'],
-                    'adgroup_id': str(rows[0]['metadata']['adGroupId']),
-                    'adgroup_deleted': str(rows[0]['metadata']['adGroupDeleted']),
-                    'bid': decimal.Decimal(str(rows[0]['metadata']['bidAmount']['amount'])),
-                    'deleted': rows[0]['metadata']['deleted'],
-                    'modification_time': rows[0]['metadata']['modificationTime'].split("T")[0],
-                    'impressions': rows[0][field_key][i]['impressions'],
-                    'taps': rows[0][field_key][i]['taps'],
-                    'installs': rows[0][field_key][i]['installs'],
-                    'ttr': rows[0][field_key][i]['ttr'],
-                    'new_downloads': rows[0][field_key][i]['newDownloads'],
-                    're_downloads': rows[0][field_key][i]['redownloads'],
-                    'lat_on_installs': rows[0][field_key][i]['latOnInstalls'],
-                    'lat_off_installs': rows[0][field_key][i]['latOffInstalls'],
-                    'avg_cpa': decimal.Decimal(str(rows[0][field_key][i]['avgCPA']['amount'])),
-                    'conversion_rate': decimal.Decimal(str(rows[0][field_key][i]['conversionRate'])),
-                    'local_spend': decimal.Decimal(str(rows[0][field_key][i]['localSpend']['amount'])),
-                    'avg_cpt': decimal.Decimal(str(rows[0][field_key][i]['avgCPT']['amount']))
+                if field_key == "total":
+                    impressions = row[field_key]['impressions']
+                    taps = row[field_key]['taps']
+                    installs = row[field_key]['installs']
+                    ttr = row[field_key]['ttr']
+                    new_downloads = row[field_key]['newDownloads']
+                    re_downloads = row[field_key]['redownloads']
+                    lat_on_installs= row[field_key]['latOnInstalls']
+                    lat_off_installs = row[field_key]['latOffInstalls']
+                    avg_cpa = decimal.Decimal(str(row[field_key]['avgCPA']['amount']))
+                    conversion_rate = decimal.Decimal(str(row[field_key]['conversionRate']))
+                    local_spend = decimal.Decimal(str(row[field_key]['localSpend']['amount']))
+                    avg_cpt = decimal.Decimal(str(row[field_key]['avgCPT']['amount']))
 
-                }
-            )
+                    # enable for local debugging
+                    # dprint("date=%s" % date)
+                    # dprint("impressions=%s" % impressions)
+                    # dprint("taps=%s" % taps)
+                    # dprint("installs=%s" % installs)
+                    # dprint("ttr=%s" % ttr)
+                    # dprint("new_downloads=%s" % new_downloads)
+                    # dprint("re_downloads=%s" % re_downloads)
+                    # dprint("avg_cpt=%s" % avg_cpt)
+                    # print("avg_cpt" + str(avg_cpt))
+                    # print("local_spend" + str(local_spend))
+                    # print("conversion_rate" + str(conversion_rate))
+                    # print("avg_cpa" + str(avg_cpa))
+
+                else:
+                    impressions = granularity['impressions']
+                    taps = granularity['taps']
+                    installs = granularity['installs']
+                    ttr = granularity['ttr']
+                    new_downloads = granularity['newDownloads']
+                    re_downloads = granularity['redownloads']
+                    lat_on_installs = granularity['latOnInstalls']
+                    lat_off_installs = granularity['latOffInstalls']
+                    avg_cpa = decimal.Decimal(str(granularity['avgCPA']['amount']))
+                    conversion_rate = decimal.Decimal(str(granularity['conversionRate']))
+                    local_spend = decimal.Decimal(str(granularity['localSpend']['amount']))
+                    avg_cpt = decimal.Decimal(str(granularity['avgCPT']['amount']))
+
+                #now put the item into db
+                try:
+                    response = keyword_table.put_item(
+                        Item={
+                            'date': date,
+                            'keyword': keyword,
+                            'keyword_id': keyword_id,
+                            'keywordStatus': keywordStatus,
+                            'keywordDisplayStatus': keywordDisplayStatus,
+                            'matchType': matchType,
+                            'adgroup_name': adgroup_name,
+                            'adgroup_id' : adgroup_id,
+                            'adgroup_deleted': adgroup_deleted,
+                            'bid': bid,
+                            'deleted': deleted,
+                            'modification_time': modification_time,
+                            'impressions': impressions,
+                            'taps': taps,
+                            'installs': installs,
+                            'ttr': ttr,
+                            'new_downloads': new_downloads,
+                            're_downloads': re_downloads,
+                            'lat_on_installs': lat_on_installs,
+                            'lat_off_installs': lat_off_installs,
+                            'avg_cpa': avg_cpa,
+                            'conversion_rate': conversion_rate,
+                            'local_spend': local_spend,
+                            'avg_cpt': avg_cpt
+                        }
+                    )
+                except ClientError as e:
+                    logger.info("runAppleIntegrationKeyword:process:::PutItem failed due to" + e.response['Error']['Message'])
+                else:
+                    logger.debug("runAppleIntegrationKeyword:process:::PutItem succeeded:")
 
     return True
 
@@ -299,16 +322,12 @@ def loadAppleKeywordToDynamo(data, client, start_date, end_date, keyword_table):
 def get_max_date(item_list):
     '''
     This function takes a list of items returned from a dynamoDB table, and it returns the max_date from the list.
-
     Example:
-
     [
       {'date': '2019-03-04', 'lat_on_installs': Decimal('0')},
       {'date': '2019-03-05', 'lat_on_installs': Decimal('0')}
     ]
-
     Should return '2019-03-05'
-
     '''
     # Initialize a max date
     max_date = dt.strptime("2000-01-01", "%Y-%m-%d").date()
@@ -334,78 +353,59 @@ def export_dict_to_csv(raw_dict, filename):
 # @debug
 def process():
     # This first for loop is to load all the keyword data
-    # TODO We want to go back a year, but Apple is only allowing 90 days
-    keyword_loading_lookback = 365
+    keyword_loading_lookback = 14
     keyword_table = dynamodb.Table('apple_keyword')
 
-    # TODO To output the keyword_table use the following command. For QC only.
-    #export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
+    # To output the keyword_table use the following command. For QC only.
+    # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
     # input()
 
     for client in CLIENTS:
         print("Loading Keyword Data for: " + str(client.clientName))
         print(client.orgId)
-        print(client.appName)
-        print(client.appID)
-        print(client.campaignName)
 
         campaign_keys = client.keywordAdderIds["campaignId"].keys()
 
         for campaign_key in campaign_keys:
-
-            print("TEST campaign_key in " + str(campaign_key))
+            print("campaign_key in " + str(campaign_key))
 
             for campaign_id in [client.keywordAdderIds["campaignId"][campaign_key]]:  # iterate all campaigns
-                # for campaign_id in [client.keywordAdderIds["campaignId"]["exact"]]:  # TODO rm unused block?
-
-                print("TEST campaign_id in " + str(campaign_id))
-
+                logger.debug("campaign_id in " + str(campaign_id))
                 date_results = keyword_table.scan(FilterExpression=Key('campaign_id').eq(str(campaign_id)))
-
-                print(len(date_results["Items"]))
+                logger.debug("date results:::" + str(len(date_results["Items"])))
+                logger.debug("date results:::" + str(date_results["Count"]))
 
                 if len(date_results["Items"]) == 0:
                     start_date = datetime.date.today() - datetime.timedelta(days=keyword_loading_lookback)
                     end_date = datetime.date.today()
                 else:
-
                     # Get the start date from the maximum date in the table
                     start_date = get_max_date(date_results["Items"])
                     end_date = datetime.date.today()
 
-                    print(start_date)
-                    print(end_date)
+                print("START_DATE::: " + str(start_date))
+                print("END_DATE::: " + str(end_date))
 
-                    # if the start date matches 2000-01-01, then none of the values in the able were later than that date
-                    # TODO this might be a bad implementation
-                    if start_date == dt.strptime("2000-01-01", "%Y-%m-%d").date():
-                        print("There was an error with getting the maximum date")
+                # if the start date matches 2000-01-01, then none of the values in the able were later than that date
+                # TODO this might be a bad implementation
+                if start_date == dt.strptime("2000-01-01", "%Y-%m-%d").date():
+                    print("There was an error with getting the maximum date")
+                    break
 
-                        break
+                # if the start_date and the end_date are equal, then the table is up to date
+                elif start_date == end_date:
+                    print("The apple_keyword table are up to date for {}".format(str(campaign_id)))
+                    break
 
-                    # if the start_date and the end_date are equal, then the table is up to date
-                    elif start_date == end_date:
-                        print("The apple_keyword table are up to date for {}".format(str(campaign_id)))
-
-                        break
-
-                date_ranges = calc_date_range_list(start_date, end_date, maximum_dates=90)
-
-                # each of the indexes in the date_ranges list is a tuple with the (start_date, end_date) for each request
-                for date_range in date_ranges:
-                    # Get the data from Apple
-
-                    #data = getKeywordReportFromApple(client, date_range[0], date_range[1])
-                    data = getKeywordReportFromApple(client, campaign_id, date_range[0], date_range[1])
-                    # load the data into Dynamo
-                    if data is not None:
-                        loaded = loadAppleKeywordToDynamo(data, client, date_range[0], date_range[1], keyword_table)
-                    else:
-                        print("There was no data returned.")
-
+                data = getKeywordReportFromApple(client, campaign_id, start_date, end_date)
+                # load the data into Dynamo
+                if (data is not None) and (data != 'false'):
+                    loaded = loadAppleKeywordToDynamo(data, keyword_table)
+                else:
+                    print("There was no data returned.")
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def terminate():
     pass
 
@@ -413,11 +413,14 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
+# if __name__ == "__main__":
+#     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+#     process()
+#     terminate()
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
-
 
 def lambda_handler(event, context):
     initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])

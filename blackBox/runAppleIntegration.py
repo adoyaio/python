@@ -66,7 +66,7 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 
-@debug
+#@debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
@@ -358,7 +358,7 @@ def process():
 
   #This first for loop is to load all the adgroup date
   #TODO We want to go back a year, but Apple is only allowing 90 days
-  adgroup_loading_lookback = 365
+  adgroup_loading_lookback = 14
   adgroup_table = dynamodb.Table('apple_adgroup')
 
 
@@ -427,7 +427,7 @@ def process():
 
 
 # ------------------------------------------------------------------------------
-@debug
+#@debug
 def terminate():
   pass
 

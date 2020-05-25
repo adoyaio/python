@@ -22,6 +22,7 @@ from retry import retry
 
 ONE_DAY = 1
 SEVEN_DAYS = 7
+THIRTY_DAYS = 30  # JF with branch integration using this rather than 4
 FOUR_YEARS = 365 * 4  # Ignoring leap years.
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
@@ -87,7 +88,7 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
 
     dprint("Headers: %s\n" % headers)
     dprint("Payload: %s\n" % payload)
-    # dprint("Apple URL: %s\n" % APPLE_KEYWORDS_REPORT_URL)
+    dprint("Apple URL: %s\n" % APPLE_KEYWORDS_REPORT_URL)
 
     response = getCampaignDataHelper(APPLE_KEYWORDS_REPORT_URL,
                                      cert=(pemPathname, keyPathname),
@@ -95,7 +96,7 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
                                      headers=headers)
 
     dprint("Response: '%s'" % response)
-    if(response.text):
+    if response.status_code == 200:
         return json.loads(response.text)
     else:
         return 'false'
@@ -152,7 +153,7 @@ def createEmailBodyForACampaign(client, summary, now):
                           """\t""".join(["Timeframe\t", "   Cost", "\tInstalls", "Cost per Install"]),
                           createOneRowOfTable(summary[ONE_DAY], "Yesterday\t"),
                           createOneRowOfTable(summary[SEVEN_DAYS], "Last Seven Days"),
-                          createOneRowOfTable(summary[FOUR_YEARS], "All-Time\t"),
+                          createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days"),
                           """
 Optimization Summary
 Keyword bids updated today: %s
@@ -167,40 +168,107 @@ Keywords submitted for upload today: %s""" % \
 
 def createHtmlEmailBodyForACampaign(client, summary, now):
 
+    #handle currency
+    if client.currency == 'USD':
+        currencySymbol = '$'
+    elif client.currency == 'EUR':
+        currencySymbol = '€'
+
     # gather values for the html report and replace placeholder values
     cpiOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
-    installsOneDay = summary[ONE_DAY]["installs"]
+    installsOneDay = "{: 6,.0f}".format(summary[ONE_DAY]["installs"])
     spendOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
 
     cpiSevenDays = "N/A" if summary[SEVEN_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["installs"]))
-    installsSevenDays = summary[SEVEN_DAYS]["installs"]
+    installsSevenDays = "{: 6,.0f}".format(summary[SEVEN_DAYS]["installs"])
     spendSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["spend"])
 
-    cpiFourYears = "N/A" if summary[FOUR_YEARS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[FOUR_YEARS]["spend"]) / summary[FOUR_YEARS]["installs"]))
-    installsFourYears = summary[FOUR_YEARS]["installs"]
-    spendFourYears = "{:>9,.2f}".format(summary[FOUR_YEARS]["spend"])
+    cpiFourYears = "N/A" if summary[THIRTY_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["installs"]))
+    installsFourYears = "{: 6,.0f}".format(summary[THIRTY_DAYS]["installs"])
+
+    spendFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["spend"])
+
+    # gather branch metrics for post install summary
+    cppOneDay = "N/A" if summary[ONE_DAY]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["purchases"]))
+    revenueCostOneDay = "N/A" if summary[ONE_DAY]["revenue"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["revenue"]) / summary[ONE_DAY]["spend"]))
+    purchaseOneDay = "{: 6,.0f}".format(summary[ONE_DAY]["purchases"])
+    revenueOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["revenue"])
+
+    cppSevenDays = "N/A" if summary[SEVEN_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["purchases"]))
+    revenueCostSevenDays = "N/A" if summary[SEVEN_DAYS]["revenue"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["revenue"]) / summary[SEVEN_DAYS]["spend"]))
+    purchaseSevenDays = "{: 6,.0f}".format(summary[SEVEN_DAYS]["purchases"])
+    revenueSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["revenue"])
+
+    cppFourYears = "N/A" if summary[THIRTY_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["purchases"]))
+    revenueCostFourYears = "N/A" if summary[THIRTY_DAYS]["revenue"] < 1 else (
+        "{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["revenue"]) / summary[THIRTY_DAYS]["spend"]))
+    purchaseFourYears = "{: 6,.0f}".format(summary[THIRTY_DAYS]["purchases"])
+    revenueFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["revenue"])
 
     htmlBody = ""
 
     # read email template and replace values
     f = open("./templates/email_template.html", "r")
     for x in f:
-        x = x.replace("@@YESTERDAY__COST@@", str(spendOneDay))
+        # install summary
+        x = x.replace("@@YESTERDAY__COST@@", str(currencySymbol+spendOneDay))
         x = x.replace("@@YESTERDAY__INSTALLS@@", str(installsOneDay))
-        x = x.replace("@@YESTERDAY__CPI@@", str(cpiOneDay))
+        x = x.replace("@@YESTERDAY__CPI@@", str(currencySymbol+cpiOneDay))
 
-        x = x.replace("@@SEVEN__DAYS__COST@@", str(spendSevenDays))
+        x = x.replace("@@SEVEN__DAYS__COST@@", str(currencySymbol+spendSevenDays))
         x = x.replace("@@SEVEN__DAYS__INSTALLS@@", str(installsSevenDays))
-        x = x.replace("@@SEVEN__DAYS__CPI@@", str(cpiSevenDays))
+        x = x.replace("@@SEVEN__DAYS__CPI@@", str(currencySymbol+cpiSevenDays))
 
-        x = x.replace("@@ALL__TIME__COST@@", str(spendFourYears))
+        x = x.replace("@@ALL__TIME__COST@@", str(currencySymbol+spendFourYears))
         x = x.replace("@@ALL__TIME__INSTALLS@@", str(installsFourYears))
-        x = x.replace("@@ALL__TIME__CPI@@", str(cpiFourYears))
+        x = x.replace("@@ALL__TIME__CPI@@", str(currencySymbol+cpiFourYears))
 
-        x = x.replace("@@KEYWORD__BIDS__TODAY@@", str(client.readUpdatedBidsCount(dynamodb)))
-        x = x.replace("@@ADGROUP__BIDS__TODAY@@", str(client.readUpdatedAdgroupBidsCount(dynamodb)))
-        x = x.replace("@@KEYWORDS__TODAY@@", str(len(client.readPositiveKeywordsAdded(dynamodb))))
+        # post-install summary
+        x = x.replace("@@YESTERDAY__PURCHASE@@", str(purchaseOneDay))
+        x = x.replace("@@YESTERDAY__REVENUE@@", str(currencySymbol+revenueOneDay))
 
+        if(cppOneDay == "N/A"):
+            x = x.replace("@@YESTERDAY__CPP@@", str(cppOneDay))
+        else:
+            x = x.replace("@@YESTERDAY__CPP@@", str(currencySymbol + cppOneDay))
+
+        if(revenueCostOneDay == 'N/A'):
+            x = x.replace("@@YESTERDAY__REVENUE__COST@@", str(revenueCostOneDay))
+        else:
+            x = x.replace("@@YESTERDAY__REVENUE__COST@@", str(currencySymbol + revenueCostOneDay))
+
+        x = x.replace("@@SEVEN__DAYS__PURCHASE@@", str(purchaseSevenDays))
+        x = x.replace("@@SEVEN__DAYS__REVENUE@@", str(currencySymbol+revenueSevenDays))
+
+        if(cppSevenDays == "N/A"):
+            x = x.replace("@@SEVEN__DAYS__CPP@@", str(cppSevenDays))
+        else:
+            x = x.replace("@@SEVEN__DAYS__CPP@@", str(currencySymbol + cppSevenDays))
+
+        if(revenueCostSevenDays == "N/A"):
+            x = x.replace("@@SEVEN__DAYS__REVENUE__COST@@", str(revenueCostSevenDays))
+        else:
+            x = x.replace("@@SEVEN__DAYS__REVENUE__COST@@", str(currencySymbol+revenueCostSevenDays))
+
+        x = x.replace("@@ALL__TIME__PURCHASE@@", str(purchaseFourYears))
+        x = x.replace("@@ALL__TIME__REVENUE@@", str(currencySymbol+revenueFourYears))
+
+        if(cppFourYears == "N/A"):
+            x = x.replace("@@ALL__TIME__CPP@@", str(cppFourYears))
+        else:
+            x = x.replace("@@ALL__TIME__CPP@@", str(currencySymbol + cppFourYears))
+
+        if (revenueCostFourYears == "N/A"):
+            x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(revenueCostFourYears))
+        else:
+            x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(currencySymbol+revenueCostFourYears))
+
+        # JF release-2 unused
+        # x = x.replace("@@KEYWORD__BIDS__TODAY@@", str(client.readUpdatedBidsCount(dynamodb)))
+        # x = x.replace("@@ADGROUP__BIDS__TODAY@@", str(client.readUpdatedAdgroupBidsCount(dynamodb)))
+        # x = x.replace("@@KEYWORDS__TODAY@@", str(len(client.readPositiveKeywordsAdded(dynamodb))))
         htmlBody = htmlBody + x
 
     return htmlBody
@@ -222,15 +290,18 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
 # ------------------------------------------------------------------------------
 #@debug
 def sendEmailReport(client, dataForVariousTimes):
-    summary = {ONE_DAY: {"installs": 0, "spend": 0.0},
-               SEVEN_DAYS: {"installs": 0, "spend": 0.0},
-               FOUR_YEARS: {"installs": 0, "spend": 0.0},
+    today = datetime.date.today()
+
+
+    summary = {ONE_DAY: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
+               SEVEN_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
+               THIRTY_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0}
                }
 
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
-        summary[someTime] = {"installs": 0,
-                             "spend": 0.0}
+        summary[someTime] = {"installs": 0, "spend": 0.0}
 
+        # Iterate each campaign and get totals
         for campaign in campaignsForThatTime:
             totals = campaign["total"]
             installs, spend = totals["installs"], float(totals["localSpend"]["amount"])
@@ -238,6 +309,17 @@ def sendEmailReport(client, dataForVariousTimes):
                    (client.orgId, client.clientName, campaign["metadata"]["campaignId"], someTime, installs, spend))
             summary[someTime]["installs"] += totals["installs"]
             summary[someTime]["spend"] += float(totals["localSpend"]["amount"])
+
+        # Add branch events
+        end_date_delta = datetime.timedelta(days=1)
+        start_date_delta = datetime.timedelta(days=someTime)
+        start_date = today - start_date_delta
+        end_date = today - end_date_delta
+        print("branch end_date:::" + str(end_date))
+        print("branch start_date:::" + str(start_date))
+        summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
+        summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
+
 
     now = time.time()
 
@@ -253,7 +335,7 @@ def process():
     for client in CLIENTS:
         dataForVariousTimes = {}
 
-        for daysToGoBack in (ONE_DAY, SEVEN_DAYS, FOUR_YEARS):
+        for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
             campaignData = getCampaignData(client.orgId,
                                            client.pemPathname,
                                            client.keyPathname,
@@ -262,14 +344,14 @@ def process():
             if(campaignData != 'false'):
                 dataArray = campaignData["data"]["reportingDataResponse"]["row"]
                 print('runClientDailyReport:::dataArray' + str(dataArray))
-
                 dprint("For %d (%s), there are %d campaigns in the campaign data." % \
                     (client.orgId, client.clientName, len(dataArray)))
 
                 dataForVariousTimes[daysToGoBack] = dataArray
-
                 print('runClientDailyReport:::dataForVariousTimes' + str(dataForVariousTimes))
-                sendEmailReport(client, dataForVariousTimes)
+
+
+        sendEmailReport(client, dataForVariousTimes)
 
 
 # ------------------------------------------------------------------------------
@@ -282,6 +364,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
+    #initialize('lcl', 'http://localhost:8000', ["james@adoya.io","scott.kaplan@adoya.io"])
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()

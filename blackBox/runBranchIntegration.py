@@ -179,13 +179,13 @@ def process():
                                 keyword = ""
 
                                 if aggregation != "revenue":
-                                    logger.info(branch_job + ":::handle unique_count")
+                                    logger.debug(branch_job + ":::handle unique_count")
                                     dash = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
                                     ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                                    ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                                    # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     count = str(result["result"]["unique_count"])
 
                                     # event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
@@ -213,18 +213,18 @@ def process():
                                                 'campaign_id': campaign_id,
                                                 'keyword': keyword,
                                                 'ad_set_id': ad_set_id,
-                                                'ad_set_name': ad_set_name,
+                                                # 'ad_set_name': ad_set_name,
                                                 'count': count
                                             }
                                         )
                                     except ClientError as e:
-                                        logger.info("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                                        logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
                                     else:
-                                        logger.info("runBranchIntegration:process:::PutItem succeeded:")
+                                        logger.debug("runBranchIntegration:process:::PutItem succeeded:")
 
                                 else:
                                     # TODO refactor revenue to be order angostic, currently revenue must run after count
-                                    logger.info(branch_job + ":::handle revenue aggregation")
+                                    logger.debug(branch_job + ":::handle revenue aggregation")
                                     dash = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
@@ -259,11 +259,11 @@ def process():
                                             }
                                         )
                                     except ClientError as e:
-                                        logger.info("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                                        logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
                                         # enable for local debugging
                                         #print(json.dumps(response, indent=4, cls=DecimalEncoder))
                                     else:
-                                        logger.info("runBranchIntegration:process:::PutItem succeeded:")
+                                        logger.debug("runBranchIntegration:process:::PutItem succeeded:")
                             else:
                                 logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
                 else:
