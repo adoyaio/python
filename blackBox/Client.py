@@ -656,66 +656,10 @@ class Client:
 
         os.remove(historyPathname)
 
-
-# ------------------------------------------------------------------------------
-# initialize Client model with json documents on the filesystem
-# CLIENTS = [Client(client["orgId"],
-#                   client["clientName"],
-#                   # [Address(emailAddress["name"],
-#                   #          emailAddress["emailName"],
-#                   #          emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
-#                   client["emailAddresses"],
-#                   client["keyFilename"],
-#                   client["pemFilename"],
-#                   client["bidParameters"],
-#                   client["adgroupBidParameters"],
-#                   client["branchBidParameters"],
-#                   client["campaignIds"],
-#                   client["keywordAdderIds"],
-#                   client["keywordAdderParameters"],
-#                   client["branchIntegrationParameters"],
-#                   client["currency"],
-#                   client["appName"],
-#                   client["appID"],
-#                   client["campaignName"]
-#                   )
-#            for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
-#            if client.get("disabled", False) == False]
-
-dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
-
-CLIENTS = [Client(client["orgDetails"]["orgId"],
-                  client["orgDetails"]["clientName"],
-                  client["orgDetails"]["emailAddresses"],
-                  client["orgDetails"]["keyFilename"],
-                  client["orgDetails"]["pemFilename"],
-                  client["orgDetails"]["bidParameters"],
-                  client["orgDetails"]["adgroupBidParameters"],
-                  client["orgDetails"]["branchBidParameters"],
-                  client["orgDetails"]["campaignIds"],
-                  client["orgDetails"]["keywordAdderIds"],
-                  client["orgDetails"]["keywordAdderParameters"],
-                  client["orgDetails"]["branchIntegrationParameters"],
-                  client["orgDetails"]["currency"],
-                  client["orgDetails"]["appName"],
-                  client["orgDetails"]["appID"],
-                  client["orgDetails"]["campaignName"]
-                  )
-
-           for client in (dynamodb.Table('clients').scan()["Items"])
-           if client.get("disabled", False) == False]
-
-for Client in CLIENTS:
-    for bidParam in Client.bidParameters:
-        Client.bidParameters[bidParam] = float(Client.bidParameters.get(bidParam))
-
-
-
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     Client.test()
-
-    for client in CLIENTS:
-        print("For client '%s', campaign ids are %s." % (client.clientName, client.campaignIds))
+    # for client in CLIENTS:
+    #     print("For client '%s', campaign ids are %s." % (client.clientName, client.campaignIds))

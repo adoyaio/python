@@ -1,6 +1,9 @@
 import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
+
+from Client import Client
+
 dashG = "-"
 
 def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
@@ -52,5 +55,40 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
         IndexName='adgroup_id-timestamp-index'
     )
-
     return response
+
+def getClients(dynamoResource):
+    CLIENTS = []
+    for client in (dynamoResource.Table('clients').scan()["Items"]):
+        CLIENTS.append(Client(client["orgDetails"]["orgId"],
+                              client["orgDetails"]["clientName"],
+                              client["orgDetails"]["emailAddresses"],
+                              client["orgDetails"]["keyFilename"],
+                              client["orgDetails"]["pemFilename"],
+                              client["orgDetails"]["bidParameters"],
+                              client["orgDetails"]["adgroupBidParameters"],
+                              client["orgDetails"]["branchBidParameters"],
+                              client["orgDetails"]["campaignIds"],
+                              client["orgDetails"]["keywordAdderIds"],
+                              client["orgDetails"]["keywordAdderParameters"],
+                              client["orgDetails"]["branchIntegrationParameters"],
+                              client["orgDetails"]["currency"],
+                              client["orgDetails"]["appName"],
+                              client["orgDetails"]["appID"],
+                              client["orgDetails"]["campaignName"]
+                              ))
+
+    for client in CLIENTS:
+        for bidParam in client.bidParameters:
+            client.bidParameters[bidParam] = float(client.bidParameters.get(bidParam))
+
+        for bidParam in client.adgroupBidParameters:
+            client.adgroupBidParameters[bidParam] = float(client.adgroupBidParameters.get(bidParam))
+
+        for bidParam in client.branchBidParameters:
+            try:
+                client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
+            except ValueError as error:
+                client.branchBidParameters[bidParam] = client.branchBidParameters.get(bidParam)
+
+    return CLIENTS

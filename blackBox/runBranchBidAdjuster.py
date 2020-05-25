@@ -17,7 +17,6 @@ from utils import DynamoUtils, EmailUtils
 
 from botocore.exceptions import ClientError
 
-from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
@@ -57,6 +56,7 @@ class DecimalEncoder(json.JSONEncoder):
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
@@ -69,6 +69,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
@@ -215,7 +216,7 @@ def write_request_file(put_request_string, request_json, request_output_filename
 def process():
     summaryReportInfo = {}
 
-    for client in CLIENTS:
+    for client in clientsG:
 
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
 

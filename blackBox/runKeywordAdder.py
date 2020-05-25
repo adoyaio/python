@@ -9,9 +9,8 @@ import pprint
 import re
 import requests
 import time
-from utils import EmailUtils
+from utils import EmailUtils, DynamoUtils
 import boto3
-from Client import CLIENTS
 from configuration import EMAIL_FROM, \
                           APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE, \
                           APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
@@ -44,6 +43,7 @@ sendG = False # Set to True to enable sending data to Apple, else a test run.
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
@@ -56,6 +56,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runKeywordAdder:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
@@ -606,7 +607,7 @@ def convertAnalysisIntoApplePayloadAndSend(client,
 def process():
   summaryReportInfo = { }
 
-  for client in CLIENTS:
+  for client in clientsG:
     summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = CSRI = { }
 
     kAI = client.keywordAdderIds

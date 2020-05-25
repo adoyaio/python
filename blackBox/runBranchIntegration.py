@@ -15,7 +15,6 @@ from botocore.exceptions import ClientError
 from dateutil.parser import parse
 from retry import retry
 
-from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
@@ -25,6 +24,7 @@ from configuration import EMAIL_FROM, \
     data_sources, \
     aggregations
 from debug import debug, dprint
+from utils import DynamoUtils
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 dashG = "-"
@@ -59,6 +59,7 @@ class DecimalEncoder(json.JSONEncoder):
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
@@ -71,6 +72,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
@@ -133,7 +135,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
 @debug
 def process():
     # summaryReportInfo = {}
-    for client in CLIENTS:
+    for client in clientsG:
         # summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = { }
         branch_key = {}
         branch_secret = {}

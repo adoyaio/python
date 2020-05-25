@@ -9,10 +9,9 @@ import pprint
 import requests
 import time
 import boto3
-from utils import EmailUtils
+from utils import EmailUtils, DynamoUtils
 from boto3.dynamodb.conditions import Key, Attr
 
-from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
@@ -78,6 +77,7 @@ class DecimalEncoder(json.JSONEncoder):
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
@@ -92,6 +92,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
         # debug.disableDebug() TODO disable debug wrappers in production
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
     sendG, dynamoEndpoint, str(EMAIL_TO)))
 
@@ -431,7 +432,7 @@ def emailSummaryReport(data, sent):
 def process():
     summaryReportInfo = {}
 
-    for client in CLIENTS:
+    for client in clientsG:
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
 

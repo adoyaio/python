@@ -10,9 +10,8 @@ import requests
 import smtplib
 import sys
 import time
-from utils import EmailUtils
+from utils import EmailUtils, DynamoUtils
 import boto3
-from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORDS_REPORT_URL, \
     HTTP_REQUEST_TIMEOUT
@@ -32,6 +31,7 @@ sendG = False  # Set to True to enable sending email to clients, else a test run
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
@@ -46,6 +46,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # TODO reduce this in production
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
@@ -332,7 +333,7 @@ def sendEmailReport(client, dataForVariousTimes):
 # ------------------------------------------------------------------------------
 @debug
 def process():
-    for client in CLIENTS:
+    for client in clientsG:
         dataForVariousTimes = {}
 
         for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
