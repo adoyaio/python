@@ -27,6 +27,7 @@ from configuration import EMAIL_FROM, \
 from debug import debug, dprint
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
+dashG = "-"
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -164,7 +165,6 @@ def process():
                         results = data[aggregation]['results']
 
                         if len(results) == 0:
-                            #return False  # EARLY RETURN
                             logger.info("runBranchIntegration:process:::no results from " + branch_job)
 
                         for result in results:
@@ -180,7 +180,7 @@ def process():
 
                                 if aggregation != "revenue":
                                     logger.debug(branch_job + ":::handle unique_count")
-                                    dash = "-"
+                                    #dashG = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
@@ -188,13 +188,13 @@ def process():
                                     # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     count = str(result["result"]["unique_count"])
 
-                                    # event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
+                                    # event_key = campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
                                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
                                         keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
                                     else:
                                         keyword = "n/a"
-                                        event_key = campaign_id + dash + ad_set_id
+                                        event_key = campaign_id + dashG + ad_set_id
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)
@@ -225,7 +225,7 @@ def process():
                                 else:
                                     # TODO refactor revenue to be order angostic, currently revenue must run after count
                                     logger.debug(branch_job + ":::handle revenue aggregation")
-                                    dash = "-"
+                                    #dashG = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
@@ -235,9 +235,9 @@ def process():
 
                                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
                                         keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
                                     else:
-                                        event_key = campaign_id + dash + ad_set_id
+                                        event_key = campaign_id + dashG + ad_set_id
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)

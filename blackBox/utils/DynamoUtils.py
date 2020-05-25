@@ -1,16 +1,15 @@
 import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
+dashG = "-"
 
-def getBranchCommerceEvents(dynamoResource, ad_set_id, keyword, timestamp):
+def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
     table = dynamoResource.Table('branch_commerce_events')
-
-    # TODO add ad set id to key
+    # normalize search term to how its being stored in db
+    event_key = str(campaign_id) + dashG + str(ad_set_id) + dashG + keyword.replace(" ", dashG)
     response = table.query(
-        KeyConditionExpression=Key('keyword').eq(keyword) & Key('timestamp').eq(timestamp),
-        IndexName='keyword-timestamp-index'
+        KeyConditionExpression=Key('branch_commerce_event_key').eq(event_key) & Key('timestamp').eq(timestamp),
     )
-    # print('getBranchCommerceEvents' + response['Items']);
     return response
 
 def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end_date):

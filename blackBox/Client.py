@@ -104,7 +104,12 @@ class Client:
 
     @property
     def bidParameters(self):
-        return dict(self._bidParameters)
+        #return dict(self._bidParameters)
+        return self._bidParameters
+
+    @bidParameters.setter
+    def bidParameters(self, bidParameters):
+        self._bidParameters = bidParameters
 
     @property
     def adgroupBidParameters(self):
@@ -133,6 +138,7 @@ class Client:
     @property
     def currency(self):
         return self._currency
+
 
     def updatedBids(self, dynamoResource, newValue):
         print('Client.updatedBids: set value ' + str(newValue))
@@ -652,29 +658,58 @@ class Client:
 
 
 # ------------------------------------------------------------------------------
+# initialize Client model with json documents on the filesystem
+# CLIENTS = [Client(client["orgId"],
+#                   client["clientName"],
+#                   # [Address(emailAddress["name"],
+#                   #          emailAddress["emailName"],
+#                   #          emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
+#                   client["emailAddresses"],
+#                   client["keyFilename"],
+#                   client["pemFilename"],
+#                   client["bidParameters"],
+#                   client["adgroupBidParameters"],
+#                   client["branchBidParameters"],
+#                   client["campaignIds"],
+#                   client["keywordAdderIds"],
+#                   client["keywordAdderParameters"],
+#                   client["branchIntegrationParameters"],
+#                   client["currency"],
+#                   client["appName"],
+#                   client["appID"],
+#                   client["campaignName"]
+#                   )
+#            for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
+#            if client.get("disabled", False) == False]
 
-CLIENTS = [Client(client["orgId"],
-                  client["clientName"],
-                  # [Address(emailAddress["name"],
-                  #          emailAddress["emailName"],
-                  #          emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
-                  client["emailAddresses"],
-                  client["keyFilename"],
-                  client["pemFilename"],
-                  client["bidParameters"],
-                  client["adgroupBidParameters"],
-                  client["branchBidParameters"],
-                  client["campaignIds"],
-                  client["keywordAdderIds"],
-                  client["keywordAdderParameters"],
-                  client["branchIntegrationParameters"],
-                  client["currency"],
-                  client["appName"],
-                  client["appID"],
-                  client["campaignName"]
+dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+
+CLIENTS = [Client(client["orgDetails"]["orgId"],
+                  client["orgDetails"]["clientName"],
+                  client["orgDetails"]["emailAddresses"],
+                  client["orgDetails"]["keyFilename"],
+                  client["orgDetails"]["pemFilename"],
+                  client["orgDetails"]["bidParameters"],
+                  client["orgDetails"]["adgroupBidParameters"],
+                  client["orgDetails"]["branchBidParameters"],
+                  client["orgDetails"]["campaignIds"],
+                  client["orgDetails"]["keywordAdderIds"],
+                  client["orgDetails"]["keywordAdderParameters"],
+                  client["orgDetails"]["branchIntegrationParameters"],
+                  client["orgDetails"]["currency"],
+                  client["orgDetails"]["appName"],
+                  client["orgDetails"]["appID"],
+                  client["orgDetails"]["campaignName"]
                   )
-           for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
+
+           for client in (dynamodb.Table('clients').scan()["Items"])
            if client.get("disabled", False) == False]
+
+for Client in CLIENTS:
+    for bidParam in Client.bidParameters:
+        Client.bidParameters[bidParam] = float(Client.bidParameters.get(bidParam))
+
+
 
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------

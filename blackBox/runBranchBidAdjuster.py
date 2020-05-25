@@ -225,9 +225,6 @@ def process():
         keyword_status = "ACTIVE"
         adgroup_deleted = "False"
 
-        branch_key = {}
-        branch_secret = {}
-
         try:
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]
@@ -264,7 +261,7 @@ def process():
 
                             # get branch data
                             #print("check branch data for " + keyword + " " + date)
-                            branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, adgroup_id, keyword, date)
+                            branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, campaign_id, adgroup_id, keyword, date)
                             for j in branch_response[u'Items']:
                                 print("found branch result:::")
                                 print(json.dumps(j, cls=DecimalEncoder))
