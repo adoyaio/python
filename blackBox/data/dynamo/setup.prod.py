@@ -653,3 +653,22 @@ if 'apple_keyword' not in existing_tables:
         BillingMode="PAY_PER_REQUEST"
     )
     print("Table status:", table.table_name, table.table_status)
+
+if 'clients' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='clients',
+        KeySchema=[
+            {
+                'AttributeName': 'orgId',
+                'KeyType': 'HASH'  # Partition key
+            }
+        ],
+        AttributeDefinitions=[
+            {
+                'AttributeName': 'orgId',
+                'AttributeType': 'N'
+            }
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+print("Table status:", table.table_name, table.table_status)
