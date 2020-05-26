@@ -94,17 +94,24 @@ class Client:
     def emailAddresses(self):
         return list(self._emailAddresses)
 
+    # TODO JF rework this, don't use filesystem
     @property
     def keyPathname(self):
         return os.path.join(CERT_DIR, self._keyFilename)
 
+    # TODO JF rework this, don't use filesystem
     @property
     def pemPathname(self):
         return os.path.join(CERT_DIR, self._pemFilename)
 
     @property
     def bidParameters(self):
-        return dict(self._bidParameters)
+        #return dict(self._bidParameters)
+        return self._bidParameters
+
+    @bidParameters.setter
+    def bidParameters(self, bidParameters):
+        self._bidParameters = bidParameters
 
     @property
     def adgroupBidParameters(self):
@@ -134,6 +141,7 @@ class Client:
     def currency(self):
         return self._currency
 
+
     def updatedBids(self, dynamoResource, newValue):
         print('Client.updatedBids: set value ' + str(newValue))
         print('Client.updatedBids: is stale ' + str(self._updatedBidsIsStale))
@@ -150,7 +158,7 @@ class Client:
             "bids": str(newValue)
         }
 
-        # v1 code
+        # v1 add dynamo db call
         print("Client.updatedBids: adding bids entry:", item)
         table = dynamoResource.Table('bids')
         table.put_item(
@@ -173,7 +181,7 @@ class Client:
             "bids": str(newValue)
         }
 
-        # v1 code
+        # v1 add dynamo db call
         print("Client.updatedAdgroupBids: adding bids entry:", item)
         table = dynamoResource.Table('adgroup_bids')
         table.put_item(
@@ -307,8 +315,7 @@ class Client:
             }
         )
 
-    # V1 code to use dynamo
-    # ----------------------------------------------------------------------------
+    # gets all cpi history lines for a year
     def getHistory(self, dynamoResource):
         today = datetime.date.today()
         end_date_delta = datetime.timedelta(days=1)
@@ -650,37 +657,10 @@ class Client:
 
         os.remove(historyPathname)
 
-
-# ------------------------------------------------------------------------------
-
-CLIENTS = [Client(client["orgId"],
-                  client["clientName"],
-                  # [Address(emailAddress["name"],
-                  #          emailAddress["emailName"],
-                  #          emailAddress["domain"]) for emailAddress in client["emailAddresses"]],
-                  client["emailAddresses"],
-                  client["keyFilename"],
-                  client["pemFilename"],
-                  client["bidParameters"],
-                  client["adgroupBidParameters"],
-                  client["branchBidParameters"],
-                  client["campaignIds"],
-                  client["keywordAdderIds"],
-                  client["keywordAdderParameters"],
-                  client["branchIntegrationParameters"],
-                  client["currency"],
-                  client["appName"],
-                  client["appID"],
-                  client["campaignName"]
-                  )
-           for client in json.load(open(os.path.join(DATA_DIR, CLIENTS_DATA_FILENAME))) \
-           if client.get("disabled", False) == False]
-
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     Client.test()
-
-    for client in CLIENTS:
-        print("For client '%s', campaign ids are %s." % (client.clientName, client.campaignIds))
+    # for client in CLIENTS:
+    #     print("For client '%s', campaign ids are %s." % (client.clientName, client.campaignIds))

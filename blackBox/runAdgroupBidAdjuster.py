@@ -13,8 +13,7 @@ import time
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from utils import EmailUtils
-from Client import CLIENTS
+from utils import EmailUtils, DynamoUtils
 from configuration import EMAIL_FROM, \
                           APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
                           APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
@@ -52,21 +51,27 @@ class DecimalEncoder(json.JSONEncoder):
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
     EMAIL_TO = emailToInternal
 
-    if env != "prod":
+    if env == "lcl":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
         logger.setLevel(logging.INFO)
-    else:
+    elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
         # debug.disableDebug() TODO disable debug wrappers in production
+    else:
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runAdgroupBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
@@ -369,7 +374,7 @@ def process():
   summaryReportInfo = { }
   sent = False
 
-  for client in CLIENTS:
+  for client in clientsG:
     summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = { }
     campaignIds = client.campaignIds
 

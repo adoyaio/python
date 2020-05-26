@@ -2,15 +2,17 @@ import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
 
-def getBranchCommerceEvents(dynamoResource, ad_set_id, keyword, timestamp):
-    table = dynamoResource.Table('branch_commerce_events')
+from Client import Client
 
-    # TODO add ad set id to key
+dashG = "-"
+
+def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
+    table = dynamoResource.Table('branch_commerce_events')
+    # normalize search term to how its being stored in db
+    event_key = str(campaign_id) + dashG + str(ad_set_id) + dashG + keyword.replace(" ", dashG)
     response = table.query(
-        KeyConditionExpression=Key('keyword').eq(keyword) & Key('timestamp').eq(timestamp),
-        IndexName='keyword-timestamp-index'
+        KeyConditionExpression=Key('branch_commerce_event_key').eq(event_key) & Key('timestamp').eq(timestamp),
     )
-    # print('getBranchCommerceEvents' + response['Items']);
     return response
 
 def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
@@ -53,5 +55,40 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
         IndexName='adgroup_id-timestamp-index'
     )
-
     return response
+
+def getClients(dynamoResource):
+    CLIENTS = []
+    for client in (dynamoResource.Table('clients').scan()["Items"]):
+        CLIENTS.append(Client(client["orgDetails"]["orgId"],
+                              client["orgDetails"]["clientName"],
+                              client["orgDetails"]["emailAddresses"],
+                              client["orgDetails"]["keyFilename"],
+                              client["orgDetails"]["pemFilename"],
+                              client["orgDetails"]["bidParameters"],
+                              client["orgDetails"]["adgroupBidParameters"],
+                              client["orgDetails"]["branchBidParameters"],
+                              client["orgDetails"]["campaignIds"],
+                              client["orgDetails"]["keywordAdderIds"],
+                              client["orgDetails"]["keywordAdderParameters"],
+                              client["orgDetails"]["branchIntegrationParameters"],
+                              client["orgDetails"]["currency"],
+                              client["orgDetails"]["appName"],
+                              client["orgDetails"]["appID"],
+                              client["orgDetails"]["campaignName"]
+                              ))
+
+    for client in CLIENTS:
+        for bidParam in client.bidParameters:
+            client.bidParameters[bidParam] = float(client.bidParameters.get(bidParam))
+
+        for bidParam in client.adgroupBidParameters:
+            client.adgroupBidParameters[bidParam] = float(client.adgroupBidParameters.get(bidParam))
+
+        for bidParam in client.branchBidParameters:
+            try:
+                client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
+            except ValueError as error:
+                client.branchBidParameters[bidParam] = client.branchBidParameters.get(bidParam)
+
+    return CLIENTS

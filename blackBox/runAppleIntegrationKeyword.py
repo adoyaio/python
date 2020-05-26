@@ -26,8 +26,8 @@ DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
 from datetime import date
 
-from utils import EmailUtils
-from Client import CLIENTS
+from utils import EmailUtils, DynamoUtils
+# from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
     APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
@@ -58,19 +58,25 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
     global EMAIL_TO
+    global clientsG
 
     EMAIL_TO = emailToInternal
 
-    if env != "prod":
+    if env == "lcl":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
         logger.setLevel(logging.INFO)
-    else:
+    elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
         # debug.disableDebug() TODO disable debug wrappers in production
+    else:
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
@@ -360,7 +366,8 @@ def process():
     # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
     # input()
 
-    for client in CLIENTS:
+    #for client in CLIENTS:
+    for client in clientsG:
         print("Loading Keyword Data for: " + str(client.clientName))
         print(client.orgId)
 
@@ -409,14 +416,9 @@ def process():
 def terminate():
     pass
 
-
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
-# if __name__ == "__main__":
-#     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
-#     process()
-#     terminate()
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()

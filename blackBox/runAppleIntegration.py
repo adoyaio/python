@@ -74,15 +74,19 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
     EMAIL_TO = emailToInternal
 
-    if env != "prod":
+    if env == "lcl":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
         logger.setLevel(logging.INFO)
-    else:
+    elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
         # debug.disableDebug() TODO disable debug wrappers in production
+    else:
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)
 
     logger.info("In runAppleIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 

@@ -10,9 +10,8 @@ import requests
 import smtplib
 import sys
 import time
-from utils import EmailUtils
+from utils import EmailUtils, DynamoUtils
 import boto3
-from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORDS_REPORT_URL, \
     HTTP_REQUEST_TIMEOUT
@@ -32,20 +31,27 @@ sendG = False  # Set to True to enable sending email to clients, else a test run
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
     EMAIL_TO = emailToInternal
 
-    if env != "prod":
+    if env == "lcl":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
         logger.setLevel(logging.INFO)
-    else:
+    elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce this in production
+        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
+        # debug.disableDebug() TODO disable debug wrappers in production
+    else:
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
@@ -281,11 +287,12 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
         dateString = dateString[1:]
     subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
-    #fullEmailList = EMAIL_TO + client.emailAddresses
-    #print('sendEmailForACampaign:::fullEmailList' + str(fullEmailList))
-
-    # TODO add sendG logic to remove clients emails in local?
-    EmailUtils.sendEmailForACampaign(emailBody, htmlBody, subjectString, client.emailAddresses, EMAIL_TO, EMAIL_FROM)
+    # dont send emails to clients unless sendG
+    if sendG:
+        EmailUtils.sendEmailForACampaign(emailBody, htmlBody, subjectString, client.emailAddresses, EMAIL_TO,
+                                         EMAIL_FROM)
+    else:
+        EmailUtils.sendEmailForACampaign(emailBody, htmlBody, subjectString, ['test@adoya.io'], EMAIL_TO, EMAIL_FROM)
 
 # ------------------------------------------------------------------------------
 #@debug
@@ -332,7 +339,7 @@ def sendEmailReport(client, dataForVariousTimes):
 # ------------------------------------------------------------------------------
 @debug
 def process():
-    for client in CLIENTS:
+    for client in clientsG:
         dataForVariousTimes = {}
 
         for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
@@ -364,7 +371,6 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    #initialize('lcl', 'http://localhost:8000', ["james@adoya.io","scott.kaplan@adoya.io"])
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()

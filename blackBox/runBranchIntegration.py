@@ -15,7 +15,6 @@ from botocore.exceptions import ClientError
 from dateutil.parser import parse
 from retry import retry
 
-from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
@@ -25,8 +24,10 @@ from configuration import EMAIL_FROM, \
     data_sources, \
     aggregations
 from debug import debug, dprint
+from utils import DynamoUtils
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
+dashG = "-"
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -58,18 +59,27 @@ class DecimalEncoder(json.JSONEncoder):
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
 
     EMAIL_TO = emailToInternal
 
-    if env != "prod":
+    if env == "lcl":
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-    else:
+        logger.setLevel(logging.INFO)
+    elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
+        # debug.disableDebug() TODO disable debug wrappers in production
+    else:
+        sendG = False
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        logger.setLevel(logging.INFO)
 
+    clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
@@ -132,7 +142,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
 @debug
 def process():
     # summaryReportInfo = {}
-    for client in CLIENTS:
+    for client in clientsG:
         # summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = { }
         branch_key = {}
         branch_secret = {}
@@ -164,7 +174,6 @@ def process():
                         results = data[aggregation]['results']
 
                         if len(results) == 0:
-                            #return False  # EARLY RETURN
                             logger.info("runBranchIntegration:process:::no results from " + branch_job)
 
                         for result in results:
@@ -180,7 +189,7 @@ def process():
 
                                 if aggregation != "revenue":
                                     logger.debug(branch_job + ":::handle unique_count")
-                                    dash = "-"
+                                    #dashG = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
@@ -188,13 +197,13 @@ def process():
                                     # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     count = str(result["result"]["unique_count"])
 
-                                    # event_key = campaign_id + dash + ad_set_id + dash + ad_set_name  # eg 197915189-197913017-search_match
+                                    # event_key = campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
                                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
                                         keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
                                     else:
                                         keyword = "n/a"
-                                        event_key = campaign_id + dash + ad_set_id
+                                        event_key = campaign_id + dashG + ad_set_id
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)
@@ -225,7 +234,7 @@ def process():
                                 else:
                                     # TODO refactor revenue to be order angostic, currently revenue must run after count
                                     logger.debug(branch_job + ":::handle revenue aggregation")
-                                    dash = "-"
+                                    #dashG = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
@@ -235,9 +244,9 @@ def process():
 
                                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
                                         keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                                        event_key = campaign_id + dash + ad_set_id + dash + keyword.replace(" ", dash)
+                                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
                                     else:
-                                        event_key = campaign_id + dash + ad_set_id
+                                        event_key = campaign_id + dashG + ad_set_id
 
                                     # enable for local debugging
                                     # dprint("timestamp=%s." % timestamp)
