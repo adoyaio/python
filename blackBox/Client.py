@@ -94,10 +94,12 @@ class Client:
     def emailAddresses(self):
         return list(self._emailAddresses)
 
+    # TODO JF rework this, don't use filesystem
     @property
     def keyPathname(self):
         return os.path.join(CERT_DIR, self._keyFilename)
 
+    # TODO JF rework this, don't use filesystem
     @property
     def pemPathname(self):
         return os.path.join(CERT_DIR, self._pemFilename)
@@ -156,7 +158,7 @@ class Client:
             "bids": str(newValue)
         }
 
-        # v1 code
+        # v1 add dynamo db call
         print("Client.updatedBids: adding bids entry:", item)
         table = dynamoResource.Table('bids')
         table.put_item(
@@ -179,7 +181,7 @@ class Client:
             "bids": str(newValue)
         }
 
-        # v1 code
+        # v1 add dynamo db call
         print("Client.updatedAdgroupBids: adding bids entry:", item)
         table = dynamoResource.Table('adgroup_bids')
         table.put_item(
@@ -313,8 +315,7 @@ class Client:
             }
         )
 
-    # V1 code to use dynamo
-    # ----------------------------------------------------------------------------
+    # gets all cpi history lines for a year
     def getHistory(self, dynamoResource):
         today = datetime.date.today()
         end_date_delta = datetime.timedelta(days=1)
