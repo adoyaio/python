@@ -44,19 +44,19 @@
             "min_apple_installs": 10
         },
         "campaignIds": [
-            158675458,
-            187214904
+            "158675458",
+            "187214904"
         ],
         "keywordAdderIds": {
             "campaignId": {
-                "search": 187217541,
-                "broad": 187214904,
-                "exact": 158675458
+                "search": "187217541",
+                "broad": "187214904",
+                "exact": "158675458"
             },
             "adGroupId": {
-                "search": 187217561,
-                "broad": 187192993,
-                "exact": 158698070
+                "search": "187217561",
+                "broad": "187192993",
+                "exact": "158698070"
             }
         },
         "keywordAdderParameters": {
@@ -114,19 +114,19 @@
             "min_apple_installs": 10
         },
         "campaignIds": [
-            197913328,
-            197914192
+            "197913328",
+            "197914192"
         ],
         "keywordAdderIds": {
             "campaignId": {
-                "search": 197915189,
-                "broad": 197914192,
-                "exact": 197913328
+                "search": "197915189",
+                "broad": "197914192",
+                "exact": "197913328"
             },
             "adGroupId": {
-                "search": 197913017,
-                "broad": 197914177,
-                "exact": 197913349
+                "search": "197913017",
+                "broad": "197914177",
+                "exact": "197913349"
             }
         },
         "keywordAdderParameters": {
