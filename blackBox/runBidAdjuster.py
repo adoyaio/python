@@ -441,7 +441,19 @@ def process():
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
 
-        print("process:::client.currency" + client.currency)
+        # TODO don't need this here probably but reference code for Scott
+        for bidParam in client.bidParameters:
+            print("found bid parameter " + str(bidParam) + " value of " + str(client.bidParameters[bidParam]))
+        print("objective is " + client.bidParameters["OBJECTIVE"])
+
+        for bidParam in client.adgroupBidParameters:
+            print("found bid parameter " + str(bidParam) + " value of " + str(client.adgroupBidParameters[bidParam]))
+        print("objective is " + client.bidParameters["OBJECTIVE"])
+
+        for bidParam in client.branchBidParameters:
+            print("found bid parameter " + str(bidParam) + " value of " + str(client.branchBidParameters[bidParam]))
+
+
 
         for campaignId in campaignIds:
             data = getKeywordReportFromApple(client, campaignId)
@@ -451,8 +463,6 @@ def process():
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
                 sent = sendUpdatedBidsToApple(client, keywordFileToPost)
-                # if sent:
-                # client.updatedBids = numberOfUpdatedBids
                 client.updatedBids(dynamodb, numberOfUpdatedBids)
 
     emailSummaryReport(summaryReportInfo, sent)
