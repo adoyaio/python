@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime as dt
 import datetime
 import json
+import numpy as np
 import pandas as pd
 import pprint
 import requests
@@ -22,7 +23,7 @@ from debug import debug, dprint
 from retry import retry
 import logging
 
-BIDDING_LOOKBACK = 7  # days
+BIDDING_LOOKBACK = 14  # days
 
 ###### date and time parameters for bidding lookback ######
 date = datetime.date
@@ -228,6 +229,19 @@ def createUpdatedKeywordBids(data, campaignId, client):
     ex_keyword_info["avgCPA"] = ex_keyword_info["avgCPA"].astype(float)
     ex_keyword_info["bid"] = ex_keyword_info["bid"].astype(float)
 
+    # calculate bid multiplier and create a new column
+    ex_keyword_info["bid_multiplier"] = BP["HIGH_CPI_BID_DECREASE_THRESH"] / ex_keyword_info["avgCPA"]
+
+    # cap bid multiplier
+    if BP["OBJECTIVE"] == "aggressive":
+        ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.90, 1.30)
+    elif BP["OBJECTIVE"] == "standard":
+        ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.80, 1.20)
+    elif BP["OBJECTIVE"] == "conservative":
+        ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.70, 1.10)
+    else:
+        print("no objective selected")
+
     # subset keywords for stale raises
     stale_raise_kws = ex_keyword_info[ex_keyword_info["taps"] < BP["TAP_THRESHOLD"]]
 
@@ -238,34 +252,51 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
     # subset keywords for bid decrease
     high_cpa_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-                                        (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"])]
+                                        (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+                                        (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])]
+
     no_install_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
                                           (ex_keyword_info["installs"] == BP["NO_INSTALL_BID_DECREASE_THRESH"])]
 
     # raise bids for stale raise keywords
-    stale_raise_kws["bid"] = stale_raise_kws["bid"] * BP["STALE_RAISE_BID_BOOST"]
+    stale_raise_kws["new_bid"] = (stale_raise_kws["bid"] * BP["STALE_RAISE_BID_BOOST"]).round(2)
 
-    # raise bids for low cpi keywords
-    low_cpa_keywords["bid"] = low_cpa_keywords["bid"] * BP["LOW_CPA_BID_BOOST"]
+    # raise bids for low cpi keywords using new bid multiplier cap
+    low_cpa_keywords["new_bid"] = (low_cpa_keywords["bid"] * low_cpa_keywords["bid_multiplier_capped"]).round(2)
 
     # check if overall CPI is within bid threshold, if not, fix it.
     total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
                                                            TOTAL_COST_PER_INSTALL_LOOKBACK)
     dprint("total cpi %s" % str(total_cost_per_install))
 
+    # if cpi is below threshold, only do increases
     if total_cost_per_install > BP["HIGH_CPI_BID_DECREASE_THRESH"]:
-        high_cpa_keywords["bid"] = high_cpa_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]
-        no_install_keywords["bid"] = no_install_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]
+        high_cpa_keywords["new_bid"] = (high_cpa_keywords["bid"] * high_cpa_keywords["bid_multiplier_capped"]).round(2)
+        no_install_keywords["new_bid"] = (no_install_keywords["bid"] * no_install_keywords["bid_multiplier_capped"]).round(2)
 
     # combine keywords into one data frame for bid updates
-    keywords_to_update_bids = [stale_raise_kws, low_cpa_keywords, high_cpa_keywords, no_install_keywords]
-    keywords_to_update_bids = pd.concat(keywords_to_update_bids)
+    all_kws_combined = pd.concat([stale_raise_kws, low_cpa_keywords, high_cpa_keywords, no_install_keywords])
+
+    # drop NaN new bid values resulting from portfolio bidding
+    keywords_to_update_bids = all_kws_combined.dropna(subset=["new_bid"])
+
     # add action type column and udpate value as per Apple search api requirement
     keywords_to_update_bids["Action"] = keywords_to_update_bids.shape[0] * ["UPDATE"]
 
+    # format for apple API specifications
     # add campaign id column as per Apple search api requirement
     keywords_to_update_bids["campaignId"] = keywords_to_update_bids.shape[0] * [campaignId]
 
+    # subset only the columns you need
+    keywords_to_update_bids = keywords_to_update_bids[["campaignId", "adGroupId", "keywordId", "new_bid"]]
+
+    # replace name of "new_bid" to "bid"
+    keywords_to_update_bids.rename(columns={"new_bid": "bid"}, inplace=True)
+
+    # enforce min and max bid
+    keywords_to_update_bids["bid"] = np.clip(keywords_to_update_bids["bid"], BP["MIN_BID"], BP["MAX_BID"])
+
+    # send to apple
     result_1 = json.loads(keywords_to_update_bids.to_json(orient="records"))
     maximum_bid = BP["MAX_BID"]
     for item in result_1:
@@ -478,7 +509,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 
