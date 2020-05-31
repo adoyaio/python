@@ -239,11 +239,13 @@ class Client:
             return response['Items'][0]["keywords"]
 
 
-    def addRowToHistory(self, stuff, dynamoResource):
+    def addRowToHistory(self, stuff, dynamoResource, end_date):
         print("stuff:", stuff)
         table = dynamoResource.Table('cpi_history')
 
-        timestamp = stuff[0]
+        # JF 05 31 write to history table with yesterday timestamp
+        # timestamp = stuff[0] TODO revalidate in 14 days
+        timestamp = str(end_date)
         spend = stuff[1]
         installs = int(stuff[2])
         cpi = stuff[3]

@@ -319,10 +319,9 @@ def sendEmailReport(client, dataForVariousTimes):
         summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
         summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
 
-
     now = time.time()
 
-    client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb)
+    client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb, end_date)
     emailBody = createEmailBodyForACampaign(client, summary, now)
     htmlBody = createHtmlEmailBodyForACampaign(client, summary, now)
     sendEmailForACampaign(client, emailBody, htmlBody, now)

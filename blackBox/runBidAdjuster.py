@@ -33,6 +33,10 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
 
+### CPI History Lookback seperate from Apple lookback ###
+start_date_delta_cpi_lookback = datetime.timedelta(TOTAL_COST_PER_INSTALL_LOOKBACK)
+start_date_cpi_lookback = today - start_date_delta_cpi_lookback
+
 # FOR QA PURPOSES set these fields explicitly
 # start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 # end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
@@ -64,8 +68,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -238,8 +242,8 @@ def createUpdatedKeywordBids(data, campaignId, client):
     # raise bids for low cpi keywords using new bid multiplier cap
     low_cpa_keywords["new_bid"] = (low_cpa_keywords["bid"] * low_cpa_keywords["bid_multiplier_capped"]).round(2)
 
-    # check if overall CPI is within bid threshold, if not, fix it.
-    total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
+    # check if overall CPI is within bid threshold, if not, fix it. JF 05/31/2020 use CPI Lookback vs apple lookback
+    total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date_cpi_lookback, end_date,
                                                            TOTAL_COST_PER_INSTALL_LOOKBACK)
     dprint("total cpi %s" % str(total_cost_per_install))
 
