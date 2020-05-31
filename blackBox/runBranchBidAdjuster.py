@@ -378,8 +378,8 @@ def sendUpdatedBidsToApple(client, url, payload):
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
-    dprint("PEM='%s'." % client.pemPathname)
-    dprint("KEY='%s'." % client.keyPathname)
+    dprint("PEM='%s'." % client.pemFilename)
+    dprint("KEY='%s'." % client.keyFilename)
 
     if url and payload:
         if sendG:
