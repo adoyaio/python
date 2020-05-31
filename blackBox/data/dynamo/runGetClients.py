@@ -55,11 +55,31 @@ def initialize(env, dynamoEndpoint):
 @debug
 def process():
 
-    for client in clientsG:
-        print("Print CPI history for: " + str(client.clientName))
-        print(client.orgId)
-        history = client.getHistory(dynamodb);
-        dprint("history=%s." % pprint.pformat(history))
+    data = []
+    for client in (dynamodb.Table('clients').scan()["Items"]):
+        data.append(client["orgDetails"])
+
+    dprint("%s" % pprint.pformat(data))
+
+    # json_object = json.loads(data, cls=DecimalEncoder)
+    # json_formatted_str = json.dumps(data, cls=DecimalEncoder)
+
+    # with open('clientsTest.json', 'w') as outfile:
+    #     json.dump(json_formatted_str, outfile)
+
+    with open('clientsTest.json', 'w') as outfile:
+        json.dump(data, outfile, cls=DecimalEncoder, indent=4)
+
+
+    # for client in clientsG:
+    #     data.append(client.keyFilename)
+    #     # print("Print CPI history for: " + str(client.clientName))
+    #     # print(client.orgId)
+    #     # history = client.getHistory(dynamodb);
+    #     # dprint("%s" % pprint.pformat(history))
+    #
+    # with open('clientsTest.json', 'w') as outfile:
+    #     json.dump(data, outfile)
 
 # ------------------------------------------------------------------------------
 @debug
