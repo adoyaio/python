@@ -1,33 +1,21 @@
 from __future__ import print_function  # Python 2/3 compatibility
-import logging
-import decimal
-import boto3
-from collections import defaultdict
+
 import datetime
+import decimal
 import json
-import pandas as pd
+import logging
 import pprint
-import requests
-import sys
-import time
 
-from botocore.exceptions import ClientError
+import boto3
 
-from Client import CLIENTS
-from configuration import EMAIL_FROM, \
-    APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
-    APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
-    TOTAL_COST_PER_INSTALL_LOOKBACK, \
-    HTTP_REQUEST_TIMEOUT, \
-    BRANCH_ANALYTICS_URL_BASE, \
-    data_sources, \
-    aggregations
 from debug import debug, dprint
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
+date = datetime.date
+today = datetime.date.today()
 
 # Helper class to convert a DynamoDB item to JSON.
 class DecimalEncoder(json.JSONEncoder):
@@ -48,30 +36,28 @@ def initialize(env, dynamoEndpoint):
 
     if env == "lcl":
         sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        # dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
     elif env == "prod":
-        sendG = True
+        sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
-    logger.info("In runMigrationV1:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
-
 
 # ------------------------------------------------------------------------------
 @debug
 def process():
-
-    for client in CLIENTS:
-        print("Print CPI history for: " + str(client.clientName))
-        print(client.orgId)
-        history = client.getHistory(dynamodb);
-        print(str(history));
+    data = []
+    for client in (dynamodb.Table('clients').scan()["Items"]):
+        data.append(client["orgDetails"])
+    dprint("%s" % pprint.pformat(data))
+    with open('clients.' + str(today) + '.json', 'w') as outfile:
+        json.dump(data, outfile, cls=DecimalEncoder, indent=4)
 
 # ------------------------------------------------------------------------------
 @debug
