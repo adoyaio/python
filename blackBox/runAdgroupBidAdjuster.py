@@ -1,27 +1,24 @@
 #! /usr/bin/python3
-import logging
-import decimal
-from collections import defaultdict
-from datetime import datetime as dt
 import datetime
+import decimal
 import json
+import logging
+import time
+from collections import defaultdict
+
+import boto3
 import numpy as np
 import pandas as pd
-import pprint
 import requests
-import time
-import boto3
-from boto3.dynamodb.conditions import Key
 
-from utils import EmailUtils, DynamoUtils, S3Utils
 from configuration import EMAIL_FROM, \
-                          APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
-                          APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
-                          TOTAL_COST_PER_INSTALL_LOOKBACK, \
-                          HTTP_REQUEST_TIMEOUT
-
+    APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
+    APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
+    TOTAL_COST_PER_INSTALL_LOOKBACK, \
+    HTTP_REQUEST_TIMEOUT
 from debug import debug, dprint
 from retry import retry
+from utils import EmailUtils, DynamoUtils, S3Utils
 
 BIDDING_LOOKBACK = 7 # days
 sendG = False # Set to True to enable sending data to Apple, else a test run.
@@ -64,8 +61,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')

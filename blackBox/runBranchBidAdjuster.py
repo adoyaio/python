@@ -1,31 +1,22 @@
 from __future__ import print_function  # Python 2/3 compatibility
-import logging
-import decimal
-import boto3
-from collections import defaultdict
+
 import datetime
+import decimal
 import json
-import pandas as pd
-import numpy as np
-import pprint
-import requests
-import sys
+import logging
 import time
+from collections import defaultdict
 
-from retry import retry
-from utils import DynamoUtils, EmailUtils, S3Utils
-
-from botocore.exceptions import ClientError
+import boto3
+import numpy as np
+import pandas as pd
+import requests
 
 from configuration import EMAIL_FROM, \
-    APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
-    APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
-    TOTAL_COST_PER_INSTALL_LOOKBACK, \
-    HTTP_REQUEST_TIMEOUT, \
-    BRANCH_ANALYTICS_URL_BASE, \
-    data_sources, \
-    aggregations
+    HTTP_REQUEST_TIMEOUT
 from debug import debug, dprint
+from retry import retry
+from utils import DynamoUtils, EmailUtils, S3Utils
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
@@ -69,8 +60,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -97,15 +88,6 @@ def return_active_keywords_dataFrame(ads_data, min_apple_installs, keyword_statu
 
     return second_filter[
         ["adGroupId", "keywordId", "bid", "installs", "branch_commerce_event_count", "branch_revenue", "localSpend"]]
-
-    # print("return_active_keywords_dataFrame:::" + second_filter)
-    # try:
-    #     return_value = second_filter[
-    #         ["adGroupId", "keywordId", "bid", "installs", "branch_commerce_event_count", "branch_revenue", "localSpend"]]
-    # except KeyError as error:
-    #     return_value = []
-    #
-    # return return_value
 
 def return_cost_per_purchase_optimized_bid(active_keywords_dataFrame, branch_min_bid, branch_bid_adjustment,
                                            cost_per_purchase_threshold, cost_per_purchase_threshold_buffer):
@@ -261,14 +243,12 @@ def process():
                         keyword_info = defaultdict(list)
 
                         for kw_data in kw_response[u'Items']:
-                            # print(json.dumps(kw_data, cls=DecimalEncoder))
                             keyword = kw_data['keyword']
                             date = kw_data['date']
                             branch_revenue = 0
                             branch_commerce_event_count = 0
 
                             # get branch data
-                            #print("check branch data for " + keyword + " " + date)
                             branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, campaign_id, adgroup_id, keyword, date)
                             for j in branch_response[u'Items']:
                                 print("found branch result:::")
@@ -308,10 +288,6 @@ def process():
                             keyword_info["branch_revenue"].append(branch_revenue)
 
                         raw_data_df = pd.DataFrame(keyword_info)
-                        # print("JAMES TEST " + str(raw_data_df))
-                        # dprint("df_keyword_info=%s." % str(df_keyword_info))
-                        # dprint("keyword_info=%s." % pprint.pformat(keyword_info))
-                        # export_dict_to_csv(keyword_info, str(adgroup_id) + 'keyword_info.csv')
 
                         BBP = client.branchBidParameters
                         min_apple_installs = BBP["min_apple_installs"]
@@ -325,7 +301,6 @@ def process():
                                                                                adgroup_deleted)
                             if active_keywords.empty:
                                 print("There weren't any keywords that met the initial filtering criteria")
-                                # return None
                                 pass
 
                             else:
@@ -374,7 +349,6 @@ def sendUpdatedBidsToApple(client, url, payload):
                "Content-Type": "application/json",
                "Accept": "application/json",
                }
-    # url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (keywordFileToPost, keywordFileToPost)
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)

@@ -2,19 +2,15 @@
 import logging
 import decimal
 from decimal import *
-from collections import defaultdict
 from datetime import datetime as dt
 import datetime
 import json
-import numpy as np
 import pandas as pd
-import pprint
 import requests
-import time
 import boto3
 from boto3.dynamodb.conditions import Key
 
-# TODO this was to eliminate the inexact and rounding errors
+# this was to eliminate the inexact and rounding errors
 from boto3.dynamodb.types import DYNAMODB_CONTEXT
 
 # Inhibit Inexact Exceptions
@@ -24,14 +20,8 @@ DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 # Inhibit Rounded Exceptions
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
-from datetime import date
-
-from utils import EmailUtils, DynamoUtils, S3Utils
-# from Client import CLIENTS
-from configuration import EMAIL_FROM, \
-    APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
-    APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
-    TOTAL_COST_PER_INSTALL_LOOKBACK, \
+from utils import DynamoUtils, S3Utils
+from configuration import APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
     HTTP_REQUEST_TIMEOUT
 
 from debug import debug, dprint
@@ -69,8 +59,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -367,7 +357,6 @@ def process():
     # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
     # input()
 
-    #for client in CLIENTS:
     for client in clientsG:
         print("Loading Keyword Data for: " + str(client.clientName))
         print(client.orgId)

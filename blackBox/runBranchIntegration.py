@@ -1,29 +1,20 @@
 from __future__ import print_function  # Python 2/3 compatibility
-import logging
-import decimal
-import boto3
-from collections import defaultdict
+
 import datetime
+import decimal
 import json
-import pandas as pd
-import pprint
+import logging
+
+import boto3
 import requests
-import sys
-import time
-
 from botocore.exceptions import ClientError
-from dateutil.parser import parse
-from retry import retry
 
-from configuration import EMAIL_FROM, \
-    APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
-    APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
-    TOTAL_COST_PER_INSTALL_LOOKBACK, \
-    HTTP_REQUEST_TIMEOUT, \
+from configuration import HTTP_REQUEST_TIMEOUT, \
     BRANCH_ANALYTICS_URL_BASE, \
     data_sources, \
     aggregations
 from debug import debug, dprint
+from retry import retry
 from utils import DynamoUtils
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
@@ -72,8 +63,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug()  disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -141,9 +132,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
 # ------------------------------------------------------------------------------
 @debug
 def process():
-    # summaryReportInfo = {}
     for client in clientsG:
-        # summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = { }
         branch_key = {}
         branch_secret = {}
 
@@ -178,18 +167,8 @@ def process():
 
                         for result in results:
                             if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
-
-                                # initialize branch facets
-                                timestamp = ""
-                                campaign = ""
-                                campaign_id = ""
-                                ad_set_id = ""
-                                ad_set_name = ""
-                                keyword = ""
-
                                 if aggregation != "revenue":
                                     logger.debug(branch_job + ":::handle unique_count")
-                                    #dashG = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])

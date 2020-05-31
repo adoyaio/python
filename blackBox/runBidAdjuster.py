@@ -36,33 +36,6 @@ end_date = today - end_date_delta
 # FOR QA PURPOSES set these fields explicitly
 # start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 # end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
-
-# url to api server for keywords report
-# From https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Reporting_Methods.html:
-# POST /v1/reports/campaigns/<CAMPAIGN_ID>/keywords
-# 
-# Get reports on targeted keywords within a specific adgroup.
-# 
-#     curl \
-#        -H ...\
-#        -d "@TestKeywordReport.json"
-#        -X POST "<ROOT_PATH>/v1/reports/campaigns/{cId}/keywords"
-# 
-#     By default, soft deleted targeted keywords, which belong to soft deleted ad groups, are not returned
-# 
-#     Selectors can be used to also get reporting on soft deleted keywords
-# 
-#     Grouping by countryCode, adminArea, deviceClass, ageRange, or gender are not supported for this endpoint.
-# From https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Keyword_Methods.html:
-# POST /v1/keywords/targeting
-# 
-# Create or update a list of targeted keywords within a specific org.
-# 
-#    curl \
-#      -d @testUpdateTargetedKeywords.json
-#      -X POST "https://api.searchads.apple.com/api/v1/keywords/targeting"
-
-
 sendG = False  # Set to True to enable sending data to Apple, else a test run
 logger = logging.getLogger()
 
@@ -197,7 +170,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
         keyword_info["localSpend"].append(totals["localSpend"]["amount"])
         keyword_info["avgCPT"].append(totals["avgCPT"]["amount"])
 
-    # TODO JF this extremely verbose don't use in PROD
+    # JF this extremely verbose don't use in PROD
     # dprint("keyword_info=%s." % pprint.pformat(keyword_info))
 
     # convert to dataframe
@@ -395,7 +368,7 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
                "Content-Type": "application/json",
                "Accept": "application/json",
                }
-    # url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (keywordFileToPost, keywordFileToPost)
+
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
@@ -410,10 +383,6 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
                                                           S3Utils.getCert(client.keyFilename)),
                                                     json=payload,
                                                     headers=headers)
-            # response = sendUpdatedBidsToAppleHelper(url,
-            #                                         cert=(client.pemPathname, client.keyPathname),
-            #                                         json=payload,
-            #                                         headers=headers)
 
         else:
             response = "Not actually sending anything to Apple."
@@ -449,7 +418,7 @@ def createEmailBody(data, sent):
         for campaignId, campaignData in clientData.items():
             content.append("""\t\t%s""" % campaignId)
             for keywordId, keywordData in campaignData.items():
-                # TODO: Put the new bid in red if it is a decrease from the old bid. --DS, 13-Oct-2018
+                # Put the new bid in red if it is a decrease from the old bid. --DS, 13-Oct-2018
                 content.append("""\t\t\t\t%s\t%s\t%s\t%s""" % \
                                (keywordId,
                                 keywordData["keyword"],
@@ -478,18 +447,6 @@ def process():
     for client in clientsG:
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
-
-        # TODO don't need this here probably but reference code for Scott
-        for bidParam in client.bidParameters:
-            print("found bid parameter " + str(bidParam) + " value of " + str(client.bidParameters[bidParam]))
-        print("objective is " + client.bidParameters["OBJECTIVE"])
-
-        for bidParam in client.adgroupBidParameters:
-            print("found bid parameter " + str(bidParam) + " value of " + str(client.adgroupBidParameters[bidParam]))
-        print("objective is " + client.bidParameters["OBJECTIVE"])
-
-        for bidParam in client.branchBidParameters:
-            print("found bid parameter " + str(bidParam) + " value of " + str(client.branchBidParameters[bidParam]))
 
         for campaignId in campaignIds:
             data = getKeywordReportFromApple(client, campaignId)
