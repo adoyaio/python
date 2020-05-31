@@ -13,7 +13,7 @@ import sys
 import time
 
 from retry import retry
-from utils import DynamoUtils, EmailUtils
+from utils import DynamoUtils, EmailUtils, S3Utils
 
 from botocore.exceptions import ClientError
 
@@ -357,17 +357,8 @@ def process():
                                     for adGroupId in json_data.keys():
                                         put_request_string = create_put_request_string(campaign_id, str(adGroupId))
                                         request_json = json_data[adGroupId]
-                                        request_output_filename = "{}_adjusted_bid_keyword_request.txt".format(
-                                            str(adGroupId))
-
                                         sendUpdatedBidsToApple(client, put_request_string, request_json)
 
-                                        # TODO rm
-                                        # if sendG:
-                                        #     sendUpdatedBidsToApple(client,put_request_string,request_json)
-                                        # else:
-                                        #     write_request_file(put_request_string, request_json, request_output_filename)
-                                        #     print("The output file has been created")
     emailSummaryReport(summaryReportInfo, sendG)
 
 # ------------------------------------------------------------------------------
@@ -393,7 +384,8 @@ def sendUpdatedBidsToApple(client, url, payload):
     if url and payload:
         if sendG:
             response = sendUpdatedBidsToAppleHelper(url,
-                                                    cert=(client.pemPathname, client.keyPathname),
+                                                    cert=(S3Utils.getCert(client.pemFilename),
+                                                          S3Utils.getCert(client.keyFilename)),
                                                     json=payload,
                                                     headers=headers)
 

@@ -10,7 +10,7 @@ import requests
 import smtplib
 import sys
 import time
-from utils import EmailUtils, DynamoUtils
+from utils import EmailUtils, DynamoUtils, S3Utils
 import boto3
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORDS_REPORT_URL, \
@@ -63,7 +63,7 @@ def getCampaignDataHelper(url, cert, json, headers):
 
 # ------------------------------------------------------------------------------
 #@debug
-def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
+def getCampaignData(orgId, pemFilename, keyFilename, daysToGoBack):
     ######enter date and time parameters for bidding lookback######
     # Subtract 1 day because the program runs at 3 am the next day.
     today = datetime.date.today() - datetime.timedelta(1)
@@ -72,7 +72,7 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
     ######enter your credentials######
 
     # certificate info that you get from search ads ui
-    dprint('Certificates: pem="%s", key="%s".' % (pemPathname, keyPathname))
+    dprint('Certificates: pem="%s", key="%s".' % (pemFilename, keyFilename))
 
     ######make your api call######
 
@@ -97,7 +97,8 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
     dprint("Apple URL: %s\n" % APPLE_KEYWORDS_REPORT_URL)
 
     response = getCampaignDataHelper(APPLE_KEYWORDS_REPORT_URL,
-                                     cert=(pemPathname, keyPathname),
+                                     cert=(S3Utils.getCert(pemFilename),
+                                           S3Utils.getCert(keyFilename)),
                                      json=payload,
                                      headers=headers)
 
@@ -344,8 +345,8 @@ def process():
 
         for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
             campaignData = getCampaignData(client.orgId,
-                                           client.pemPathname,
-                                           client.keyPathname,
+                                           client.pemFilename,
+                                           client.keyFilename,
                                            daysToGoBack)
 
             if(campaignData != 'false'):

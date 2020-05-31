@@ -337,8 +337,8 @@ def sendUpdatedBidsToApple(client, adGroupFileToPost):
             }
 
   dprint ("Headers are %s." % headers)
-  dprint ("PEM='%s'." % client.pemPathname)
-  dprint ("KEY='%s'." % client.keyPathname)
+  dprint ("PEM='%s'." % client.pemFilename)
+  dprint ("KEY='%s'." % client.keyFilename)
 
   results = [sendOneUpdatedBidToApple(client, item, headers, client.currency) for item in adGroupFileToPost]
   return True in results # Convert the vector into a scalar.
