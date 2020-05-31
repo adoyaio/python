@@ -3,20 +3,10 @@ import decimal
 import json
 import os
 
-import boto3
-from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
 
 from utils import DynamoUtils
 
-DATA_DIR = "data"
-CERT_DIR = "cert"
-CLIENTS_DATA_FILENAME = "clients.json"
-CLIENT_UPDATED_BIDS_FILENAME_TEMPLATE = "bids_%s.json"
-CLIENT_UPDATED_ADGROUP_BIDS_FILENAME_TEMPLATE = "adgroup_bids_%s.json"
-CLIENT_POSITIVE_KEYWORDS_FILENAME_TEMPLATE = "positive_keywords_%s.json"
-CLIENT_NEGATIVE_KEYWORDS_FILENAME_TEMPLATE = "negative_keywords_%s.json"
-CLIENT_HISTORY_FILENAME_TEMPLATE = "history_%s.csv"
 ONE_YEAR_IN_DAYS = 365
 
 # Helper class to convert a DynamoDB item to JSON.
@@ -94,15 +84,13 @@ class Client:
     def emailAddresses(self):
         return list(self._emailAddresses)
 
-    # TODO JF rework this, don't use filesystem
     @property
-    def keyPathname(self):
-        return os.path.join(CERT_DIR, self._keyFilename)
+    def keyFilename(self):
+        return self._keyFilename
 
-    # TODO JF rework this, don't use filesystem
     @property
-    def pemPathname(self):
-        return os.path.join(CERT_DIR, self._pemFilename)
+    def pemFilename(self):
+        return self._pemFilename
 
     @property
     def bidParameters(self):
@@ -157,8 +145,6 @@ class Client:
             "org_id": str(self.orgId),
             "bids": str(newValue)
         }
-
-        # v1 add dynamo db call
         print("Client.updatedBids: adding bids entry:", item)
         table = dynamoResource.Table('bids')
         table.put_item(
@@ -180,8 +166,6 @@ class Client:
             "org_id": str(self.orgId),
             "bids": str(newValue)
         }
-
-        # v1 add dynamo db call
         print("Client.updatedAdgroupBids: adding bids entry:", item)
         table = dynamoResource.Table('adgroup_bids')
         table.put_item(
@@ -194,8 +178,6 @@ class Client:
             "org_id": str(self.orgId),
             "keywords": newValue
         }
-
-        # v1 add dynamo db call
         print("Client.positiveKeywordsAdded: adding bids entry:", item)
         table = dynamoResource.Table('positive_keywords')
         table.put_item(
@@ -208,8 +190,6 @@ class Client:
             "org_id": str(self.orgId),
             "keywords": str(newValue)
         }
-
-        # v1 add dynamo db call
         print("Client.negativeKeywordsAdded: adding bids entry:", item)
         table = dynamoResource.Table('negative_keywords')
         table.put_item(
@@ -258,48 +238,14 @@ class Client:
         if len(response['Items']) > 0:
             return response['Items'][0]["keywords"]
 
-    # ^  # ----------------------------------------------------------------------------
-    # ^  @property
-    # ^  @debug
-    # ^  def campaignIds(self):
-    # ^    today = datetime.date.today()
-    # ^
-    # ^    payload = {
-    # ^                "startTime"                  : str(today),
-    # ^                "endTime"                    : str(today),
-    # ^                "returnRowTotals"            : True,
-    # ^                "returnRecordsWithNoMetrics" : True,
-    # ^                "selector" : {
-    # ^                  "orderBy"    : [ { "field" : "localSpend", "sortOrder" : "DESCENDING" } ],
-    # ^                  "fields"     : [ "localSpend", "taps", "impressions", "conversions", "avgCPA", "avgCPT", "ttr", "conversionRate" ],
-    # ^                  "pagination" : { "offset" : 0, "limit" : 1000 }
-    # ^                },
-    # ^                #"groupBy"                    : [ "COUNTRY_CODE" ],
-    # ^                #"granularity"                : 2, # 1 is hourly, 2 is daily, 3 is monthly etc
-    # ^              }
-    # ^
-    # ^    headers = { "Authorization": "orgId=%s" % self.orgId }
-    # ^
-    # ^    dprint("Headers: %s\n" % headers)
-    # ^    dprint("Payload: %s\n" % payload)
-    # ^    #dprint("Apple 'Get Reports' URL: %s\n" % GET_REPORTS_URL)
-    # ^
-    # ^    response = requests.post(Client._GET_REPORTS_URL,
-    # ^                             cert=(self.pemPathname, self.keyPathname),
-    # ^                             json=payload,
-    # ^                             headers=headers)
-    # ^
-    # ^    dprint("Response: '%s'" % response)
-    # ^
-    # ^    return [ item["metadata"]["campaignId"] for item in json.loads(response.text)["data"]["reportingDataResponse"]["row"] ]
 
-    # V1 code to use dynamo
-    # ----------------------------------------------------------------------------
-    def addRowToHistory(self, stuff, dynamoResource):
+    def addRowToHistory(self, stuff, dynamoResource, end_date):
         print("stuff:", stuff)
         table = dynamoResource.Table('cpi_history')
 
-        timestamp = stuff[0]
+        # JF 05 31 write to history table with yesterday timestamp
+        # timestamp = stuff[0] TODO revalidate in 14 days
+        timestamp = str(end_date)
         spend = stuff[1]
         installs = int(stuff[2])
         cpi = stuff[3]
@@ -662,5 +608,3 @@ class Client:
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     Client.test()
-    # for client in CLIENTS:
-    #     print("For client '%s', campaign ids are %s." % (client.clientName, client.campaignIds))

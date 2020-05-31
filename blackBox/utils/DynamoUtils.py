@@ -26,7 +26,6 @@ def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end
         if len(response['Items']) >= 0:
             for i in response[u'Items']:
                 total_branch_events += int(i['count'])
-                #print(json.dumps(i, cls=DecimalEncoder))
 
         print("getBranchPurchasesForTimeperiod:::" + str(total_branch_events))
         return total_branch_events
@@ -43,7 +42,6 @@ def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_d
     if len(response['Items']) >= 0:
         for i in response[u'Items']:
             total_branch_revenue += int(i['revenue'])
-            # print(json.dumps(i, cls=DecimalEncoder))
 
     print("getBranchRevenueForTimeperiod:::" + str(total_branch_revenue))
     return total_branch_revenue
@@ -78,17 +76,24 @@ def getClients(dynamoResource):
                               client["orgDetails"]["campaignName"]
                               ))
 
+    # handle data types since dynamo uses decimal and bid adjusters use float
     for client in CLIENTS:
         for bidParam in client.bidParameters:
-            client.bidParameters[bidParam] = float(client.bidParameters.get(bidParam))
+            if type(client.bidParameters[bidParam]) == str:
+                client.bidParameters[bidParam] = client.bidParameters.get(bidParam)
+            else:
+                client.bidParameters[bidParam] = float(client.bidParameters.get(bidParam))
 
         for bidParam in client.adgroupBidParameters:
-            client.adgroupBidParameters[bidParam] = float(client.adgroupBidParameters.get(bidParam))
+            if type(client.adgroupBidParameters[bidParam]) == str:
+                client.adgroupBidParameters[bidParam] = client.adgroupBidParameters.get(bidParam)
+            else:
+                client.adgroupBidParameters[bidParam] = float(client.adgroupBidParameters.get(bidParam))
 
         for bidParam in client.branchBidParameters:
-            try:
-                client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
-            except ValueError as error:
+            if type(client.branchBidParameters[bidParam]) == str:
                 client.branchBidParameters[bidParam] = client.branchBidParameters.get(bidParam)
+            else:
+                client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
 
     return CLIENTS

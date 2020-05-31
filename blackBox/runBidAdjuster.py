@@ -4,12 +4,13 @@ from collections import defaultdict
 from datetime import datetime as dt
 import datetime
 import json
+import numpy as np
 import pandas as pd
 import pprint
 import requests
 import time
 import boto3
-from utils import EmailUtils, DynamoUtils
+from utils import EmailUtils, DynamoUtils, S3Utils
 from boto3.dynamodb.conditions import Key, Attr
 
 from configuration import EMAIL_FROM, \
@@ -22,7 +23,7 @@ from debug import debug, dprint
 from retry import retry
 import logging
 
-BIDDING_LOOKBACK = 7  # days
+BIDDING_LOOKBACK = 14  # days
 
 ###### date and time parameters for bidding lookback ######
 date = datetime.date
@@ -32,36 +33,13 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
 
+### CPI History Lookback seperate from Apple lookback ###
+start_date_delta_cpi_lookback = datetime.timedelta(TOTAL_COST_PER_INSTALL_LOOKBACK)
+start_date_cpi_lookback = today - start_date_delta_cpi_lookback
+
 # FOR QA PURPOSES set these fields explicitly
 # start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 # end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
-
-# url to api server for keywords report
-# From https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Reporting_Methods.html:
-# POST /v1/reports/campaigns/<CAMPAIGN_ID>/keywords
-# 
-# Get reports on targeted keywords within a specific adgroup.
-# 
-#     curl \
-#        -H ...\
-#        -d "@TestKeywordReport.json"
-#        -X POST "<ROOT_PATH>/v1/reports/campaigns/{cId}/keywords"
-# 
-#     By default, soft deleted targeted keywords, which belong to soft deleted ad groups, are not returned
-# 
-#     Selectors can be used to also get reporting on soft deleted keywords
-# 
-#     Grouping by countryCode, adminArea, deviceClass, ageRange, or gender are not supported for this endpoint.
-# From https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Keyword_Methods.html:
-# POST /v1/keywords/targeting
-# 
-# Create or update a list of targeted keywords within a specific org.
-# 
-#    curl \
-#      -d @testUpdateTargetedKeywords.json
-#      -X POST "https://api.searchads.apple.com/api/v1/keywords/targeting"
-
-
 sendG = False  # Set to True to enable sending data to Apple, else a test run
 logger = logging.getLogger()
 
@@ -90,8 +68,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -99,7 +77,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
     clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
-    sendG, dynamoEndpoint, str(EMAIL_TO)))
+        sendG, dynamoEndpoint, str(EMAIL_TO)))
 
 
 # ------------------------------------------------------------------------------
@@ -142,7 +120,8 @@ def getKeywordReportFromApple(client, campaignId):
     dprint("Headers are %s." % headers)
 
     response = getKeywordReportFromAppleHelper(url,
-                                               cert=(client.pemPathname, client.keyPathname),
+                                               cert=(S3Utils.getCert(client.pemFilename),
+                                                     S3Utils.getCert(client.keyFilename)),
                                                json=payload,
                                                headers=headers)
     dprint("Response is %s." % response)
@@ -195,8 +174,8 @@ def createUpdatedKeywordBids(data, campaignId, client):
         keyword_info["localSpend"].append(totals["localSpend"]["amount"])
         keyword_info["avgCPT"].append(totals["avgCPT"]["amount"])
 
-    #TODO JF this extremely verbose don't use in PROD
-    #dprint("keyword_info=%s." % pprint.pformat(keyword_info))
+    # JF this extremely verbose don't use in PROD
+    # dprint("keyword_info=%s." % pprint.pformat(keyword_info))
 
     # convert to dataframe
     df_keyword_info = pd.DataFrame(keyword_info)
@@ -228,6 +207,19 @@ def createUpdatedKeywordBids(data, campaignId, client):
     ex_keyword_info["avgCPA"] = ex_keyword_info["avgCPA"].astype(float)
     ex_keyword_info["bid"] = ex_keyword_info["bid"].astype(float)
 
+    # calculate bid multiplier and create a new column
+    ex_keyword_info["bid_multiplier"] = BP["HIGH_CPI_BID_DECREASE_THRESH"] / ex_keyword_info["avgCPA"]
+
+    # cap bid multiplier
+    if BP["OBJECTIVE"] == "aggressive":
+        ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.90, 1.30)
+    elif BP["OBJECTIVE"] == "standard":
+        ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.80, 1.20)
+    elif BP["OBJECTIVE"] == "conservative":
+        ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.70, 1.10)
+    else:
+        print("no objective selected")
+
     # subset keywords for stale raises
     stale_raise_kws = ex_keyword_info[ex_keyword_info["taps"] < BP["TAP_THRESHOLD"]]
 
@@ -238,34 +230,52 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
     # subset keywords for bid decrease
     high_cpa_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-                                        (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"])]
+                                        (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+                                        (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])]
+
     no_install_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
                                           (ex_keyword_info["installs"] == BP["NO_INSTALL_BID_DECREASE_THRESH"])]
 
     # raise bids for stale raise keywords
-    stale_raise_kws["bid"] = stale_raise_kws["bid"] * BP["STALE_RAISE_BID_BOOST"]
+    stale_raise_kws["new_bid"] = (stale_raise_kws["bid"] * BP["STALE_RAISE_BID_BOOST"]).round(2)
 
-    # raise bids for low cpi keywords
-    low_cpa_keywords["bid"] = low_cpa_keywords["bid"] * BP["LOW_CPA_BID_BOOST"]
+    # raise bids for low cpi keywords using new bid multiplier cap
+    low_cpa_keywords["new_bid"] = (low_cpa_keywords["bid"] * low_cpa_keywords["bid_multiplier_capped"]).round(2)
 
-    # check if overall CPI is within bid threshold, if not, fix it.
-    total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
+    # check if overall CPI is within bid threshold, if not, fix it. JF 05/31/2020 use CPI Lookback vs apple lookback
+    total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date_cpi_lookback, end_date,
                                                            TOTAL_COST_PER_INSTALL_LOOKBACK)
     dprint("total cpi %s" % str(total_cost_per_install))
 
+    # if cpi is below threshold, only do increases
     if total_cost_per_install > BP["HIGH_CPI_BID_DECREASE_THRESH"]:
-        high_cpa_keywords["bid"] = high_cpa_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]
-        no_install_keywords["bid"] = no_install_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]
+        high_cpa_keywords["new_bid"] = (high_cpa_keywords["bid"] * high_cpa_keywords["bid_multiplier_capped"]).round(2)
+        no_install_keywords["new_bid"] = (
+                    no_install_keywords["bid"] * no_install_keywords["bid_multiplier_capped"]).round(2)
 
     # combine keywords into one data frame for bid updates
-    keywords_to_update_bids = [stale_raise_kws, low_cpa_keywords, high_cpa_keywords, no_install_keywords]
-    keywords_to_update_bids = pd.concat(keywords_to_update_bids)
+    all_kws_combined = pd.concat([stale_raise_kws, low_cpa_keywords, high_cpa_keywords, no_install_keywords])
+
+    # drop NaN new bid values resulting from portfolio bidding
+    keywords_to_update_bids = all_kws_combined.dropna(subset=["new_bid"])
+
     # add action type column and udpate value as per Apple search api requirement
     keywords_to_update_bids["Action"] = keywords_to_update_bids.shape[0] * ["UPDATE"]
 
+    # format for apple API specifications
     # add campaign id column as per Apple search api requirement
     keywords_to_update_bids["campaignId"] = keywords_to_update_bids.shape[0] * [campaignId]
 
+    # subset only the columns you need
+    keywords_to_update_bids = keywords_to_update_bids[["campaignId", "adGroupId", "keywordId", "new_bid"]]
+
+    # replace name of "new_bid" to "bid"
+    keywords_to_update_bids.rename(columns={"new_bid": "bid"}, inplace=True)
+
+    # enforce min and max bid
+    keywords_to_update_bids["bid"] = np.clip(keywords_to_update_bids["bid"], BP["MIN_BID"], BP["MAX_BID"])
+
+    # send to apple
     result_1 = json.loads(keywords_to_update_bids.to_json(orient="records"))
     maximum_bid = BP["MAX_BID"]
     for item in result_1:
@@ -352,7 +362,7 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-#@debug
+# @debug
 def sendUpdatedBidsToApple(client, keywordFileToPost):
     print("sendUpdatedBidsToApple:::client.currency " + client.currency)
     url = getAppleKeywordsEndpoint(keywordFileToPost)
@@ -362,18 +372,19 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
                "Content-Type": "application/json",
                "Accept": "application/json",
                }
-    # url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (keywordFileToPost, keywordFileToPost)
+
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
-    dprint("PEM='%s'." % client.pemPathname)
-    dprint("KEY='%s'." % client.keyPathname)
+    dprint("PEM='%s'." % client.pemFilename)
+    dprint("KEY='%s'." % client.keyFilename)
 
     if url and payload:
 
         if sendG:
             response = sendUpdatedBidsToAppleHelper(url,
-                                                    cert=(client.pemPathname, client.keyPathname),
+                                                    cert=(S3Utils.getCert(client.pemFilename),
+                                                          S3Utils.getCert(client.keyFilename)),
                                                     json=payload,
                                                     headers=headers)
 
@@ -411,7 +422,7 @@ def createEmailBody(data, sent):
         for campaignId, campaignData in clientData.items():
             content.append("""\t\t%s""" % campaignId)
             for keywordId, keywordData in campaignData.items():
-                # TODO: Put the new bid in red if it is a decrease from the old bid. --DS, 13-Oct-2018
+                # Put the new bid in red if it is a decrease from the old bid. --DS, 13-Oct-2018
                 content.append("""\t\t\t\t%s\t%s\t%s\t%s""" % \
                                (keywordId,
                                 keywordData["keyword"],
@@ -433,15 +444,13 @@ def emailSummaryReport(data, sent):
 
 
 # ------------------------------------------------------------------------------
-#@debug
+# @debug
 def process():
     summaryReportInfo = {}
 
     for client in clientsG:
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
-
-        print("process:::client.currency" + client.currency)
 
         for campaignId in campaignIds:
             data = getKeywordReportFromApple(client, campaignId)
@@ -451,8 +460,6 @@ def process():
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
                 sent = sendUpdatedBidsToApple(client, keywordFileToPost)
-                # if sent:
-                # client.updatedBids = numberOfUpdatedBids
                 client.updatedBids(dynamodb, numberOfUpdatedBids)
 
     emailSummaryReport(summaryReportInfo, sent)
@@ -468,7 +475,7 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 

@@ -1,23 +1,18 @@
 #! /usr/bin/python3
-import logging
 import datetime
-import email.message
-from email.headerregistry import Address
 import json
-import os
-import pprint
-import requests
-import smtplib
-import sys
+import logging
 import time
-from utils import EmailUtils, DynamoUtils
+
 import boto3
+import requests
+
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORDS_REPORT_URL, \
     HTTP_REQUEST_TIMEOUT
-
 from debug import debug, dprint
 from retry import retry
+from utils import EmailUtils, DynamoUtils, S3Utils
 
 ONE_DAY = 1
 SEVEN_DAYS = 7
@@ -44,8 +39,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug()  disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -63,18 +58,14 @@ def getCampaignDataHelper(url, cert, json, headers):
 
 # ------------------------------------------------------------------------------
 #@debug
-def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
-    ######enter date and time parameters for bidding lookback######
+def getCampaignData(orgId, pemFilename, keyFilename, daysToGoBack):
+    # enter date and time parameters for bidding lookback
     # Subtract 1 day because the program runs at 3 am the next day.
     today = datetime.date.today() - datetime.timedelta(1)
     cutoffDay = today - datetime.timedelta(days=daysToGoBack - 1)  # "- 1" to avoid fencepost error.
 
-    ######enter your credentials######
-
     # certificate info that you get from search ads ui
-    dprint('Certificates: pem="%s", key="%s".' % (pemPathname, keyPathname))
-
-    ######make your api call######
+    dprint('Certificates: pem="%s", key="%s".' % (pemFilename, keyFilename))
 
     payload = {
         "startTime": str(cutoffDay),
@@ -97,7 +88,8 @@ def getCampaignData(orgId, pemPathname, keyPathname, daysToGoBack):
     dprint("Apple URL: %s\n" % APPLE_KEYWORDS_REPORT_URL)
 
     response = getCampaignDataHelper(APPLE_KEYWORDS_REPORT_URL,
-                                     cert=(pemPathname, keyPathname),
+                                     cert=(S3Utils.getCert(pemFilename),
+                                           S3Utils.getCert(keyFilename)),
                                      json=payload,
                                      headers=headers)
 
@@ -327,10 +319,9 @@ def sendEmailReport(client, dataForVariousTimes):
         summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
         summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
 
-
     now = time.time()
 
-    client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb)
+    client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb, end_date)
     emailBody = createEmailBodyForACampaign(client, summary, now)
     htmlBody = createHtmlEmailBodyForACampaign(client, summary, now)
     sendEmailForACampaign(client, emailBody, htmlBody, now)
@@ -344,8 +335,8 @@ def process():
 
         for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
             campaignData = getCampaignData(client.orgId,
-                                           client.pemPathname,
-                                           client.keyPathname,
+                                           client.pemFilename,
+                                           client.keyFilename,
                                            daysToGoBack)
 
             if(campaignData != 'false'):

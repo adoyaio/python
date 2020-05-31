@@ -9,7 +9,7 @@ import pprint
 import re
 import requests
 import time
-from utils import EmailUtils, DynamoUtils
+from utils import EmailUtils, DynamoUtils, S3Utils
 import boto3
 from configuration import EMAIL_FROM, \
                           APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE, \
@@ -56,8 +56,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     elif env == "prod":
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
+        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -108,7 +108,8 @@ def getSearchTermsReportFromApple(client, campaignId):
   dprint ("Headers are %s." % headers)
 
   response = getSearchTermsReportFromAppleHelper(url,
-                                                 cert=(client.pemPathname, client.keyPathname),
+                                                 cert=(S3Utils.getCert(client.pemFilename),
+                                                       S3Utils.getCert(client.keyFilename)),
                                                  json=payload,
                                                  headers=headers)
   dprint ("Response is %s." % response)
@@ -163,6 +164,7 @@ def analyzeKeywordsSharedCode(KAP,
   
   #create dataframe for broad match negatives
   #add action type column and update value as per apple broad api requirement
+
   # JF 03/23/2020 apple v2 removing this field for v2
   #broad_match_negatives_df['importAction'] = broad_match_negatives_df.shape[0]*['CREATE']
 
@@ -198,6 +200,7 @@ def analyzeKeywordsSharedCode(KAP,
   
   #create exact match keyword file for uploading
   #add action type column and update value as per apple broad api requirement
+
   # JF 03/23/2020 apple v2 removing this field for v2
   #exact_match_targeted_first_step_df['importAction'] = exact_match_targeted_first_step_df.shape[0]*['CREATE']
   
@@ -222,6 +225,7 @@ def analyzeKeywordsSharedCode(KAP,
   
   #create broad match keyword file for uploading
   #add action type column and update value as per apple broad api requirement
+
   # JF 03/23/2020 apple v2 removing this field for v2
   #broad_match_targeted_first_step_df['importAction'] = broad_match_targeted_first_step_df.shape[0]*['CREATE']
   
@@ -379,7 +383,8 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
   dprint("About to send non-duplicates payload %s." % pprint.pformat(newPayload))
 
   response = sendNonDuplicatesToAppleHelper(url,
-                                            cert=(client.pemPathname, client.keyPathname),
+                                            cert=(S3Utils.getCert(client.pemFilename),
+                                                  S3Utils.getCert(client.keyFilename)),
                                             data=json.dumps(newPayload),
                                             headers=headers)
 
@@ -415,11 +420,9 @@ def sendToApple(client, payloads):
             dprint("runKeywordAdder:::sendToApple:::Payload: '%s'" % payloadForPost)
             dprint("runKeywordAdder:::sendToApple:::appleEndpointUrl: '%s'" % appleEndpointUrl)
 
-            # appleEndpointUrl = getAppleKeywordsEndpoint(url, payload)
-            # dprint("runKeywordAdder:::sendToApple:::appleEndpoint" % appleEndpointUrl)
-
             response = sendToAppleHelper(appleEndpointUrl,
-                                   cert=(client.pemPathname, client.keyPathname),
+                                         cert=(S3Utils.getCert(client.pemFilename),
+                                               S3Utils.getCert(client.keyFilename)),
                                    data=payloadForPost,
                                    headers=headers)
 
@@ -531,7 +534,6 @@ def sendToApple(client, payloads):
         for payload in payloads:
             print("runKeywordAdder:::sendToApple-false:::payload:'" + str(payload[0]))
             print("runKeywordAdder:::sendToApple-false:::url:'" + str(payload[1]))
-
 
         dprint("The result of sending the keywords to Apple: %s" % response)
 
