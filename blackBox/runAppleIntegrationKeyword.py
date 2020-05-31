@@ -26,7 +26,7 @@ DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
 from datetime import date
 
-from utils import EmailUtils, DynamoUtils
+from utils import EmailUtils, DynamoUtils, S3Utils
 # from Client import CLIENTS
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
@@ -160,7 +160,8 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     dprint("Headers are %s." % headers)
 
     response = getKeywordReportFromAppleHelper(url,
-                                               cert=(client.pemPathname, client.keyPathname),
+                                               cert=(S3Utils.getCert(client.pemFilename),
+                                                     S3Utils.getCert(client.keyFilename)),
                                                json=payload,
                                                headers=headers)
 

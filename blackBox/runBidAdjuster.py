@@ -10,7 +10,7 @@ import pprint
 import requests
 import time
 import boto3
-from utils import EmailUtils, DynamoUtils
+from utils import EmailUtils, DynamoUtils, S3Utils
 from boto3.dynamodb.conditions import Key, Attr
 
 from configuration import EMAIL_FROM, \
@@ -100,7 +100,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
     clientsG = DynamoUtils.getClients(dynamodb)
     logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
-    sendG, dynamoEndpoint, str(EMAIL_TO)))
+        sendG, dynamoEndpoint, str(EMAIL_TO)))
 
 
 # ------------------------------------------------------------------------------
@@ -143,7 +143,8 @@ def getKeywordReportFromApple(client, campaignId):
     dprint("Headers are %s." % headers)
 
     response = getKeywordReportFromAppleHelper(url,
-                                               cert=(client.pemPathname, client.keyPathname),
+                                               cert=(S3Utils.getCert(client.pemFilename),
+                                                     S3Utils.getCert(client.keyFilename)),
                                                json=payload,
                                                headers=headers)
     dprint("Response is %s." % response)
@@ -196,8 +197,8 @@ def createUpdatedKeywordBids(data, campaignId, client):
         keyword_info["localSpend"].append(totals["localSpend"]["amount"])
         keyword_info["avgCPT"].append(totals["avgCPT"]["amount"])
 
-    #TODO JF this extremely verbose don't use in PROD
-    #dprint("keyword_info=%s." % pprint.pformat(keyword_info))
+    # TODO JF this extremely verbose don't use in PROD
+    # dprint("keyword_info=%s." % pprint.pformat(keyword_info))
 
     # convert to dataframe
     df_keyword_info = pd.DataFrame(keyword_info)
@@ -272,7 +273,8 @@ def createUpdatedKeywordBids(data, campaignId, client):
     # if cpi is below threshold, only do increases
     if total_cost_per_install > BP["HIGH_CPI_BID_DECREASE_THRESH"]:
         high_cpa_keywords["new_bid"] = (high_cpa_keywords["bid"] * high_cpa_keywords["bid_multiplier_capped"]).round(2)
-        no_install_keywords["new_bid"] = (no_install_keywords["bid"] * no_install_keywords["bid_multiplier_capped"]).round(2)
+        no_install_keywords["new_bid"] = (
+                    no_install_keywords["bid"] * no_install_keywords["bid_multiplier_capped"]).round(2)
 
     # combine keywords into one data frame for bid updates
     all_kws_combined = pd.concat([stale_raise_kws, low_cpa_keywords, high_cpa_keywords, no_install_keywords])
@@ -383,7 +385,7 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
 
 
 # ------------------------------------------------------------------------------
-#@debug
+# @debug
 def sendUpdatedBidsToApple(client, keywordFileToPost):
     print("sendUpdatedBidsToApple:::client.currency " + client.currency)
     url = getAppleKeywordsEndpoint(keywordFileToPost)
@@ -397,16 +399,21 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
-    dprint("PEM='%s'." % client.pemPathname)
-    dprint("KEY='%s'." % client.keyPathname)
+    dprint("PEM='%s'." % client.pemFilename)
+    dprint("KEY='%s'." % client.keyFilename)
 
     if url and payload:
 
         if sendG:
             response = sendUpdatedBidsToAppleHelper(url,
-                                                    cert=(client.pemPathname, client.keyPathname),
+                                                    cert=(S3Utils.getCert(client.pemFilename),
+                                                          S3Utils.getCert(client.keyFilename)),
                                                     json=payload,
                                                     headers=headers)
+            # response = sendUpdatedBidsToAppleHelper(url,
+            #                                         cert=(client.pemPathname, client.keyPathname),
+            #                                         json=payload,
+            #                                         headers=headers)
 
         else:
             response = "Not actually sending anything to Apple."
@@ -464,7 +471,7 @@ def emailSummaryReport(data, sent):
 
 
 # ------------------------------------------------------------------------------
-#@debug
+# @debug
 def process():
     summaryReportInfo = {}
 
@@ -483,8 +490,6 @@ def process():
 
         for bidParam in client.branchBidParameters:
             print("found bid parameter " + str(bidParam) + " value of " + str(client.branchBidParameters[bidParam]))
-
-
 
         for campaignId in campaignIds:
             data = getKeywordReportFromApple(client, campaignId)

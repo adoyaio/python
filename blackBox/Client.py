@@ -94,15 +94,24 @@ class Client:
     def emailAddresses(self):
         return list(self._emailAddresses)
 
-    # TODO JF rework this, don't use filesystem
     @property
-    def keyPathname(self):
-        return os.path.join(CERT_DIR, self._keyFilename)
+    def keyFilename(self):
+        return self._keyFilename
 
-    # TODO JF rework this, don't use filesystem
     @property
-    def pemPathname(self):
-        return os.path.join(CERT_DIR, self._pemFilename)
+    def pemFilename(self):
+        return self._pemFilename
+    # # TODO JF rework this, don't use filesystem
+    # @property
+    # def keyPathname(self):
+    #     self._keyFilename
+    #     #return os.path.join(CERT_DIR, self._keyFilename)
+    #
+    # # TODO JF rework this, don't use filesystem
+    # @property
+    # def pemPathname(self):
+    #     self._pemFilename
+    #     #return os.path.join(CERT_DIR, self._pemFilename)
 
     @property
     def bidParameters(self):

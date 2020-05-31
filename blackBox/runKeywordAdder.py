@@ -9,7 +9,7 @@ import pprint
 import re
 import requests
 import time
-from utils import EmailUtils, DynamoUtils
+from utils import EmailUtils, DynamoUtils, S3Utils
 import boto3
 from configuration import EMAIL_FROM, \
                           APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE, \
@@ -108,7 +108,8 @@ def getSearchTermsReportFromApple(client, campaignId):
   dprint ("Headers are %s." % headers)
 
   response = getSearchTermsReportFromAppleHelper(url,
-                                                 cert=(client.pemPathname, client.keyPathname),
+                                                 cert=(S3Utils.getCert(client.pemFilename),
+                                                       S3Utils.getCert(client.keyFilename)),
                                                  json=payload,
                                                  headers=headers)
   dprint ("Response is %s." % response)
@@ -379,7 +380,8 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
   dprint("About to send non-duplicates payload %s." % pprint.pformat(newPayload))
 
   response = sendNonDuplicatesToAppleHelper(url,
-                                            cert=(client.pemPathname, client.keyPathname),
+                                            cert=(S3Utils.getCert(client.pemFilename),
+                                                  S3Utils.getCert(client.keyFilename)),
                                             data=json.dumps(newPayload),
                                             headers=headers)
 
@@ -419,7 +421,8 @@ def sendToApple(client, payloads):
             # dprint("runKeywordAdder:::sendToApple:::appleEndpoint" % appleEndpointUrl)
 
             response = sendToAppleHelper(appleEndpointUrl,
-                                   cert=(client.pemPathname, client.keyPathname),
+                                         cert=(S3Utils.getCert(client.pemFilename),
+                                               S3Utils.getCert(client.keyFilename)),
                                    data=payloadForPost,
                                    headers=headers)
 

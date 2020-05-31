@@ -13,7 +13,7 @@ import time
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from utils import EmailUtils, DynamoUtils
+from utils import EmailUtils, DynamoUtils, S3Utils
 from configuration import EMAIL_FROM, \
                           APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
                           APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
@@ -152,7 +152,8 @@ def getAdgroupReportFromApple(client):
   dprint ("Headers are %s." % headers)
 
   response = getAdgroupReportFromAppleHelper(url,
-                                             cert=(client.pemPathname, client.keyPathname),
+                                             cert=(S3Utils.getCert(client.pemFilename),
+                                                   S3Utils.getCert(client.keyFilename)),
                                              json=payload,
                                              headers=headers)
   dprint ("Response is %s." % response)
@@ -302,7 +303,8 @@ def sendOneUpdatedBidToApple(client, adGroup, headers, currency):
 
   if sendG:
     response = sendOneUpdatedBidToAppleHelper(url,
-                                              cert=(client.pemPathname, client.keyPathname),
+                                              cert=(S3Utils.getCert(client.pemFilename),
+                                                    S3Utils.getCert(client.keyFilename)),
                                               json=adGroup,
                                               headers=headers)
     
