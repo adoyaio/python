@@ -1,3 +1,5 @@
+import datetime
+
 import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
@@ -97,3 +99,21 @@ def getClients(dynamoResource):
                 client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
 
     return CLIENTS
+
+
+def getClientHistory(dynamoResource, client_id):
+        today = datetime.date.today()
+        end_date_delta = datetime.timedelta(days=1)
+        start_date_delta = datetime.timedelta(365)
+        start_date = today - start_date_delta
+        end_date = today - end_date_delta
+
+        table = dynamoResource.Table('cpi_history')
+        # response = table.query(
+        #     KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
+        #         '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        # ))
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(client_id)
+        )
+        return response['Items']
