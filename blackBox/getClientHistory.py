@@ -59,7 +59,8 @@ if __name__ == "__main__":
 
 
 def lambda_handler(event, context):
-    initialize(event['env'])
+    #initialize(event['env'])
+    initialize('lambda')
     history = process(event['org_id'])
 
     return {

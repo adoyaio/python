@@ -287,6 +287,16 @@ class Client:
 
         total_cost_per_install = 0
 
+        print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
+        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime(
+            '%Y-%m-%d'))
+        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime(
+            '%Y-%m-%d'))
+
+        print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
+
+        print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
+
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
             for i in response[u'Items']:
