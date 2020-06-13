@@ -1,19 +1,15 @@
+from __future__ import print_function
+
 import decimal
-import json
-import logging
 
 import boto3
-
-import debug
-from utils import DynamoUtils
-
-sendG = False  # Set to True to enable sending data to Apple, else a test run.
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+import json
 
 
 # Helper class to convert a DynamoDB item to JSON.
+from utils import DynamoUtils
+
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, decimal.Decimal):
@@ -23,45 +19,26 @@ class DecimalEncoder(json.JSONEncoder):
                 return int(o)
         return super(DecimalEncoder, self).default(o)
 
-
-# ------------------------------------------------------------------------------
-def initialize(env):
-    global sendG
-    global dynamodb
-
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url='http://localhost:8000')
-        # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
-# ------------------------------------------------------------------------------
-def process(org_id):
-    history = DynamoUtils.getClientHistory(dynamodb, org_id)
-
-    return history
-
-
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-if __name__ == "__main__":
-    initialize('lcl')
-    process('1056410')
-
+print('Loading function')
 
 def lambda_handler(event, context):
-    #initialize(event['env'])
-    initialize('lambda')
-    history = process(event['org_id'])
+    print("Received event: " + json.dumps(event, indent=2))
+    # queryStringParameters = json.loads(event["queryStringParameters"])
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+    start_date = queryStringParameters["start_date"]
+    end_date = queryStringParameters["end_date"]
+
+    # TODO set this via event or context
+    env = "lcl"
+    if env == "lcl":
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url='http://dynamodb:8000')
+    elif env == "prod":
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+    else:
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+
+    history = DynamoUtils.getClientHistoryByTime(dynamodb, org_id, start_date, end_date)
 
     return {
         'statusCode': 200,

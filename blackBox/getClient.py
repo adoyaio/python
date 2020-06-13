@@ -30,6 +30,7 @@ def lambda_handler(event, context):
     payload = body["payload"]
     tableName = body["tableName"]
 
+    # TODO set this via event or context
     env = "lcl"
     if env == "lcl":
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url='http://dynamodb:8000')

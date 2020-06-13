@@ -109,11 +109,19 @@ def getClientHistory(dynamoResource, client_id):
         end_date = today - end_date_delta
 
         table = dynamoResource.Table('cpi_history')
-        # response = table.query(
-        #     KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
-        #         '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-        # ))
         response = table.query(
-            KeyConditionExpression=Key('org_id').eq(client_id)
-        )
+            KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
+                '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        ))
+        # response = table.query(
+        #     KeyConditionExpression=Key('org_id').eq(client_id)
+        # )
         return response['Items']
+
+
+def getClientHistoryByTime(dynamoResource, client_id, start_date, end_date):
+    table = dynamoResource.Table('cpi_history')
+    response = table.query(
+        KeyConditionExpression=Key('org_id').eq(client_id) & Key('timestamp').between(end_date, start_date),
+    )
+    return response['Items']
