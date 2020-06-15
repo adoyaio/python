@@ -1,13 +1,18 @@
 from __future__ import print_function
 
 import decimal
+import sys
 
 import boto3
 import json
 
+sys.path.append("/blackBox/utils/")
+from utils import DynamoUtils
+
 
 # Helper class to convert a DynamoDB item to JSON.
-from utils import DynamoUtils
+# from utils import DynamoUtils
+# from utils import DynamoUtils
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -19,17 +24,20 @@ class DecimalEncoder(json.JSONEncoder):
                 return int(o)
         return super(DecimalEncoder, self).default(o)
 
+
 print('Loading function')
 
+
 def lambda_handler(event, context):
-    print("Received event: " + json.dumps(event, indent=2))
+    # print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + json.dumps(context, indent=2))
     # queryStringParameters = json.loads(event["queryStringParameters"])
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
     start_date = queryStringParameters["start_date"]
     end_date = queryStringParameters["end_date"]
 
-    # TODO set this via event or context
+    # TODO set this via event
     env = "lcl"
     if env == "lcl":
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url='http://dynamodb:8000')

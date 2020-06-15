@@ -24,16 +24,16 @@ Resources:
       Timeout: 900
       FunctionName: 'runAdoyaWeekly'
       Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
-  ClientHistory:
+  getClientHistory:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: getClientHistory.lambda_handler
       Runtime: python3.7
-      CodeUri: ./api
+      CodeUri: .
       Description: ''
       MemorySize: 448
       Timeout: 60
-      FunctionName: 'ClientHistory'
+      FunctionName: 'getClientHistory'
       Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
       Events:
         Api:
@@ -41,16 +41,16 @@ Resources:
           Properties:
             Path: /client/history
             Method: get
-  Admin:
+  postAdmin:
       Type: 'AWS::Serverless::Function'
       Properties:
         Handler: postAdmin.lambda_handler
         Runtime: python3.7
-        CodeUri: ./api
+        CodeUri: .
         Description: ''
         MemorySize: 448
         Timeout: 60
-        FunctionName: 'Admin'
+        FunctionName: 'postAdmin'
         Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
         Events:
           Api:
