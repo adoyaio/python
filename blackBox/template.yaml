@@ -35,11 +35,15 @@ Resources:
       Timeout: 60
       FunctionName: 'getClientHistory'
       Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
+      Environment:
+        Variables:
+          env: 'prod'
+          dynamoEndpoint: ''
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /client/history
+            Path: /api/client/history
             Method: get
   postAdmin:
       Type: 'AWS::Serverless::Function'
@@ -52,9 +56,13 @@ Resources:
         Timeout: 60
         FunctionName: 'postAdmin'
         Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
+        Environment:
+          Variables:
+            env:
+            dynamoEndpoint:
         Events:
           Api:
             Type: Api
             Properties:
-              Path: /admin
+              Path: /api/admin
               Method: post

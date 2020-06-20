@@ -31,6 +31,7 @@ print('Loading function')
 def lambda_handler(event, context):
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
+    print(str(context.client_context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
     start_date = queryStringParameters["start_date"]

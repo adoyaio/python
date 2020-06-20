@@ -213,12 +213,11 @@ def process():
                                 else:
                                     # TODO refactor revenue to be order angostic, currently revenue must run after count
                                     logger.debug(branch_job + ":::handle revenue aggregation")
-                                    #dashG = "-"
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
                                     campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
                                     ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                                    ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                                    # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     revenue = decimal.Decimal(result["result"]["revenue"])
 
                                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:

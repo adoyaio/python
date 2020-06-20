@@ -285,7 +285,8 @@ class Client:
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         )
 
-        total_cost_per_install = 0
+        # default value high so we never prevent bid decreases
+        total_cost_per_install = 999999
 
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
         print("getTotalCostPerInstall:::start_date:::" + start_date.strftime(
