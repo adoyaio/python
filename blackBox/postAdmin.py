@@ -41,7 +41,9 @@ def lambda_handler(event, context):
 
     dynamo = dynamodb.Table(tableName)
     operations = {
-        'create': lambda x: dynamo.put_item(**x),
+        'create': lambda x: dynamo.put_item(
+            Item={**x}
+        ),
         'read': lambda x: dynamo.get_item(**x),
         'update': lambda x: dynamo.update_item(**x),
         'delete': lambda x: dynamo.delete_item(**x),
@@ -49,6 +51,12 @@ def lambda_handler(event, context):
         'echo': lambda x: x,
         'ping': lambda x: 'pong'
     }
+
+    if(operation == 'create'):
+        # clientsjson = json.dumps(payload)
+        clients = json.loads(json.dumps(payload), parse_float=decimal.Decimal)
+        payload = clients
+
 
     return {
         'statusCode': 200,
