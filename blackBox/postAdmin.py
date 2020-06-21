@@ -53,7 +53,6 @@ def lambda_handler(event, context):
     }
 
     if(operation == 'create'):
-        # clientsjson = json.dumps(payload)
         clients = json.loads(json.dumps(payload), parse_float=decimal.Decimal)
         payload = clients
 

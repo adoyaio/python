@@ -6,14 +6,12 @@ import sys
 import boto3
 import json
 
-sys.path.append("/blackBox/utils/")
+# sys.path.append("/blackBox/utils/")
 from utils import DynamoUtils
-
 
 # Helper class to convert a DynamoDB item to JSON.
 # from utils import DynamoUtils
 # from utils import DynamoUtils
-
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -34,8 +32,6 @@ def lambda_handler(event, context):
     print(str(context.client_context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
-    start_date = queryStringParameters["start_date"]
-    end_date = queryStringParameters["end_date"]
 
     # TODO set this via event
     env = "lcl"
@@ -46,7 +42,19 @@ def lambda_handler(event, context):
     else:
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    history = DynamoUtils.getClientHistoryByTime(dynamodb, org_id, start_date, end_date)
+    # handle logic for how to query dynamo
+    query_by_time = False
+    try:
+        total_recs = queryStringParameters["total_recs"]
+    except KeyError as error:
+        query_by_time = True
+
+    if query_by_time:
+        start_date = queryStringParameters["start_date"]
+        end_date = queryStringParameters["end_date"]
+        history = DynamoUtils.getClientHistoryByTime(dynamodb, org_id, start_date, end_date)
+    else:
+        history = DynamoUtils.getClientHistoryNumRecs(dynamodb, org_id, total_recs)
 
     return {
         'statusCode': 200,
