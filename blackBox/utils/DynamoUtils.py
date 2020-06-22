@@ -8,6 +8,7 @@ from Client import Client
 
 dashG = "-"
 
+
 def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
     table = dynamoResource.Table('branch_commerce_events')
     # normalize search term to how its being stored in db
@@ -57,6 +58,54 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
     )
     return response
 
+def getClient(dynamoResource, client_id):
+    table = dynamoResource.Table('clients')
+    response = table.query(
+        KeyConditionExpression=Key('orgId').eq(int(client_id))
+    )
+    return response['Items']
+
+
+def getClientHistory(dynamoResource, client_id):
+        today = datetime.date.today()
+        end_date_delta = datetime.timedelta(days=1)
+        start_date_delta = datetime.timedelta(365)
+        start_date = today - start_date_delta
+        end_date = today - end_date_delta
+
+        table = dynamoResource.Table('cpi_history')
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
+                '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        ))
+        return response['Items']
+
+
+def getClientHistoryByTime(dynamoResource, client_id, start_date, end_date):
+    table = dynamoResource.Table('cpi_history')
+    response = table.query(
+        KeyConditionExpression=Key('org_id').eq(client_id) & Key('timestamp').between(end_date, start_date),
+    )
+    return response['Items']
+
+
+def getClientHistoryNumRecs(dynamoResource, client_id, total_recs):
+    table = dynamoResource.Table('cpi_history')
+    response = table.query(
+        KeyConditionExpression=Key('org_id').eq(client_id),
+        ScanIndexForward=False,
+        Limit=int(total_recs)
+    )
+
+    # get campaigns ids from client table
+    client = getClient(dynamoResource, client_id)
+    print(str(client[0]["orgDetails"]["campaignIds"]))
+    # get branch data for each campaign id
+
+    # join by timestamp
+    return response['Items']
+
+
 def getClients(dynamoResource):
     CLIENTS = []
     for client in (dynamoResource.Table('clients').scan()["Items"]):
@@ -99,36 +148,3 @@ def getClients(dynamoResource):
                 client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
 
     return CLIENTS
-
-
-def getClientHistory(dynamoResource, client_id):
-        today = datetime.date.today()
-        end_date_delta = datetime.timedelta(days=1)
-        start_date_delta = datetime.timedelta(365)
-        start_date = today - start_date_delta
-        end_date = today - end_date_delta
-
-        table = dynamoResource.Table('cpi_history')
-        response = table.query(
-            KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
-                '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-        ))
-        return response['Items']
-
-
-def getClientHistoryByTime(dynamoResource, client_id, start_date, end_date):
-    table = dynamoResource.Table('cpi_history')
-    response = table.query(
-        KeyConditionExpression=Key('org_id').eq(client_id) & Key('timestamp').between(end_date, start_date),
-    )
-    return response['Items']
-
-
-def getClientHistoryNumRecs(dynamoResource, client_id, total_recs):
-    table = dynamoResource.Table('cpi_history')
-    response = table.query(
-        KeyConditionExpression=Key('org_id').eq(client_id),
-        ScanIndexForward=False,
-        Limit=int(total_recs)
-    )
-    return response['Items']
