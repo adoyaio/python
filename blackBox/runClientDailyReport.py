@@ -151,16 +151,7 @@ def createEmailBodyForACampaign(client, summary, now):
                           """\t""".join(["Timeframe\t", "   Cost", "\tInstalls", "Cost per Install"]),
                           createOneRowOfTable(summary[ONE_DAY], "Yesterday\t"),
                           createOneRowOfTable(summary[SEVEN_DAYS], "Last Seven Days"),
-                          createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days"),
-                          """
-Optimization Summary
-Keyword bids updated today: %s
-Adgroup bids updated today: %s
-Keywords submitted for upload today: %s""" % \
-
-                          # JF release-1 airlift bid counts and keywords to dynamo
-                          (client.readUpdatedBidsCount(dynamodb), client.readUpdatedAdgroupBidsCount(dynamodb),
-                           len(client.readPositiveKeywordsAdded(dynamodb)))
+                          createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days")
                           ])
 
 
