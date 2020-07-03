@@ -1,11 +1,16 @@
 from __future__ import print_function
 
 import decimal
+import time
 
 import boto3
 import json
 
 # Helper class to convert a DynamoDB item to JSON.
+from utils import EmailUtils
+from configuration import EMAIL_FROM, EMAIL_TO
+
+
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, decimal.Decimal):
@@ -15,7 +20,9 @@ class DecimalEncoder(json.JSONEncoder):
                 return int(o)
         return super(DecimalEncoder, self).default(o)
 
+
 print('Loading function')
+
 
 def lambda_handler(event, context):
     '''Provide an event that contains the following keys:
@@ -52,7 +59,7 @@ def lambda_handler(event, context):
         'ping': lambda x: 'pong'
     }
 
-    if(operation != 'create'):
+    if (operation != 'create'):
         return {
             'statusCode': 403,
             'body': {'Invalid Request'}
@@ -60,6 +67,12 @@ def lambda_handler(event, context):
 
     clients = json.loads(json.dumps(payload), parse_float=decimal.Decimal)
     payload = clients
+
+    dateString = time.strftime("%m/%d/%Y")
+    if dateString.startswith("0"):
+        dateString = dateString[1:]
+    subjectString = "Client updated %s" % dateString
+    EmailUtils.sendTextEmail(json.dumps(payload, cls=DecimalEncoder, indent=2), subjectString, EMAIL_TO, [], EMAIL_FROM)
 
     return {
         'statusCode': 200,

@@ -1,5 +1,0 @@
-numpy
-boto3
-requests==2.22.0
-pandas
-
