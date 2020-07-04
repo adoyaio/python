@@ -160,6 +160,7 @@ def return_adjusted_bids(branch_optimization_goal, active_keywords_dataFrame, br
                                                           revenue_over_ad_spend_threshold_buffer)
     else:
         print("Unknown Optimization Goal")
+        # TODO JF why are we returning here
         return pd.DataFrame(columns=['id'])
 
     # SK: This is the end of the business logic things get fuzzy for me here.

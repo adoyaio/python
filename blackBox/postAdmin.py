@@ -30,14 +30,21 @@ def lambda_handler(event, context):
     payload = body["payload"]
     tableName = body["tableName"]
 
-    # TODO set this via event or context
-    env = "lcl"
-    if env == "lcl":
+    # TODO reevaluate this approach
+    headers = event["headers"]
+    host = "prod"
+    if headers is not None:
+        try:
+            host = headers["Host"]
+        except KeyError as error:
+            host = "prod"
+
+    if host == "localhost:3000":
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url='http://dynamodb:8000')
-    elif env == "prod":
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        print("using localhost db")
     else:
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        print("using prod db")
 
     dynamo = dynamodb.Table(tableName)
     operations = {
