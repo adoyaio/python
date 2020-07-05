@@ -1,6 +1,14 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: runAdoya entry point.
+Globals:
+  Api:
+    # enable CORS; to make more specific, change the origin wildcard
+    # to a particular domain name, e.g. "'www.example.com'"
+    Cors:
+      AllowMethods: "'*'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
 Resources:
   runAdoya:
     Type: 'AWS::Serverless::Function'
@@ -24,6 +32,46 @@ Resources:
       Timeout: 900
       FunctionName: 'runAdoyaWeekly'
       Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
+  postClient:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: postClient.lambda_handler
+      Runtime: python3.7
+      CodeUri: .
+      Description: ''
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: 'postClient'
+      Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
+      Environment:
+        Variables:
+          env: 'prod'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/client/post
+            Method: ANY
+  getClient:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: getClient.lambda_handler
+      Runtime: python3.7
+      CodeUri: .
+      Description: ''
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: 'getClient'
+      Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
+      Environment:
+        Variables:
+          env: 'prod'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/client/get
+            Method: GET
   getClientHistory:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -43,47 +91,7 @@ Resources:
           Type: Api
           Properties:
             Path: /api/client/history
-            Method: get
-  postClient:
-      Type: 'AWS::Serverless::Function'
-      Properties:
-        Handler: postClient.lambda_handler
-        Runtime: python3.7
-        CodeUri: .
-        Description: ''
-        MemorySize: 448
-        Timeout: 60
-        FunctionName: 'postClient'
-        Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
-        Environment:
-          Variables:
-            env: 'prod'
-        Events:
-          Api:
-            Type: Api
-            Properties:
-              Path: /api/client/
-              Method: post
-  getClient:
-    Type: 'AWS::Serverless::Function'
-    Properties:
-      Handler: getClient.lambda_handler
-      Runtime: python3.7
-      CodeUri: .
-      Description: ''
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: 'getClient'
-      Role: 'arn:aws:iam::496475828721:role/service-role/lambda_dynamo'
-      Environment:
-        Variables:
-          env: 'prod'
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/
-            Method: get
+            Method: GET
   postAdmin:
       Type: 'AWS::Serverless::Function'
       Properties:
