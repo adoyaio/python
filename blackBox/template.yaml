@@ -52,6 +52,8 @@ Resources:
           Properties:
             Path: /api/client/post
             Method: ANY
+            Auth:
+              ApiKeyRequired: true
   getClient:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -72,6 +74,8 @@ Resources:
           Properties:
             Path: /api/client/get
             Method: GET
+            Auth:
+              ApiKeyRequired: true
   getClientHistory:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -92,6 +96,8 @@ Resources:
           Properties:
             Path: /api/client/history
             Method: GET
+            Auth:
+              ApiKeyRequired: true
   postAdmin:
       Type: 'AWS::Serverless::Function'
       Properties:
@@ -112,3 +118,5 @@ Resources:
             Properties:
               Path: /api/admin
               Method: post
+              Auth:
+              ApiKeyRequired: true
