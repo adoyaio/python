@@ -9,13 +9,10 @@ import pandas as pd
 import requests
 import boto3
 from boto3.dynamodb.conditions import Key
-
 # this was to eliminate the inexact and rounding errors
 from boto3.dynamodb.types import DYNAMODB_CONTEXT
-
 # Inhibit Inexact Exceptions
 from botocore.exceptions import ClientError
-
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 # Inhibit Rounded Exceptions
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
@@ -26,9 +23,10 @@ from configuration import APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
 
 from debug import debug, dprint
 from retry import retry
+from Client import Client
 
 BIDDING_LOOKBACK = 7  # days
-sendG = False  # Set to True to enable sending data to Apple, else a test run.
+sendG = False  # will enable data to Apple, else a test run
 logger = logging.getLogger()
 
 
@@ -43,7 +41,6 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-#@debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
@@ -66,7 +63,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
-    clientsG = DynamoUtils.getClients(dynamodb)
+    clientsG = Client.getClients(dynamodb)
     logger.info("In runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 

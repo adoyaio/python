@@ -67,7 +67,7 @@ class Client:
         self.appName = appName
         self.appID = appID
         self.campaignName = campaignName
-        # The history data is populated when requested.
+
 
     def __str__(self):
         return "Client '%s (#%d)" % (self.clientName, self.orgId)
@@ -240,11 +240,34 @@ class Client:
 
 
     def addRowToHistory(self, stuff, dynamoResource, end_date):
-        print("stuff:", stuff)
-        table = dynamoResource.Table('cpi_history')
+        print("stuff:::" + str(stuff))
+        self.addRowToCpiHistory(stuff, dynamoResource, end_date)
+        self.addRowToCpiBranchHistory(stuff, dynamoResource, end_date)
 
+    def addRowToCpiHistory(self, stuff, dynamoResource, end_date):
+        table = dynamoResource.Table('cpi_history')
         # JF 05 31 write to history table with yesterday timestamp
         # timestamp = stuff[0] TODO revalidate in 14 days
+        timestamp = str(end_date)
+        spend = stuff[1]
+        installs = int(stuff[2])
+        cpi = stuff[3]
+        org_id = str(self.orgId)
+        print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+        table.put_item(
+            Item={
+                'timestamp': timestamp,
+                'spend': spend,
+                'installs': installs,
+                'cpi': cpi,
+                'org_id': org_id
+            }
+        )
+
+    def addRowToCpiBranchHistory(self, stuff, dynamoResource, end_date):
+        table = dynamoResource.Table('cpi_branch_history')
+
+        # write to history table with yesterday timestamp
         timestamp = str(end_date)
         spend = stuff[1]
         installs = int(stuff[2])
@@ -285,7 +308,7 @@ class Client:
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         )
 
-        # default value high so we never prevent bid decreases
+        # default value high so bid decreases arent done until the average is defined from long enough lookback period
         total_cost_per_install = 999999
 
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
@@ -295,7 +318,6 @@ class Client:
             '%Y-%m-%d'))
 
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
-
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
 
         if len(response['Items']) >= daysToLookBack:
@@ -327,6 +349,49 @@ class Client:
             total_branch_revenue = total_branch_revenue + DynamoUtils.getBranchRevenueForTimeperiod(dynamoResource, id, start_date, end_date)
 
         return total_branch_revenue
+
+    def getClients(dynamoResource):
+        CLIENTS = []
+        for client in (dynamoResource.Table('clients').scan()["Items"]):
+            CLIENTS.append(Client(client["orgDetails"]["orgId"],
+                              client["orgDetails"]["clientName"],
+                              client["orgDetails"]["emailAddresses"],
+                              client["orgDetails"]["keyFilename"],
+                              client["orgDetails"]["pemFilename"],
+                              client["orgDetails"]["bidParameters"],
+                              client["orgDetails"]["adgroupBidParameters"],
+                              client["orgDetails"]["branchBidParameters"],
+                              client["orgDetails"]["campaignIds"],
+                              client["orgDetails"]["keywordAdderIds"],
+                              client["orgDetails"]["keywordAdderParameters"],
+                              client["orgDetails"]["branchIntegrationParameters"],
+                              client["orgDetails"]["currency"],
+                              client["orgDetails"]["appName"],
+                              client["orgDetails"]["appID"],
+                              client["orgDetails"]["campaignName"]
+                              ))
+
+        # handle data types since dynamo uses decimal and bid adjusters use float
+        for client in CLIENTS:
+            for bidParam in client.bidParameters:
+                if type(client.bidParameters[bidParam]) == str:
+                    client.bidParameters[bidParam] = client.bidParameters.get(bidParam)
+                else:
+                    client.bidParameters[bidParam] = float(client.bidParameters.get(bidParam))
+
+            for bidParam in client.adgroupBidParameters:
+                if type(client.adgroupBidParameters[bidParam]) == str:
+                    client.adgroupBidParameters[bidParam] = client.adgroupBidParameters.get(bidParam)
+                else:
+                    client.adgroupBidParameters[bidParam] = float(client.adgroupBidParameters.get(bidParam))
+
+            for bidParam in client.branchBidParameters:
+                if type(client.branchBidParameters[bidParam]) == str:
+                    client.branchBidParameters[bidParam] = client.branchBidParameters.get(bidParam)
+                else:
+                    client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
+
+        return CLIENTS
 
     # ----------------------------------------------------------------------------
     @staticmethod
@@ -614,8 +679,7 @@ class Client:
 
         os.remove(historyPathname)
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
+
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     Client.test()

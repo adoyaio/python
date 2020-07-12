@@ -4,11 +4,9 @@ import datetime
 import decimal
 import json
 import logging
-
 import boto3
 import requests
 from botocore.exceptions import ClientError
-
 from configuration import HTTP_REQUEST_TIMEOUT, \
     BRANCH_ANALYTICS_URL_BASE, \
     data_sources, \
@@ -16,6 +14,7 @@ from configuration import HTTP_REQUEST_TIMEOUT, \
 from debug import debug, dprint
 from retry import retry
 from utils import DynamoUtils
+from Client import Client
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 dashG = "-"
@@ -70,7 +69,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
-    clientsG = DynamoUtils.getClients(dynamodb)
+    clientsG = Client.getClients(dynamodb)
     logger.info("In runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------
@@ -147,6 +146,7 @@ def process():
 
         if run_branch:
             for data_source in data_sources.keys():
+                
                 # key field of db table (slice off the last character)
                 data_source_key = data_source[:-1] + "_key"
                 branch_job = data_sources.get(data_source)
@@ -176,21 +176,13 @@ def process():
                                     # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                                     count = str(result["result"]["unique_count"])
 
-                                    # event_key = campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
+                                    # event_key === campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
                                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
                                         keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
                                         event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
                                     else:
                                         keyword = "n/a"
                                         event_key = campaign_id + dashG + ad_set_id
-
-                                    # enable for local debugging
-                                    # dprint("timestamp=%s." % timestamp)
-                                    # dprint("campaign=%s." % campaign)
-                                    # dprint("keyword=%s." % keyword)
-                                    # dprint("count=%s." % count)
-                                    # dprint("campaign_id=%s." % campaign_id)
-                                    # dprint("event_key=%s." % event_key)
 
                                     try:
                                         response = table.put_item(

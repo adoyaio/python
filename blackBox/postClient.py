@@ -75,6 +75,7 @@ def lambda_handler(event, context):
     clients = json.loads(json.dumps(payload), parse_float=decimal.Decimal)
     payload = clients
 
+    # send internal email on client update details
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
