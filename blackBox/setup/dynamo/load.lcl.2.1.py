@@ -28,27 +28,45 @@ for cpiItem in cpiItems:
         # pull fields from cpiItem
         org_id = cpiItem["org_id"]
 
-        if org_id != '971540':
+        if org_id != '971540': # ignore laundrie
             timestamp = cpiItem["timestamp"]
             cpi = cpiItem["cpi"]
             installs = cpiItem["installs"]
-            spend = cpiItem["spend"]
-            branch_revenue = 0
-            branch_purchases = 0
-
+            spend = cpiItem["spend"]     
+            revenue = 0
+            purchases = 0
+            cpp = 0
+            revenueOverCost = 0
+            
             # iterate campaign ids and query branch_commerce_events for timestamp 
             for campaignId in mapping[org_id]:
-                branch_revenue = branch_revenue + DynamoUtils.getBranchRevenueForTimeperiod(dynamodb, campaignId, datetime.strptime(timestamp, '%Y-%m-%d'), datetime.strptime(timestamp, '%Y-%m-%d'))
-                branch_purchases = branch_purchases + DynamoUtils.getBranchPurchasesForTimeperiod(dynamodb, campaignId, datetime.strptime(timestamp, '%Y-%m-%d'), datetime.strptime(timestamp, '%Y-%m-%d'))
-        
+                revenue = revenue + DynamoUtils.getBranchRevenueForTimeperiod(dynamodb, campaignId, datetime.strptime(timestamp, '%Y-%m-%d'), datetime.strptime(timestamp, '%Y-%m-%d'))
+                purchases = purchases + DynamoUtils.getBranchPurchasesForTimeperiod(dynamodb, campaignId, datetime.strptime(timestamp, '%Y-%m-%d'), datetime.strptime(timestamp, '%Y-%m-%d'))
+
+            # perform cacls 
+            if int(purchases) > 0 and float(spend) > 0:   
+                cpp = "%.2f" % round(float(spend) / float(purchases), 2)
+            else:
+                cpp = "%.2f" % round(0)
+
+            if int(revenue) > 0 and float(spend) > 0:
+                revenueOverCost = "%.2f" % round(float(revenue) / float(spend), 2)
+                revenue = "%s" % round(revenue, 2)
+            else:    
+                revenueOverCost  ="%s" % round(revenue, 2)
+                revenue = "%s" % round(0, 2)
+
+            # put item
             item = {
-            'org_id':org_id,
-            'timestamp':timestamp,
-            'cpi':cpi,
-            'installs':installs,
-            'spend':spend,
-            'branch_revenue':branch_revenue,
-            'branch_purchases':branch_purchases
+                'org_id': org_id,
+                'timestamp': timestamp,
+                'spend': spend,
+                'installs': installs,
+                'cpi': cpi,
+                'purchases': purchases,
+                'revenue': revenue,
+                'cpp': cpp,
+                'revenueOverCost': revenueOverCost
             }
             response = cpiBranchHistoryTable.put_item(
                 Item=item

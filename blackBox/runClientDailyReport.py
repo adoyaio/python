@@ -129,7 +129,6 @@ def createOneRowOfHistory(data):
         cpi = "%.2f" % round(float(spend) / float(installs), 2)
     else:
         spend = "%s" % round(0, 2),
-        # cpi = "%.2f" % round(0), 2
         cpi = "%.2f" % round(0)
 
     #branch fields
@@ -145,7 +144,8 @@ def createOneRowOfHistory(data):
         revenueOverCost = "%.2f" % round(float(revenue) / float(spend), 2)
         revenue = "%s" % round(revenue, 2)
     else:    
-        revenueOverCost  ="%s" % round(data["revenue"], 2)
+        #revenueOverCost  ="%s" % round(data["revenue"], 2)
+        revenueOverCost  ="%s" % round(revenue, 2)
         revenue = "%s" % round(0, 2)
 
     return timestamp, spend, installs, cpi, purchases, revenue, cpp, revenueOverCost

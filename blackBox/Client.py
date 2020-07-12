@@ -240,7 +240,7 @@ class Client:
 
 
     def addRowToHistory(self, stuff, dynamoResource, end_date):
-        print("stuff:::" + str(stuff))
+        print("addRowToHistory:::stuff:::" + str(stuff))
         self.addRowToCpiHistory(stuff, dynamoResource, end_date)
         self.addRowToCpiBranchHistory(stuff, dynamoResource, end_date)
 
@@ -272,15 +272,24 @@ class Client:
         spend = stuff[1]
         installs = int(stuff[2])
         cpi = stuff[3]
-        org_id = str(self.orgId)
-        print("Adding cpi line:", timestamp, spend, installs, cpi, org_id)
+        org_id = str(self.orgId) # TODO JF revisit when org_id is string
+        purchases = int(stuff[4])
+        revenue = stuff[5]
+        cpp = stuff[6]
+        revenueOverCost = stuff[7]
+
+        print("Adding cpi branch line:", timestamp, spend, installs, cpi, org_id, purchases, revenue, cpp, revenueOverCost)
         table.put_item(
             Item={
                 'timestamp': timestamp,
                 'spend': spend,
                 'installs': installs,
                 'cpi': cpi,
-                'org_id': org_id
+                'org_id': org_id,
+                'purchases': purchases,
+                'revenue': revenue,
+                'cpp': cpp,
+                'revenueOverCost': revenueOverCost
             }
         )
 
