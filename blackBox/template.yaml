@@ -118,5 +118,3 @@ Resources:
             Properties:
               Path: /api/admin
               Method: post
-              Auth:
-              ApiKeyRequired: true

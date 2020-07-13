@@ -73,7 +73,7 @@ for cpiItem in cpiItems:
             )
     
     except botocore.exceptions.ClientError as e:
-        print("cpi_history failed due to" + e.response['Error']['Message'])
+        print("cpi_branch_history failed due to" + e.response['Error']['Message'])
 
 print("cpi_branch_history rows added:::" + str(len(cpiItems)))
  

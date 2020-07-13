@@ -654,6 +654,8 @@ if 'apple_keyword' not in existing_tables:
     )
     print("Table status:", table.table_name, table.table_status)
 
+# dynamo numbers are serialized to strings so no advantage to using number here
+# TODO rework to use string key instead of number 
 if 'clients' not in existing_tables:
     table = dynamodb.create_table(
         TableName='clients',
@@ -664,11 +666,147 @@ if 'clients' not in existing_tables:
             }
         ],
         AttributeDefinitions=[
-            {
-                'AttributeName': 'orgId',
-                'AttributeType': 'N'
-            }
+        {
+            'AttributeName': 'orgId',
+            'AttributeType': 'N' 
+        }
         ],
         BillingMode="PAY_PER_REQUEST",
     )
-print("Table status:", table.table_name, table.table_status)
+    print("Table status:", table.table_name, table.table_status)
+
+if 'cpi_branch_history' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='cpi_branch_history',
+        KeySchema=[
+        {
+            'AttributeName': 'org_id',
+            'KeyType': 'HASH'  #Partition key
+        },
+        {
+            'AttributeName': 'timestamp',
+            'KeyType': 'RANGE'  #Sort key
+        },
+        ],
+        AttributeDefinitions=[
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'timestamp',
+            'AttributeType': 'S'
+        }
+        ],
+        BillingMode="PAY_PER_REQUEST"
+    )
+    print("Table status:", table.table_name, table.table_status)
+
+if 'apple_branch_keyword' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='apple_branch_keyword',
+        KeySchema=[
+        {
+            'AttributeName': 'keyword_id',
+            'KeyType': 'HASH'  #Partition key
+        },
+        {
+            'AttributeName': 'date',
+            'KeyType': 'RANGE'  #Sort key
+        },
+        ],
+        AttributeDefinitions=[
+        {
+            'AttributeName': 'keyword_id',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'date',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'app_id',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'campaign_id',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'adgroup_id',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'keyword',
+            'AttributeType': 'S'
+        },
+        ],
+        GlobalSecondaryIndexes=[
+        {
+            'IndexName': 'campaign_id-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'campaign_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'app_id-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'app_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'adgroup_id-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'adgroup_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'keyword-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'keyword',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        }
+        ],
+        BillingMode="PAY_PER_REQUEST"
+    )
+    print("Table status:", table.table_name, table.table_status)

@@ -2,16 +2,11 @@ from __future__ import print_function
 
 import decimal
 import sys
-
 import boto3
 import json
 
 # sys.path.append("/blackBox/utils/")
 from utils import DynamoUtils
-
-# Helper class to convert a DynamoDB item to JSON.
-# from utils import DynamoUtils
-# from utils import DynamoUtils
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -21,10 +16,6 @@ class DecimalEncoder(json.JSONEncoder):
             else:
                 return int(o)
         return super(DecimalEncoder, self).default(o)
-
-
-print('Loading function')
-
 
 def lambda_handler(event, context):
     print("Received event: " + json.dumps(event, indent=2))
@@ -59,9 +50,9 @@ def lambda_handler(event, context):
     if query_by_time:
         start_date = queryStringParameters["start_date"]
         end_date = queryStringParameters["end_date"]
-        history = DynamoUtils.getClientHistoryByTime(dynamodb, org_id, start_date, end_date)
+        history = DynamoUtils.getClientBranchHistoryByTime(dynamodb, org_id, start_date, end_date)
     else:
-        history = DynamoUtils.getClientHistoryNumRecs(dynamodb, org_id, total_recs)
+        history = DynamoUtils.getClientBranchHistoryNumRecs(dynamodb, org_id, total_recs)
 
     return {
         'statusCode': 200,

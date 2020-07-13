@@ -66,18 +66,18 @@ def getClient(dynamoResource, client_id):
 
 
 def getClientHistory(dynamoResource, client_id):
-        today = datetime.date.today()
-        end_date_delta = datetime.timedelta(days=1)
-        start_date_delta = datetime.timedelta(365)
-        start_date = today - start_date_delta
-        end_date = today - end_date_delta
+    today = datetime.date.today()
+    end_date_delta = datetime.timedelta(days=1)
+    start_date_delta = datetime.timedelta(365)
+    start_date = today - start_date_delta
+    end_date = today - end_date_delta
 
-        table = dynamoResource.Table('cpi_history')
-        response = table.query(
-            KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
-                '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+    table = dynamoResource.Table('cpi_history')
+    response = table.query(
+        KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
+            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         ))
-        return response['Items']
+    return response['Items']
 
 
 def getClientHistoryByTime(dynamoResource, client_id, start_date, end_date):
@@ -95,7 +95,22 @@ def getClientHistoryNumRecs(dynamoResource, client_id, total_recs):
         ScanIndexForward=False,
         Limit=int(total_recs)
     )
+    return response['Items']
 
-    # get campaigns ids from client table
-    client = getClient(dynamoResource, client_id)
+
+def getClientBranchHistoryByTime(dynamoResource, client_id, start_date, end_date):
+    table = dynamoResource.Table('cpi_branch_history')
+    response = table.query(
+        KeyConditionExpression=Key('org_id').eq(client_id) & Key('timestamp').between(end_date, start_date),
+    )
+    return response['Items']
+
+
+def getClientBranchHistoryNumRecs(dynamoResource, client_id, total_recs):
+    table = dynamoResource.Table('cpi_branch_history')
+    response = table.query(
+        KeyConditionExpression=Key('org_id').eq(client_id),
+        ScanIndexForward=False,
+        Limit=int(total_recs)
+    )
     return response['Items']
