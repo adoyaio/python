@@ -47,14 +47,14 @@ for cpiItem in cpiItems:
             if int(purchases) > 0 and float(spend) > 0:   
                 cpp = "%.2f" % round(float(spend) / float(purchases), 2)
             else:
-                cpp = "%.2f" % round(0)
+                cpp = "%.2f" % 0
 
-            if int(revenue) > 0 and float(spend) > 0:
+            if float(revenue) > 0 and float(spend) > 0:
                 revenueOverCost = "%.2f" % round(float(revenue) / float(spend), 2)
-                revenue = "%s" % round(revenue, 2)
+                revenue = "%.2f" % round(revenue, 2)
             else:    
-                revenueOverCost  ="%s" % round(revenue, 2)
-                revenue = "%s" % round(0, 2)
+                revenueOverCost = "%.2f" % 0
+                revenue = "%.2f" % 0
 
             # put item
             item = {

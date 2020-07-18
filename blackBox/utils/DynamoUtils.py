@@ -27,7 +27,6 @@ def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end
             for i in response[u'Items']:
                 total_branch_events += int(i['count'])
 
-        print("getBranchPurchasesForTimeperiod:::" + str(total_branch_events))
         return total_branch_events
 
 
@@ -41,9 +40,8 @@ def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_d
     total_branch_revenue = 0
     if len(response['Items']) >= 0:
         for i in response[u'Items']:
-            total_branch_revenue += int(i['revenue'])
+            total_branch_revenue += float(i['revenue'])
 
-    print("getBranchRevenueForTimeperiod:::" + str(total_branch_revenue))
     return total_branch_revenue
 
 def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):

@@ -121,32 +121,32 @@ def createOneRowOfHistory(data):
     
     # ASA fields
     timestamp = str(datetime.datetime.now().date())
-    installs = data["installs"]  # installs = str(data["installs"])
+    installs = data["installs"]
     spend = data["spend"]
     
     if int(installs) > 0:
         spend = "%s" % round(spend, 2)
         cpi = "%.2f" % round(float(spend) / float(installs), 2)
     else:
-        spend = "%s" % round(0, 2),
-        cpi = "%.2f" % round(0)
+        spend = "%.2f" % 0
+        cpi = "%.2f" % 0
 
     #branch fields
     purchases =  data["purchases"]
     revenue = data["revenue"]
 
+    # perform cacls 
     if int(purchases) > 0 and float(spend) > 0:   
         cpp = "%.2f" % round(float(spend) / float(purchases), 2)
     else:
-        cpp = "%.2f" % round(0)
+        cpp = "%.2f" % 0
 
-    if int(revenue) > 0 and float(spend) > 0:
+    if float(revenue) > 0 and float(spend) > 0:
         revenueOverCost = "%.2f" % round(float(revenue) / float(spend), 2)
-        revenue = "%s" % round(revenue, 2)
+        revenue = "%.2f" % round(revenue, 2)
     else:    
-        #revenueOverCost  ="%s" % round(data["revenue"], 2)
-        revenueOverCost  ="%s" % round(revenue, 2)
-        revenue = "%s" % round(0, 2)
+        revenueOverCost = "%.2f" % 0
+        revenue = "%.2f" % 0
 
     return timestamp, spend, installs, cpi, purchases, revenue, cpp, revenueOverCost
 

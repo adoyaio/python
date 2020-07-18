@@ -9,72 +9,82 @@ dynamodbLocal = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url
 dynamodbProd = boto3.resource('dynamodb', region_name='us-east-1')
 
 # client table
-clientsTableLocal = dynamodbLocal.Table('clients')
-clientsTableProd = dynamodbProd.Table('clients')
-items = clientsTableProd.scan()["Items"]
+tableName = 'clients'
+local = dynamodbLocal.Table(tableName)
+prod = dynamodbProd.Table(tableName)
+items = prod.scan()["Items"]
 
 for item in items:
     try:
-        response = clientsTableLocal.put_item(
+        response = local.put_item(
             Item=item
         )
     except ClientError as e:
-        print("clients failed due to" + e.response['Error']['Message'])
+        print(tableName + " failed due to" + e.response['Error']['Message'])
 
-print("client rows added:::" + str(len(items)))
+print(tableName + " rows added:::" + str(len(items)))
 
 # cpi_history table
-clientsTableLocal = dynamodbLocal.Table('cpi_history')
-clientsTableProd = dynamodbProd.Table('cpi_history')
-items = clientsTableProd.scan()["Items"]
+tableName = 'cpi_history'
+local = dynamodbLocal.Table(tableName)
+prod = dynamodbProd.Table(tableName)
+items = prod.scan()["Items"]
+
 for item in items:
     try:
-        response = clientsTableLocal.put_item(
+        response = local.put_item(
             Item=item
         )
     except ClientError as e:
-        print("cpi_history failed due to" + e.response['Error']['Message'])
+        print(tableName + " failed due to" + e.response['Error']['Message'])
 
-print("cpi_history rows added:::" + str(len(items)))
+print(tableName + " rows added:::" + str(len(items)))
 
-# cpi_history table
-clientsTableLocal = dynamodbLocal.Table('apple_keyword')
-clientsTableProd = dynamodbProd.Table('apple_keyword')
-items = clientsTableProd.scan()["Items"]
+# apple_keyword table
+tableName = 'apple_keyword'
+local = dynamodbLocal.Table(tableName)
+prod = dynamodbProd.Table(tableName)
+items = prod.scan()["Items"]
+
 for item in items:
     try:
-        response = clientsTableLocal.put_item(
+        response = local.put_item(
             Item=item
         )
     except ClientError as e:
-        print("apple_keyword failed due to" + e.response['Error']['Message'])
+        print(tableName + " failed due to" + e.response['Error']['Message'])
 
-print("apple_keyword rows added:::" + str(len(items)))
+print(tableName + " rows added:::" + str(len(items)))
 
-clientsTableLocal = dynamodbLocal.Table('branch_commerce_events')
-clientsTableProd = dynamodbProd.Table('branch_commerce_events')
-items = clientsTableProd.scan()["Items"]
+
+# branch_commerce_events
+tableName = 'branch_commerce_events'
+local = dynamodbLocal.Table(tableName)
+prod = dynamodbProd.Table(tableName)
+items = prod.scan()["Items"]
+
 for item in items:
     try:
-        response = clientsTableLocal.put_item(
+        response = local.put_item(
             Item=item
         )
     except ClientError as e:
-        print("branch_commerce_events failed due to" + e.response['Error']['Message'])
+        print(tableName + " failed due to" + e.response['Error']['Message'])
 
-print("branch_commerce_events rows added:::" + str(len(items)))
+print(tableName + " rows added:::" + str(len(items)))
 
- # LOAD SAMPLE DATA json
-# with open("../clients.json") as json_file:
-#     clients = json.load(json_file, parse_float=decimal.Decimal)
-#     for client in clients:
-#         orgId = client['orgId']
-#
-#         print("Adding client line:", str(client))
-#
-#         table.put_item(
-#             Item = {
-#                 'orgId': orgId,
-#                 'orgDetails': client
-#             }
-#         )
+# cpi_branch_history table
+tableName = 'cpi_branch_history'
+local = dynamodbLocal.Table(tableName)
+prod = dynamodbProd.Table(tableName)
+items = prod.scan()["Items"]
+
+for item in items:
+    try:
+        response = local.put_item(
+            Item=item
+        )
+    except ClientError as e:
+        print(tableName + " failed due to" + e.response['Error']['Message'])
+
+print(tableName + " rows added:::" + str(len(items)))
