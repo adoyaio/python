@@ -115,7 +115,6 @@ def createOneRowOfHistory(data):
     #
     #  return utcTimestamp, timestamp, str(data["spend"]), str(data["installs"])
 
-
     # incoming
     # {'installs': 88, 'spend': 115.92, 'purchases': 9, 'revenue': 204.0}
     
