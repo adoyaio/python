@@ -20,12 +20,14 @@ def lambda_handler(event, context):
     # invoke_response_branch = runAppleIntegration.lambda_handler(event, context)
     # print(json.dumps(invoke_response_branch))
 
-
     invoke_response_branch = runAppleIntegrationKeyword.lambda_handler(event, context)
     print(json.dumps(invoke_response_branch))
 
     invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
     print(json.dumps(invoke_response_branch))
+
+    invoke_response_dr = runClientDailyReport.lambda_handler(event, context)
+    print(json.dumps(invoke_response_dr))
 
     invoke_response_rba = runBidAdjuster.lambda_handler(event, context)
     print(json.dumps(invoke_response_rba))
@@ -35,9 +37,6 @@ def lambda_handler(event, context):
 
     invoke_response_ka = runKeywordAdder.lambda_handler(event, context)
     print(json.dumps(invoke_response_ka))
-
-    invoke_response_dr = runClientDailyReport.lambda_handler(event, context)
-    print(json.dumps(invoke_response_dr))
 
     return True
 

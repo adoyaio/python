@@ -17,6 +17,7 @@ from configuration import EMAIL_FROM, \
 from debug import debug, dprint
 from retry import retry
 from utils import DynamoUtils, EmailUtils, S3Utils
+from Client import Client
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
@@ -67,7 +68,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
-    clientsG = DynamoUtils.getClients(dynamodb)
+    clientsG = Client.getClients(dynamodb)
     logger.info("In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
@@ -160,6 +161,7 @@ def return_adjusted_bids(branch_optimization_goal, active_keywords_dataFrame, br
                                                           revenue_over_ad_spend_threshold_buffer)
     else:
         print("Unknown Optimization Goal")
+        # TODO JF why are we returning here
         return pd.DataFrame(columns=['id'])
 
     # SK: This is the end of the business logic things get fuzzy for me here.

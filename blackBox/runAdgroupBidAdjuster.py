@@ -5,12 +5,10 @@ import json
 import logging
 import time
 from collections import defaultdict
-
 import boto3
 import numpy as np
 import pandas as pd
 import requests
-
 from configuration import EMAIL_FROM, \
     APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
     APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
@@ -19,6 +17,7 @@ from configuration import EMAIL_FROM, \
 from debug import debug, dprint
 from retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
+from Client import Client
 
 BIDDING_LOOKBACK = 7 # days
 sendG = False # Set to True to enable sending data to Apple, else a test run.
@@ -68,7 +67,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
-    clientsG = DynamoUtils.getClients(dynamodb)
+    clientsG = Client.getClients(dynamodb)
     logger.info("In runAdgroupBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 # ------------------------------------------------------------------------------

@@ -3,16 +3,15 @@ import datetime
 import json
 import logging
 import time
-
 import boto3
 import requests
-
 from configuration import EMAIL_FROM, \
     APPLE_KEYWORDS_REPORT_URL, \
     HTTP_REQUEST_TIMEOUT
 from debug import debug, dprint
 from retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
+from Client import Client
 
 ONE_DAY = 1
 SEVEN_DAYS = 7
@@ -46,7 +45,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
-    clientsG = DynamoUtils.getClients(dynamodb)
+    clientsG = Client.getClients(dynamodb)
     logger.info("In runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
@@ -115,22 +114,58 @@ def createOneRowOfHistory(data):
     #  timestamp = datetime.datetime.now().replace(tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
     #
     #  return utcTimestamp, timestamp, str(data["spend"]), str(data["installs"])
-    print('createOneRowOfHistory:' + str(data))
-    if int(data["installs"]) > 0:
-        return str(datetime.datetime.now().date()), \
-           "%s" % round(data["spend"], 2), \
-           str(data["installs"]), \
-           "%.2f" % round(data["spend"] / float(data["installs"]), 2)
+
+    # incoming
+    # {'installs': 88, 'spend': 115.92, 'purchases': 9, 'revenue': 204.0}
+    
+    # ASA fields
+    timestamp = str(datetime.datetime.now().date())
+    installs = data["installs"]
+    spend = data["spend"]
+    
+    if int(installs) > 0:
+        spend = "%s" % round(spend, 2)
+        cpi = "%.2f" % round(float(spend) / float(installs), 2)
     else:
-        print('createOneRowOfHistory:::adding line of history with 0s check values')
-        return str(datetime.datetime.now().date()), \
-           "%s" % round(0, 2), \
-           str(data["installs"]), \
-           "%.2f" % round(0), 2
+        spend = "%.2f" % 0
+        cpi = "%.2f" % 0
+
+    #branch fields
+    purchases =  data["purchases"]
+    revenue = data["revenue"]
+
+    # perform cacls 
+    if int(purchases) > 0 and float(spend) > 0:   
+        cpp = "%.2f" % round(float(spend) / float(purchases), 2)
+    else:
+        cpp = "%.2f" % 0
+
+    if float(revenue) > 0 and float(spend) > 0:
+        revenueOverCost = "%.2f" % round(float(revenue) / float(spend), 2)
+        revenue = "%.2f" % round(revenue, 2)
+    else:    
+        revenueOverCost = "%.2f" % 0
+        revenue = "%.2f" % 0
+
+    return timestamp, spend, installs, cpi, purchases, revenue, cpp, revenueOverCost
+
+    # TODO JF remove this block
+    # return timestamp, spend, installs, cpi
+    # if int(data["installs"]) > 0:
+    #     return str(datetime.datetime.now().date()), \
+    #        "%s" % round(data["spend"], 2), \
+    #        str(data["installs"]), \
+    #        "%.2f" % round(data["spend"] / float(data["installs"]), 2)
+    # else:
+    #     print('createOneRowOfHistory:::adding line of history with 0s check values')
+    #     return str(datetime.datetime.now().date()), \
+    #        "%s" % round(0, 2), \
+    #        str(data["installs"]), \
+    #        "%.2f" % round(0), 2
 
 
 # ------------------------------------------------------------------------------
-@debug
+# JF TODO non html email should be updated with branch data
 def createOneRowOfTable(data, label):
     cpi = "N/A" if data["installs"] < 1 else ("{: 6,.2f}".format((0.0 + data["spend"]) / data["installs"]))
 
@@ -138,7 +173,6 @@ def createOneRowOfTable(data, label):
 
 
 # ------------------------------------------------------------------------------
-#@debug
 def createEmailBodyForACampaign(client, summary, now):
     """Format:
   Timeframe        |    Cost    |  Installs  |  Cost per Install
@@ -151,21 +185,11 @@ def createEmailBodyForACampaign(client, summary, now):
                           """\t""".join(["Timeframe\t", "   Cost", "\tInstalls", "Cost per Install"]),
                           createOneRowOfTable(summary[ONE_DAY], "Yesterday\t"),
                           createOneRowOfTable(summary[SEVEN_DAYS], "Last Seven Days"),
-                          createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days"),
-                          """
-Optimization Summary
-Keyword bids updated today: %s
-Adgroup bids updated today: %s
-Keywords submitted for upload today: %s""" % \
-
-                          # JF release-1 airlift bid counts and keywords to dynamo
-                          (client.readUpdatedBidsCount(dynamodb), client.readUpdatedAdgroupBidsCount(dynamodb),
-                           len(client.readPositiveKeywordsAdded(dynamodb)))
+                          createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days")
                           ])
 
 
 def createHtmlEmailBodyForACampaign(client, summary, now):
-
     #handle currency
     if client.currency == 'USD':
         currencySymbol = '$'
@@ -291,7 +315,6 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
 def sendEmailReport(client, dataForVariousTimes):
     today = datetime.date.today()
 
-
     summary = {ONE_DAY: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
                SEVEN_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
                THIRTY_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0}
@@ -320,7 +343,6 @@ def sendEmailReport(client, dataForVariousTimes):
         summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
 
     now = time.time()
-
     client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb, end_date)
     emailBody = createEmailBodyForACampaign(client, summary, now)
     htmlBody = createHtmlEmailBodyForACampaign(client, summary, now)

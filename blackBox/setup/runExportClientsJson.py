@@ -8,8 +8,6 @@ import pprint
 
 import boto3
 
-from debug import debug, dprint
-
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -29,15 +27,13 @@ class DecimalEncoder(json.JSONEncoder):
 
 
 # ------------------------------------------------------------------------------
-@debug
 def initialize(env, dynamoEndpoint):
     global sendG
     global dynamodb
 
     if env == "lcl":
         sendG = False
-        # dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
         logger.setLevel(logging.INFO)
     elif env == "prod":
         sendG = False
@@ -50,17 +46,14 @@ def initialize(env, dynamoEndpoint):
 
 
 # ------------------------------------------------------------------------------
-@debug
 def process():
     data = []
     for client in (dynamodb.Table('clients').scan()["Items"]):
         data.append(client["orgDetails"])
-    dprint("%s" % pprint.pformat(data))
     with open('clients.' + str(today) + '.json', 'w') as outfile:
         json.dump(data, outfile, cls=DecimalEncoder, indent=4)
 
 # ------------------------------------------------------------------------------
-@debug
 def terminate():
     pass
 
@@ -69,10 +62,10 @@ def terminate():
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000')
-    process()
-    terminate()
-
-    # initialize('prod', 'http://localhost:8000')
+    # initialize('lcl', 'http://localhost:8000')
     # process()
     # terminate()
+
+    initialize('prod', 'http://localhost:8000')
+    process()
+    terminate()

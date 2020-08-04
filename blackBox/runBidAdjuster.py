@@ -12,16 +12,15 @@ import time
 import boto3
 from utils import EmailUtils, DynamoUtils, S3Utils
 from boto3.dynamodb.conditions import Key, Attr
-
 from configuration import EMAIL_FROM, \
     APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
     APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
     TOTAL_COST_PER_INSTALL_LOOKBACK, \
     HTTP_REQUEST_TIMEOUT
-
 from debug import debug, dprint
 from retry import retry
 import logging
+from Client import Client
 
 BIDDING_LOOKBACK = 14  # days
 
@@ -75,7 +74,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
-    clientsG = DynamoUtils.getClients(dynamodb)
+    clientsG = Client.getClients(dynamodb)
     logger.info("In runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
         sendG, dynamoEndpoint, str(EMAIL_TO)))
 
