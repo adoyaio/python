@@ -15,7 +15,7 @@ class DecimalEncoder(json.JSONEncoder):
                 return int(o)
         return super(DecimalEncoder, self).default(o)
 
-print('Loading function')
+print('Loading postAdmin')
 
 def lambda_handler(event, context):
     '''Provide an event that contains the following keys:

@@ -18,7 +18,7 @@ class DecimalEncoder(json.JSONEncoder):
                 return int(o)
         return super(DecimalEncoder, self).default(o)
 
-print('Loading function')
+print('Loading getClient')
 
 def lambda_handler(event, context):
     print("Received event: " + json.dumps(event, indent=2))
@@ -49,7 +49,8 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET'
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'x-api-key'
         },
         'body': json.dumps(client, cls=DecimalEncoder)
     }

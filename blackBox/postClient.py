@@ -21,7 +21,7 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-print('Loading function')
+print('Loading postClient')
 
 
 def lambda_handler(event, context):
