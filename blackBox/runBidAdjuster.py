@@ -11,8 +11,8 @@ import logging
 from collections import defaultdict
 from datetime import datetime as dt
 from boto3.dynamodb.conditions import Key, Attr
-from debug import debug, dprint
-from retry import retry
+from utils.debug import debug, dprint
+from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
 from Client import Client
 from configuration import config
@@ -104,16 +104,14 @@ def getKeywordReportFromApple(client, campaignId):
     dprint("Response is %s." % response)
     return json.loads(response.text)
 
-@debug
 def createUpdatedKeywordBids(data, campaignId, client):
     rows = data["data"]["reportingDataResponse"]["row"]
-
+    
     if len(rows) == 0:
         return False
 
     keyword_info = defaultdict(list)
     summaryReportInfo = {}
-
     for row in rows:
         metadata = row["metadata"]
         summaryReportInfo[metadata["keywordId"]] = {"keyword": metadata["keyword"],
@@ -146,7 +144,6 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
     # JF this extremely verbose don't use in PROD
     # dprint("keyword_info=%s." % pprint.pformat(keyword_info))
-
     # convert to dataframe
     df_keyword_info = pd.DataFrame(keyword_info)
     dprint("df_keyword_info=%s." % str(df_keyword_info))
@@ -169,8 +166,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
                                        "bid"]]
 
     dprint("ex_keyword_info=%s." % str(ex_keyword_info))
-
-    BP = client.bidParameters;
+    BP = client.bidParameters
 
     # first convert avg cpa to float so you can perform calculations
     ex_keyword_info["avgCPA"] = ex_keyword_info["avgCPA"].astype(float)
@@ -284,14 +280,6 @@ def convertKeywordFileToApplePayload(keyword_file_to_post, currency):
       "campaignId"	: 152708992  }
     '''
 
-    print("convertKeywordFileToApplePayload:::currency" + currency)
-    # payload = [{"importAction": "UPDATE",
-    #             "id": item["keywordId"],
-    #             "campaignId": item["campaignId"],
-    #             "adGroupId": item["adGroupId"],
-    #             "bidAmount": {"currency": currency, "amount": str(item["bid"])}
-    #             } for item in keyword_file_to_post]
-
     # pull the campaign and adgroup ids into an array and check if there are
     payload = [{"id": item["keywordId"],
                 "bidAmount": {"currency": currency, "amount": str(item["bid"])}
@@ -299,7 +287,7 @@ def convertKeywordFileToApplePayload(keyword_file_to_post, currency):
 
     return payload
 
-# JF quick fix for V2 update to urls TODO we can clean up to use lookup of the campaignId key to adGroupId key
+# quick fix for V2 update to urls TODO we can clean up to use lookup of the campaignId key to adGroupId key
 def getAppleKeywordsEndpoint(keyword_file_to_post):
     url = ""
     for item in keyword_file_to_post:
@@ -396,7 +384,7 @@ def process():
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
                 sent = sendUpdatedBidsToApple(client, keywordFileToPost)
-                client.updatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
+                client.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
     emailSummaryReport(summaryReportInfo, sent)
 
 

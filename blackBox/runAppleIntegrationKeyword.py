@@ -12,15 +12,14 @@ from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and roundin
 from botocore.exceptions import ClientError
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
-
-from debug import debug, dprint
-from retry import retry
+from utils.debug import debug, dprint
+from utils.retry import retry
 from Client import Client
 from utils import DynamoUtils, S3Utils
 from configuration import config
 
-LOOKBACK = 14 # TODO reduce this for nightly
-sendG = False  #enable data to Apple, else a test run
+LOOKBACK = 14 # TODO reduce for nightly
+sendG = False  # enable Apple post else test run
 logger = logging.getLogger()
 
 def initialize(env, dynamoEndpoint, emailToInternal):
@@ -118,7 +117,6 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
-
     response = getKeywordReportFromAppleHelper(url,
                                                cert=(S3Utils.getCert(client.pemFilename),
                                                      S3Utils.getCert(client.keyFilename)),
@@ -264,8 +262,6 @@ def process():
                 print("start_date:::" + str(start_date))
                 print("end_date::: " + str(end_date))
                 data = getKeywordReportFromApple(client, campaignId, start_date, end_date)
-                
-                # load to Dynamo
                 if (data is not None) and (data != 'false'):
                     loaded = loadAppleKeywordToDynamo(data, keyword_table)
                 else:

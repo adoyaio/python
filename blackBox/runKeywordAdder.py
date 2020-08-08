@@ -10,14 +10,13 @@ import requests
 import time
 from utils import EmailUtils, DynamoUtils, S3Utils
 import boto3
-from debug import debug, dprint
-from retry import retry
+from utils.debug import debug, dprint
+from utils.retry import retry
 from Client import Client
 from configuration import config
 
 JSON_MIME_TYPES  = ("application/json", "text/json")
 DUPLICATE_KEYWORD_REGEX = re.compile("(NegativeKeywordImport|KeywordImport)\[(?P<index>\d+)\]\.text")
-
 
 date = datetime.date
 today = datetime.date.today()
@@ -562,8 +561,8 @@ def convertAnalysisIntoApplePayloadAndSend(client,
     sendToApple(client, ((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
 
     # JF release-1 airlift bid counts and keywords to dynamo
-    client.positiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
-    client.negativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
+    client.writePositiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
+    client.writeNegativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
     return sent
 
 

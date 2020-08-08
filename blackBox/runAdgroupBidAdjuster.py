@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import requests
 from configuration import config
-from debug import debug, dprint
-from retry import retry
+from utils.debug import debug, dprint
+from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
 from Client import Client
 
@@ -321,7 +321,7 @@ def emailSummaryReport(data, sent):
     subjectString = "Ad Group Bid Adjuster summary for %s" % dateString
     EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
 
-# ------------------------------------------------------------------------------
+
 @debug
 def process():
   summaryReportInfo = { }
@@ -334,8 +334,6 @@ def process():
     for campaignId in campaignIds:
       data = getAdgroupReportFromApple(client)
       stuff = createUpdatedAdGroupBids(data, client)
-
-      print("runAdgroupBidAdjuster: stuff " + str(stuff))
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
         print("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
@@ -344,7 +342,7 @@ def process():
         #if sent:
           # TODO: Pull just the relevant field (defaultCPCBid?) from updatedBids, not the whole thing. --DS, 31-Dec-2018
         clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
-        client.updatedAdgroupBids(dynamodb, numberOfBids)
+        client.writeUpdatedAdgroupBids(dynamodb, numberOfBids)
 
   emailSummaryReport(summaryReportInfo, sent)
 

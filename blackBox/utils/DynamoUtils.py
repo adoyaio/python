@@ -20,7 +20,6 @@ class DecimalEncoder(json.JSONEncoder):
 
 def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
     table = dynamoResource.Table('branch_commerce_events')
-   
     # normalize search term to how its being stored in db
     event_key = str(campaign_id) + dashG + str(ad_set_id) + dashG + keyword.replace(" ", dashG)
     response = table.query(
@@ -42,8 +41,7 @@ def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end
 
         return total_branch_events
 
-# TODO add global
-
+# TODO add global getBranch methods
 def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
     table = dynamoResource.Table('branch_commerce_events')
     response = table.query(

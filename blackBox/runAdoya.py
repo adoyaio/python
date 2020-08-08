@@ -1,6 +1,5 @@
 import json
 import boto3
-
 import runAppleIntegrationKeyword
 import runBranchIntegration
 import runBidAdjuster
@@ -10,13 +9,6 @@ import runClientDailyReport
 
 
 def lambda_handler(event, context):
-    # lambda_client = boto3.client('lambda', region_name="us-east-1")
-    # invoke_response = lambda_client.invoke(
-    #         FunctionName='runBranchIntegration',
-    #         InvocationType='Event',
-    #         LogType='None',
-    #         Payload=json.dumps(event)
-    # )
     # invoke_response_branch = runAppleIntegration.lambda_handler(event, context)
     # print(json.dumps(invoke_response_branch))
 
@@ -40,3 +32,10 @@ def lambda_handler(event, context):
 
     return True
 
+    # lambda_client = boto3.client('lambda', region_name="us-east-1")
+    # invoke_response = lambda_client.invoke(
+    #         FunctionName='runBranchIntegration',
+    #         InvocationType='Event',
+    #         LogType='None',
+    #         Payload=json.dumps(event)
+    # )

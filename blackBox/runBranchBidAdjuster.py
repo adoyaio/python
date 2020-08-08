@@ -9,16 +9,15 @@ import numpy as np
 import pandas as pd
 import requests
 from configuration import config
-from debug import debug, dprint
-from retry import retry
+from utils.debug import debug, dprint
+from utils.retry import retry
 from Client import Client
 from utils import DynamoUtils, EmailUtils, S3Utils
 
-sendG = False  # Set to True to enable sending data to Apple, else a test run.
+sendG = False  # to enable sending data to Apple else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-###### date and time parameters for bidding lookback ######
 BIDDING_LOOKBACK = 7  # days
 date = datetime.date
 today = datetime.date.today()
@@ -75,7 +74,6 @@ def return_active_keywords_dataFrame(ads_data, min_apple_installs, keyword_statu
               "branch_revenue": np.sum, \
               "localSpend": np.sum})
     second_filter = group_by[(group_by["installs"] >= min_apple_installs)].reset_index()
-
     return second_filter[
         ["adGroupId", "keywordId", "bid", "installs", "branch_commerce_event_count", "branch_revenue", "localSpend"]]
 
@@ -170,7 +168,6 @@ def create_json_from_dataFrame(filtered_dataframe):
                 })
     return output_adGroupId_dict
 
-
 # TODO rework this to use config
 def create_put_request_string(campaign_id, adgroup_id):
     return "https://api.searchads.apple.com/api/v2/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
@@ -191,7 +188,6 @@ def process():
     summaryReportInfo = {}
 
     for client in clientsG:
-        print("runBranchBidAdjuster::: " + client.clientName + ":::" + str(client.orgId))
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         keyword_status = "ACTIVE"
         adgroup_deleted = "False"
@@ -201,7 +197,7 @@ def process():
             branch_secret = client.branchIntegrationParameters["branch_secret"]
             run_branch = True
         except KeyError as error:
-            logger.info("runBranchIntegration:process:::no branch config skipping!" + str(client.orgId))
+            logger.info("runBranchIntegration.process:::no branch config skipping!" + str(client.orgId))
             run_branch = False
 
         if run_branch:
@@ -222,7 +218,6 @@ def process():
                         print("skipping")
                     else:
                         keyword_info = defaultdict(list)
-
                         for kw_data in kw_response[u'Items']:
                             keyword = kw_data['keyword']
                             date = kw_data['date']
@@ -264,12 +259,11 @@ def process():
                             keyword_info["localSpend"].append(kw_data["local_spend"])
                             keyword_info["avgCPT"].append(kw_data["avg_cpt"])
 
-                            # BRANCH fields
+                            # branch fields
                             keyword_info["branch_commerce_event_count"].append(branch_commerce_event_count)
                             keyword_info["branch_revenue"].append(branch_revenue)
 
                         raw_data_df = pd.DataFrame(keyword_info)
-
                         BBP = client.branchBidParameters
                         min_apple_installs = BBP["min_apple_installs"]
 

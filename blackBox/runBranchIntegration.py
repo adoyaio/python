@@ -4,23 +4,21 @@ import json
 import logging
 import boto3
 import requests
-from botocore.exceptions import ClientError
-from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and rounding errors
+from Client import Client
+from configuration import config
+from utils import DynamoUtils
+from utils.debug import debug, dprint
+from utils.retry import retry
+from botocore.exceptions import ClientError # eliminate inexact and rounding errors
+from boto3.dynamodb.types import DYNAMODB_CONTEXT 
 from botocore.exceptions import ClientError
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
-
-from debug import debug, dprint
-from retry import retry
-from utils import DynamoUtils
-from Client import Client
-from configuration import config
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 dashG = "-"
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
 
 BIDDING_LOOKBACK = 7  # days #make this 2
 date = datetime.date
@@ -109,7 +107,6 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
     }
 
     url: str = config.BRANCH_ANALYTICS_URL_BASE
-
     headers = {"Content-Type": "application/json"}
     logger.info("URL is '%s'." % url)
     logger.info("Payload is '%s'." % payload)
@@ -124,7 +121,6 @@ def process():
     for client in clientsG:
         branch_key = {}
         branch_secret = {}
-
         try:
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]

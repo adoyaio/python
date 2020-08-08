@@ -5,8 +5,8 @@ import time
 import boto3
 import requests
 from configuration import config
-from debug import debug, dprint
-from retry import retry
+from utils.debug import debug, dprint
+from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
 from Client import Client
 
@@ -17,7 +17,7 @@ FOUR_YEARS = 365 * 4  # Ignoring leap years.
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
 logger = logging.getLogger()
-sendG = False  # Set to True to enable sending email to clients, else a test run.
+sendG = False  # to enable sending email to clients else a test run.
 
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
