@@ -2,8 +2,20 @@ import datetime
 import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
-
+from decimal import *
+import json
 dashG = "-"
+
+
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
 
 def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
     table = dynamoResource.Table('branch_commerce_events')
