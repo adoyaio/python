@@ -1,30 +1,25 @@
-from __future__ import print_function  # Python 2/3 compatibility
-
 import datetime
 import decimal
 import json
 import logging
 import time
 from collections import defaultdict
-
 import boto3
 import numpy as np
 import pandas as pd
 import requests
-
-from configuration import EMAIL_FROM, \
-    HTTP_REQUEST_TIMEOUT
+from configuration import config
 from debug import debug, dprint
 from retry import retry
-from utils import DynamoUtils, EmailUtils, S3Utils
 from Client import Client
+from utils import DynamoUtils, EmailUtils, S3Utils
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 ###### date and time parameters for bidding lookback ######
-BIDDING_LOOKBACK = 7  # days #make this 2
+BIDDING_LOOKBACK = 7  # days
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -43,15 +38,12 @@ class DecimalEncoder(json.JSONEncoder):
                 return int(o)
         return super(DecimalEncoder, self).default(o)
 
-
-# ------------------------------------------------------------------------------
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global clientsG
     global dynamodb
     global EMAIL_TO
-
     EMAIL_TO = emailToInternal
 
     if env == "lcl":
@@ -73,13 +65,10 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
 
 def return_active_keywords_dataFrame(ads_data, min_apple_installs, keyword_status, adgroup_deleted):
-    # SK: This part is all business logic and makese sense to me
-
+    # SK: This part is all business logic
     first_filter = ads_data[(ads_data["keywordStatus"] == "ACTIVE") & \
                             (ads_data["adGroupDeleted"] == "False")]
 
-    # first_filter = first_filter.assign(recent_apple_installs = first_filter["apple_installs"])
-    # first_filter.loc[first_filter["Report_Date"] < min_report_date, "recent_apple_installs"] = 0
     group_by = first_filter.groupby(["adGroupId", "keywordId", "bid"]) \
         .agg({"installs": np.sum, \
               "branch_commerce_event_count": np.sum, \
@@ -164,12 +153,9 @@ def return_adjusted_bids(branch_optimization_goal, active_keywords_dataFrame, br
         # TODO JF why are we returning here
         return pd.DataFrame(columns=['id'])
 
-    # SK: This is the end of the business logic things get fuzzy for me here.
-
 
 def create_json_from_dataFrame(filtered_dataframe):
     output_adGroupId_dict = {}
-
     unique_adGroupId_array = filtered_dataframe.adGroupId.unique()
 
     for adGroupId in unique_adGroupId_array:
@@ -185,35 +171,28 @@ def create_json_from_dataFrame(filtered_dataframe):
     return output_adGroupId_dict
 
 
+# TODO rework this to use config
 def create_put_request_string(campaign_id, adgroup_id):
     return "https://api.searchads.apple.com/api/v2/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
         campaign_id, adgroup_id)
-
 
 def write_request_file(put_request_string, request_json, request_output_filename):
     try:
         out_file_object = open(request_output_filename, "w")
     except:
         print("Error: Issues opening the output file")
-
     out_file_object.write(put_request_string)
     out_file_object.write("\n\n")
     out_file_object.write(str(request_json))
     out_file_object.close()
 
-
-# ------------------------------------------------------------------------------
 @debug
 def process():
     summaryReportInfo = {}
 
     for client in clientsG:
-
+        print("runBranchBidAdjuster::: " + client.clientName + ":::" + str(client.orgId))
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
-
-        print("Apple and Branch keyword data from : " + str(client.clientName))
-        print(client.orgId)
-        adgroup_keys = client.keywordAdderIds["adGroupId"].keys()
         keyword_status = "ACTIVE"
         adgroup_deleted = "False"
 
@@ -221,14 +200,14 @@ def process():
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]
             run_branch = True
-
         except KeyError as error:
-            logger.info("runBranchIntegration:process:::no branch config skipping " + str(client.orgId))
+            logger.info("runBranchIntegration:process:::no branch config skipping!" + str(client.orgId))
             run_branch = False
 
         if run_branch:
+            adgroup_keys = client.keywordAdderIds["adGroupId"].keys()
             for adgroup_key in adgroup_keys:
-                for adgroup_id in [client.keywordAdderIds["adGroupId"][adgroup_key]]:  # iterate all adgroups
+                for adgroup_id in [client.keywordAdderIds["adGroupId"][adgroup_key]]:
                     print("pulling adgroup_id " + str(adgroup_id))
                     print("campaign id " + str(client.keywordAdderIds["campaignId"][adgroup_key]))
                     campaign_id = str(client.keywordAdderIds["campaignId"][adgroup_key])
@@ -253,7 +232,7 @@ def process():
                             # get branch data
                             branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, campaign_id, adgroup_id, keyword, date)
                             for j in branch_response[u'Items']:
-                                print("found branch result:::")
+                                print("found branch result!")
                                 print(json.dumps(j, cls=DecimalEncoder))
                                 if len(branch_response['Items']) > 0:
                                     branch_revenue = int(branch_response['Items'][0]["revenue"])
@@ -335,27 +314,22 @@ def process():
                                         put_request_string = create_put_request_string(campaign_id, str(adGroupId))
                                         request_json = json_data[adGroupId]
                                         sendUpdatedBidsToApple(client, put_request_string, request_json)
-
     emailSummaryReport(summaryReportInfo, sendG)
 
-# ------------------------------------------------------------------------------
 @retry
 def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
-    return requests.put(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+    return requests.put(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-# ------------------------------------------------------------------------------
 def sendUpdatedBidsToApple(client, url, payload):
 
     headers = {"Authorization": "orgId=%s" % client.orgId,
                "Content-Type": "application/json",
                "Accept": "application/json",
                }
-    dprint("URL is '%s'." % url)
-    dprint("Payload is '%s'." % payload)
-    dprint("Headers are %s." % headers)
-    dprint("PEM='%s'." % client.pemFilename)
-    dprint("KEY='%s'." % client.keyFilename)
+    dprint("\n\nURL is '%s'." % url)
+    dprint("\n\nPayload is '%s'." % payload)
+    dprint("\n\nHeaders are %s." % headers)
 
     if url and payload:
         if sendG:
@@ -364,16 +338,12 @@ def sendUpdatedBidsToApple(client, url, payload):
                                                           S3Utils.getCert(client.keyFilename)),
                                                     json=payload,
                                                     headers=headers)
-
         else:
             response = "Not actually sending anything to Apple."
-
         print("The result of sending the update to Apple: %s" % response)
-
     return sendG
 
 
-# ------------------------------------------------------------------------------
 @debug
 def createEmailBody(data, sent):
   content = ["""Sent to Apple is %s.""" % sent,
@@ -387,8 +357,6 @@ def createEmailBody(data, sent):
   return "\n".join(content)
 
 
-
-# ------------------------------------------------------------------------------
 @debug
 def emailSummaryReport(data, sent):
     messageString = createEmailBody(data, sent);
@@ -396,30 +364,18 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Branch Bid Adjuster summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
-
-def export_dict_to_csv(raw_dict, filename):
-    '''
-  This function takes a json and a filename, and it exports the json as a csv to the given filename.
-  '''
-    df = pd.DataFrame.from_dict(raw_dict)
-    df.to_csv(filename, index=None)
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
 
 
-# ------------------------------------------------------------------------------
 @debug
 def terminate():
     pass
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
-
 
 def lambda_handler(event, context):
     initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])

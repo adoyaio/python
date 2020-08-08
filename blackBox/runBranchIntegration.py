@@ -1,5 +1,3 @@
-from __future__ import print_function  # Python 2/3 compatibility
-
 import datetime
 import decimal
 import json
@@ -7,21 +5,23 @@ import logging
 import boto3
 import requests
 from botocore.exceptions import ClientError
-from configuration import HTTP_REQUEST_TIMEOUT, \
-    BRANCH_ANALYTICS_URL_BASE, \
-    data_sources, \
-    aggregations
+from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and rounding errors
+from botocore.exceptions import ClientError
+DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
+DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
+
 from debug import debug, dprint
 from retry import retry
 from utils import DynamoUtils
 from Client import Client
+from configuration import config
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 dashG = "-"
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-###### date and time parameters for bidding lookback ######
+
 BIDDING_LOOKBACK = 7  # days #make this 2
 date = datetime.date
 today = datetime.date.today()
@@ -45,14 +45,11 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-# ------------------------------------------------------------------------------
-@debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global clientsG
     global dynamodb
     global EMAIL_TO
-
     EMAIL_TO = emailToInternal
 
     if env == "lcl":
@@ -63,23 +60,20 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # reduce AWS logging in production
-        # debug.disableDebug()  disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
     clientsG = Client.getClients(dynamodb)
-    logger.info("In runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    logger.info("runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
-# ------------------------------------------------------------------------------
+@debug
 def getKeywordReportFromBranchHelper(url, payload, headers):
     dprint("url=%s." % url)
     dprint("json=%s." % json)
-    return requests.post(url, json=payload, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+    return requests.post(url, json=payload, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
-
-# ------------------------------------------------------------------------------
 @retry
 def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation):
     payload = {
@@ -114,21 +108,17 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
         "zero_fill": "true"
     }
 
-    url: str = BRANCH_ANALYTICS_URL_BASE
+    url: str = config.BRANCH_ANALYTICS_URL_BASE
 
     headers = {"Content-Type": "application/json"}
-
     logger.info("URL is '%s'." % url)
     logger.info("Payload is '%s'." % payload)
     logger.info("Headers are %s." % headers)
-
     response = getKeywordReportFromBranchHelper(url, payload, headers)
     logger.info("Response is %s." % response)
-
     return json.loads(response.text)
 
 
-# ------------------------------------------------------------------------------
 @debug
 def process():
     for client in clientsG:
@@ -139,22 +129,21 @@ def process():
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]
             run_branch = True
-
         except KeyError as error:
-            logger.info("runBranchIntegration:process:::no branch config skipping " + str(client.orgId))
+            logger.info("runBranchIntegration:::no branch config skipping" + str(client.orgId))
             run_branch = False
 
         if run_branch:
-            for data_source in data_sources.keys():
+            for data_source in config.DATA_SOURCES.keys():
                 
                 # key field of db table (slice off the last character)
                 data_source_key = data_source[:-1] + "_key"
-                branch_job = data_sources.get(data_source)
+                branch_job = config.DATA_SOURCES.get(data_source)
                 table = dynamodb.Table(data_source)
 
                 if table:
-                    logger.info("runBranchIntegration:process:::found table " + data_source)
-                    branch_job_aggregations = aggregations[branch_job]
+                    logger.info("runBranchIntegration:::found table!" + data_source)
+                    branch_job_aggregations = config.AGGREGATIONS[branch_job]
 
                     for aggregation in branch_job_aggregations:
                         data = {
@@ -163,7 +152,7 @@ def process():
                         results = data[aggregation]['results']
 
                         if len(results) == 0:
-                            logger.info("runBranchIntegration:process:::no results from " + branch_job)
+                            logger.info("runBranchIntegration:process:::no results from:::" + branch_job)
 
                         for result in results:
                             if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
@@ -203,7 +192,7 @@ def process():
                                         logger.debug("runBranchIntegration:process:::PutItem succeeded:")
 
                                 else:
-                                    # TODO refactor revenue to be order angostic, currently revenue must run after count
+                                    # NOTE currently revenue must run after count
                                     logger.debug(branch_job + ":::handle revenue aggregation")
                                     timestamp = result["timestamp"].split('T')[0]
                                     campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
@@ -239,24 +228,19 @@ def process():
                                         )
                                     except ClientError as e:
                                         logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
-                                        # enable for local debugging
-                                        #print(json.dumps(response, indent=4, cls=DecimalEncoder))
+                                        print(json.dumps(response, indent=4, cls=DecimalEncoder))
                                     else:
-                                        logger.debug("runBranchIntegration:process:::PutItem succeeded:")
+                                        logger.debug("runBranchIntegration:process:::PutItem succeeded")
                             else:
                                 logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
                 else:
-                    logger.info("runBranchIntegration:process:::issue connecting to " + data_source)
+                    logger.info("runBranchIntegration:process:::issue connecting to:::" + data_source)
 
-# ------------------------------------------------------------------------------
 @debug
 def terminate():
     pass
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()

@@ -1,0 +1,215 @@
+[
+  {
+    "adgroupBidParameters": {
+      "HIGH_CPA_BID_DECREASE": 0.85,
+      "TAP_THRESHOLD": 5,
+      "LOW_CPI_BID_INCREASE_THRESH": 0.4,
+      "OBJECTIVE": "conservative",
+      "MIN_BID": 0.1,
+      "NO_INSTALL_BID_DECREASE_THRESH": 0,
+      "HIGH_CPI_BID_DECREASE_THRESH": 0.34,
+      "LOW_CPA_BID_BOOST": 1.15,
+      "MAX_BID": 3,
+      "STALE_RAISE_BID_BOOST": 1.15,
+      "STALE_RAISE_IMPRESSION_THRESH": 0
+    },
+    "keywordAdderParameters": {
+      "TARGETED_KEYWORD_TAP_THRESHOLD": 1,
+      "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0,
+      "BROAD_MATCH_DEFAULT_BID": 0.4,
+      "EXACT_MATCH_DEFAULT_BID": 0.4,
+      "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10,
+      "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1
+    },
+    "bidParameters": {
+      "HIGH_CPA_BID_DECREASE": 0.85,
+      "TAP_THRESHOLD": 7,
+      "OBJECTIVE": "conservative",
+      "MIN_BID": 0.1,
+      "NO_INSTALL_BID_DECREASE_THRESH": 0,
+      "HIGH_CPI_BID_DECREASE_THRESH": 0.4,
+      "LOW_CPA_BID_BOOST": 1.15,
+      "MAX_BID": 0.5,
+      "STALE_RAISE_BID_BOOST": 1.15,
+      "STALE_RAISE_IMPRESSION_THRESH": 0
+    },
+    "clientName": "Covetly",
+    "appName": "CovetlyAppName",
+    "keywordAdderIds": {
+      "campaignId": {
+        "broad": "187214904",
+        "exact": "158675458",
+        "search": "187217541"
+      },
+      "adGroupId": {
+        "broad": "187192993",
+        "exact": "158698070",
+        "search": "187217561"
+      }
+    },
+    "pemFilename": "ssj_covetly.pem",
+    "branchIntegrationParameters": {},
+    "orgId": 1105630,
+    "keyFilename": "ssj_covetly.key",
+    "emailAddresses": ["reid@covetlyapp.com"],
+    "appID": "CovetlyAppId",
+    "branchBidParameters": {
+      "branch_bid_adjustment": 0.3,
+      "branch_optimization_goal": "cost_per_purchase",
+      "min_apple_installs": 10,
+      "branch_min_bid": 0.1,
+      "revenue_over_ad_spend_threshold": 1,
+      "revenue_over_ad_spend_threshold_buffer": 0.25,
+      "cost_per_purchase_threshold": 20,
+      "cost_per_purchase_threshold_buffer": 0.25,
+      "objective": "standard"
+    },
+    "currency": "USD",
+    "disabled": true,
+    "campaignIds": ["158675458", "187214904"],
+    "campaignName": "CovetlycampaignName"
+  },
+  {
+    "adgroupBidParameters": {
+      "HIGH_CPA_BID_DECREASE": 0.85,
+      "TAP_THRESHOLD": 5,
+      "LOW_CPI_BID_INCREASE_THRESH": 1.58,
+      "OBJECTIVE": "standard",
+      "MIN_BID": 0.1,
+      "NO_INSTALL_BID_DECREASE_THRESH": 0,
+      "HIGH_CPI_BID_DECREASE_THRESH": 2,
+      "LOW_CPA_BID_BOOST": 1.15,
+      "MAX_BID": 6,
+      "STALE_RAISE_BID_BOOST": 1.15,
+      "STALE_RAISE_IMPRESSION_THRESH": 0
+    },
+    "keywordAdderParameters": {
+      "TARGETED_KEYWORD_TAP_THRESHOLD": 1,
+      "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0,
+      "BROAD_MATCH_DEFAULT_BID": 2,
+      "EXACT_MATCH_DEFAULT_BID": 2,
+      "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10,
+      "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1
+    },
+    "bidParameters": {
+      "HIGH_CPA_BID_DECREASE": 0.85,
+      "TAP_THRESHOLD": 7,
+      "OBJECTIVE": "standard",
+      "MIN_BID": 0.1,
+      "NO_INSTALL_BID_DECREASE_THRESH": 0,
+      "HIGH_CPI_BID_DECREASE_THRESH": 1.9,
+      "LOW_CPA_BID_BOOST": 1.15,
+      "MAX_BID": 2,
+      "STALE_RAISE_BID_BOOST": 1.15,
+      "STALE_RAISE_IMPRESSION_THRESH": 0
+    },
+    "clientName": "HER",
+    "appName": "HerAppName",
+    "keywordAdderIds": {
+      "campaignId": {
+        "broad": "197914192",
+        "exact": "197913328",
+        "search": "197915189"
+      },
+      "adGroupId": {
+        "broad": "197914177",
+        "exact": "197913349",
+        "search": "197913017"
+      }
+    },
+    "pemFilename": "ssj_her.pem",
+    "branchIntegrationParameters": {
+      "branch_key": "key_live_bdnGY11GPAUIkCEibh6z1adlCzbm09Vf",
+      "branch_secret": "secret_live_6afuIbahkAfjz4mChpHvf6TInRM33EGb"
+    },
+    "orgId": 1056410,
+    "keyFilename": "ssj_her.key",
+    "emailAddresses": ["jakub@weareher.com"],
+    "appID": "HerAppId",
+    "branchBidParameters": {
+      "branch_bid_adjustment": 0.3,
+      "branch_optimization_goal": "cost_per_purchase",
+      "min_apple_installs": 10,
+      "branch_min_bid": 0.1,
+      "revenue_over_ad_spend_threshold": 1,
+      "revenue_over_ad_spend_threshold_buffer": 0.25,
+      "cost_per_purchase_threshold": 20,
+      "cost_per_purchase_threshold_buffer": 0.25,
+      "objective": "standard"
+    },
+    "currency": "USD",
+    "disabled": false,
+    "campaignIds": ["197913328", "197914192"],
+    "campaignName": "HercampaignName"
+  },
+  {
+    "adgroupBidParameters": {
+      "HIGH_CPA_BID_DECREASE": 0.85,
+      "TAP_THRESHOLD": 5,
+      "LOW_CPI_BID_INCREASE_THRESH": 0.4,
+      "OBJECTIVE": "conservative",
+      "MIN_BID": 0.1,
+      "NO_INSTALL_BID_DECREASE_THRESH": 0,
+      "HIGH_CPI_BID_DECREASE_THRESH": 0.5,
+      "LOW_CPA_BID_BOOST": 1.15,
+      "MAX_BID": 0.5,
+      "STALE_RAISE_BID_BOOST": 1.15,
+      "STALE_RAISE_IMPRESSION_THRESH": 0
+    },
+    "keywordAdderParameters": {
+      "TARGETED_KEYWORD_TAP_THRESHOLD": 1,
+      "NEGATIVE_KEYWORD_CONVERSION_THRESHOLD": 0,
+      "BROAD_MATCH_DEFAULT_BID": 0.5,
+      "EXACT_MATCH_DEFAULT_BID": 0.5,
+      "NEGATIVE_KEYWORD_TAP_THRESHOLD": 10,
+      "TARGETED_KEYWORD_CONVERSION_THRESHOLD": 1
+    },
+    "bidParameters": {
+      "HIGH_CPA_BID_DECREASE": 0.85,
+      "TAP_THRESHOLD": 7,
+      "OBJECTIVE": "conservative",
+      "MIN_BID": 0.1,
+      "NO_INSTALL_BID_DECREASE_THRESH": 0,
+      "HIGH_CPI_BID_DECREASE_THRESH": 0.5,
+      "LOW_CPA_BID_BOOST": 1.15,
+      "MAX_BID": 0.5,
+      "STALE_RAISE_BID_BOOST": 1.15,
+      "STALE_RAISE_IMPRESSION_THRESH": 0
+    },
+    "clientName": "Hugah",
+    "appName": "HugahAppName",
+    "keywordAdderIds": {
+      "campaignId": {
+        "broad": "454396150",
+        "exact": "453760934",
+        "search": "454392172"
+      },
+      "adGroupId": {
+        "broad": "454453221",
+        "exact": "453823320",
+        "search": "454453222"
+      }
+    },
+    "pemFilename": "hugah.pem",
+    "branchIntegrationParameters": {},
+    "orgId": 2130730,
+    "keyFilename": "hugah.key",
+    "emailAddresses": ["kevin@hugah.com", "Ed@hugah.com"],
+    "appID": "HugahAppId",
+    "branchBidParameters": {
+      "branch_bid_adjustment": 0.3,
+      "branch_optimization_goal": "cost_per_purchase",
+      "min_apple_installs": 10,
+      "branch_min_bid": 0.1,
+      "revenue_over_ad_spend_threshold": 1,
+      "revenue_over_ad_spend_threshold_buffer": 0.25,
+      "cost_per_purchase_threshold": 20,
+      "cost_per_purchase_threshold_buffer": 0.25,
+      "objective": "standard"
+    },
+    "currency": "USD",
+    "disabled": true,
+    "campaignIds": ["158675458", "187214904"],
+    "campaignName": "HugahcampaignName"
+  }
+]

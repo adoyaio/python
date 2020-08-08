@@ -3,9 +3,10 @@ import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
 from decimal import *
+from decimal import Decimal
 import json
-dashG = "-"
 
+dashG = "-"
 
 # Helper class to convert a DynamoDB item to JSON.
 class DecimalEncoder(json.JSONEncoder):
@@ -41,6 +42,7 @@ def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end
 
         return total_branch_events
 
+# TODO add global
 
 def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
     table = dynamoResource.Table('branch_commerce_events')
@@ -66,7 +68,8 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
     return response
 
 # cast to int here because client table was migrated from client.json 
-# TODO in dynamo numbers are serialized so there is no advantage to using int consider using string for consistency
+# TODO in dynamo numbers are serialized so there is no advantage to using int 
+# consider using string for consistency
 def getClient(dynamoResource, client_id):
     table = dynamoResource.Table('clients')
     response = table.query(

@@ -1,13 +1,10 @@
-#! /usr/bin/python3
 import datetime
 import json
 import logging
 import time
 import boto3
 import requests
-from configuration import EMAIL_FROM, \
-    APPLE_KEYWORDS_REPORT_URL, \
-    HTTP_REQUEST_TIMEOUT
+from configuration import config
 from debug import debug, dprint
 from retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
@@ -28,7 +25,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global clientsG
     global dynamodb
     global EMAIL_TO
-
     EMAIL_TO = emailToInternal
 
     if env == "lcl":
@@ -46,26 +42,17 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         logger.setLevel(logging.INFO)
 
     clientsG = Client.getClients(dynamodb)
-    logger.info("In runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    logger.info("runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
-# ------------------------------------------------------------------------------
 @retry
 def getCampaignDataHelper(url, cert, json, headers):
-    return requests.post(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+    return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-# ------------------------------------------------------------------------------
-#@debug
 def getCampaignData(orgId, pemFilename, keyFilename, daysToGoBack):
-    # enter date and time parameters for bidding lookback
-    # Subtract 1 day because the program runs at 3 am the next day.
     today = datetime.date.today() - datetime.timedelta(1)
-    cutoffDay = today - datetime.timedelta(days=daysToGoBack - 1)  # "- 1" to avoid fencepost error.
-
-    # certificate info that you get from search ads ui
-    dprint('Certificates: pem="%s", key="%s".' % (pemFilename, keyFilename))
-
+    cutoffDay = today - datetime.timedelta(days=daysToGoBack - 1)  # TODO revisit "- 1" to avoid fencepost error.
     payload = {
         "startTime": str(cutoffDay),
         "endTime": str(today),
@@ -82,47 +69,30 @@ def getCampaignData(orgId, pemFilename, keyFilename, daysToGoBack):
 
     headers = {"Authorization": "orgId=%s" % orgId}
 
-    dprint("Headers: %s\n" % headers)
-    dprint("Payload: %s\n" % payload)
-    dprint("Apple URL: %s\n" % APPLE_KEYWORDS_REPORT_URL)
+    dprint("\n\nHeaders: %s" % headers)
+    dprint("\n\nPayload: %s" % payload)
+    dprint("\n\nApple URL: %s" % config.APPLE_KEYWORDS_REPORT_URL)
 
-    response = getCampaignDataHelper(APPLE_KEYWORDS_REPORT_URL,
+    response = getCampaignDataHelper(config.APPLE_KEYWORDS_REPORT_URL,
                                      cert=(S3Utils.getCert(pemFilename),
                                            S3Utils.getCert(keyFilename)),
                                      json=payload,
                                      headers=headers)
 
-    dprint("Response: '%s'" % response)
+    dprint("\n\nResponse: '%s'" % response)
     if response.status_code == 200:
         return json.loads(response.text)
     else:
-        return 'false'
+        return False
 
 
-# ------------------------------------------------------------------------------
 @debug
-def createOneRowOfHistory(data):
-    #  # Code below from https://stackoverflow.com/questions/2150739/iso-time-iso-8601-in-python, 13-Jan-2019
-    #
-    #  # UTC to ISO 8601 with TimeZone information
-    #  utcTimestamp = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc).isoformat()
-    #
-    #  # Local to ISO 8601 with TimeZone information
-    #  # Calculate the offset taking into account daylight saving time
-    #  utc_offset_sec = time.altzone if time.localtime().tm_isdst else time.timezone
-    #  utc_offset = datetime.timedelta(seconds=-utc_offset_sec)
-    #  timestamp = datetime.datetime.now().replace(tzinfo=datetime.timezone(offset=utc_offset)).isoformat()
-    #
-    #  return utcTimestamp, timestamp, str(data["spend"]), str(data["installs"])
-
-    # incoming
-    # {'installs': 88, 'spend': 115.92, 'purchases': 9, 'revenue': 204.0}
+def createOneRowOfHistory(data): # eg {'installs': 88, 'spend': 115.92, 'purchases': 9, 'revenue': 204.0}  
     
-    # ASA fields
+    # asa fields
     timestamp = str(datetime.datetime.now().date())
     installs = data["installs"]
-    spend = data["spend"]
-    
+    spend = data["spend"] 
     if int(installs) > 0:
         spend = "%s" % round(spend, 2)
         cpi = "%.2f" % round(float(spend) / float(installs), 2)
@@ -130,11 +100,9 @@ def createOneRowOfHistory(data):
         spend = "%.2f" % 0
         cpi = "%.2f" % 0
 
-    #branch fields
+    # branch fields
     purchases =  data["purchases"]
     revenue = data["revenue"]
-
-    # perform cacls 
     if int(purchases) > 0 and float(spend) > 0:   
         cpp = "%.2f" % round(float(spend) / float(purchases), 2)
     else:
@@ -149,22 +117,7 @@ def createOneRowOfHistory(data):
 
     return timestamp, spend, installs, cpi, purchases, revenue, cpp, revenueOverCost
 
-    # TODO JF remove this block
-    # return timestamp, spend, installs, cpi
-    # if int(data["installs"]) > 0:
-    #     return str(datetime.datetime.now().date()), \
-    #        "%s" % round(data["spend"], 2), \
-    #        str(data["installs"]), \
-    #        "%.2f" % round(data["spend"] / float(data["installs"]), 2)
-    # else:
-    #     print('createOneRowOfHistory:::adding line of history with 0s check values')
-    #     return str(datetime.datetime.now().date()), \
-    #        "%s" % round(0, 2), \
-    #        str(data["installs"]), \
-    #        "%.2f" % round(0), 2
 
-
-# ------------------------------------------------------------------------------
 # JF TODO non html email should be updated with branch data
 def createOneRowOfTable(data, label):
     cpi = "N/A" if data["installs"] < 1 else ("{: 6,.2f}".format((0.0 + data["spend"]) / data["installs"]))
@@ -172,14 +125,13 @@ def createOneRowOfTable(data, label):
     return """{:s}\t{:>9,.2f}\t{:>8,d}\t{:>s}""".format(label, data["spend"], data["installs"], cpi)
 
 
-# ------------------------------------------------------------------------------
 def createEmailBodyForACampaign(client, summary, now):
     """Format:
-  Timeframe        |    Cost    |  Installs  |  Cost per Install
-  Yesterday        |  $     10  |        2   |   $  5
-  Last Seven Days  |  $  1,000  |      100   |   $ 10
-  All-Time         |  $ 10,000  |    5,000   |   $  2
-"""
+    Timeframe        |    Cost    |  Installs  |  Cost per Install
+    Yesterday        |  $     10  |        2   |   $  5
+    Last Seven Days  |  $  1,000  |      100   |   $ 10
+    All-Time         |  $ 10,000  |    5,000   |   $  2
+    """
 
     return """\n""".join(["""Performance Summary\n""",
                           """\t""".join(["Timeframe\t", "   Cost", "\tInstalls", "Cost per Install"]),
@@ -188,9 +140,7 @@ def createEmailBodyForACampaign(client, summary, now):
                           createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days")
                           ])
 
-
 def createHtmlEmailBodyForACampaign(client, summary, now):
-    #handle currency
     if client.currency == 'USD':
         currencySymbol = '$'
     elif client.currency == 'EUR':
@@ -228,12 +178,12 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
         "{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["revenue"]) / summary[THIRTY_DAYS]["spend"]))
     purchaseFourYears = "{: 6,.0f}".format(summary[THIRTY_DAYS]["purchases"])
     revenueFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["revenue"])
-
     htmlBody = ""
 
     # read email template and replace values
-    f = open("./templates/email_template.html", "r")
+    f = open("./assets/email_template.html", "r")
     for x in f:
+        
         # install summary
         x = x.replace("@@YESTERDAY__COST@@", str(currencySymbol+spendOneDay))
         x = x.replace("@@YESTERDAY__INSTALLS@@", str(installsOneDay))
@@ -287,7 +237,7 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
         else:
             x = x.replace("@@ALL__TIME__REVENUE__COST@@", str(currencySymbol+revenueCostFourYears))
 
-        # JF release-2 unused
+        # JF NOTE release 2 unused optimization summary
         # x = x.replace("@@KEYWORD__BIDS__TODAY@@", str(client.readUpdatedBidsCount(dynamodb)))
         # x = x.replace("@@ADGROUP__BIDS__TODAY@@", str(client.readUpdatedAdgroupBidsCount(dynamodb)))
         # x = x.replace("@@KEYWORDS__TODAY@@", str(len(client.readPositiveKeywordsAdded(dynamodb))))
@@ -295,31 +245,35 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
 
     return htmlBody
 
-# ------------------------------------------------------------------------------
-#@debug
+
 def sendEmailForACampaign(client, emailBody, htmlBody, now):
     dateString = time.strftime("%m/%d/%Y", time.localtime(now))
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
-    # dont send emails to clients unless sendG
     if sendG:
-        EmailUtils.sendEmailForACampaign(emailBody, htmlBody, subjectString, client.emailAddresses, EMAIL_TO,
-                                         EMAIL_FROM)
+        EmailUtils.sendEmailForACampaign(emailBody, 
+        htmlBody, 
+        subjectString, 
+        client.emailAddresses, 
+        EMAIL_TO,
+        config.EMAIL_FROM)
     else:
-        EmailUtils.sendEmailForACampaign(emailBody, htmlBody, subjectString, ['test@adoya.io'], EMAIL_TO, EMAIL_FROM)
+        EmailUtils.sendEmailForACampaign(emailBody, 
+        htmlBody, 
+        subjectString, 
+        ['test@adoya.io'], 
+        EMAIL_TO, 
+        config.EMAIL_FROM)
 
-# ------------------------------------------------------------------------------
-#@debug
+
 def sendEmailReport(client, dataForVariousTimes):
     today = datetime.date.today()
-
     summary = {ONE_DAY: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
                SEVEN_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
                THIRTY_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0}
                }
-
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
         summary[someTime] = {"installs": 0, "spend": 0.0}
 
@@ -332,7 +286,8 @@ def sendEmailReport(client, dataForVariousTimes):
             summary[someTime]["installs"] += totals["installs"]
             summary[someTime]["spend"] += float(totals["localSpend"]["amount"])
 
-        # Add branch events
+        # Add branch events 
+        # TODO get total BranchEvents, not limited to campaign
         end_date_delta = datetime.timedelta(days=1)
         start_date_delta = datetime.timedelta(days=someTime)
         start_date = today - start_date_delta
@@ -349,7 +304,6 @@ def sendEmailReport(client, dataForVariousTimes):
     sendEmailForACampaign(client, emailBody, htmlBody, now)
 
 
-# ------------------------------------------------------------------------------
 @debug
 def process():
     for client in clientsG:
@@ -361,28 +315,19 @@ def process():
                                            client.keyFilename,
                                            daysToGoBack)
 
-            if(campaignData != 'false'):
+            if(campaignData != False):
                 dataArray = campaignData["data"]["reportingDataResponse"]["row"]
-                print('runClientDailyReport:::dataArray' + str(dataArray))
                 dprint("For %d (%s), there are %d campaigns in the campaign data." % \
                     (client.orgId, client.clientName, len(dataArray)))
-
                 dataForVariousTimes[daysToGoBack] = dataArray
-                print('runClientDailyReport:::dataForVariousTimes' + str(dataForVariousTimes))
-
 
         sendEmailReport(client, dataForVariousTimes)
 
-
-# ------------------------------------------------------------------------------
 @debug
 def terminate():
     pass
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()

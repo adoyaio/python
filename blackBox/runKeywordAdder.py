@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 import logging
 from collections import defaultdict
 import datetime
@@ -11,20 +10,15 @@ import requests
 import time
 from utils import EmailUtils, DynamoUtils, S3Utils
 import boto3
-from configuration import EMAIL_FROM, \
-                          APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE, \
-                          APPLE_UPDATE_POSITIVE_KEYWORDS_URL, \
-                          APPLE_UPDATE_NEGATIVE_KEYWORDS_URL, \
-                          HTTP_REQUEST_TIMEOUT
-
 from debug import debug, dprint
 from retry import retry
 from Client import Client
+from configuration import config
 
 JSON_MIME_TYPES  = ("application/json", "text/json")
 DUPLICATE_KEYWORD_REGEX = re.compile("(NegativeKeywordImport|KeywordImport)\[(?P<index>\d+)\]\.text")
 
-###### date and time parameters for bidding lookback ######
+
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -38,7 +32,6 @@ end_date = today - end_date_delta
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
 sendG = False # Set to True to enable sending data to Apple, else a test run.
 
 @debug
@@ -47,7 +40,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global clientsG
     global dynamodb
     global EMAIL_TO
-
     EMAIL_TO = emailToInternal
 
     if env == "lcl":
@@ -67,15 +59,12 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     clientsG = Client.getClients(dynamodb)
     logger.info("In runKeywordAdder:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
-# ------------------------------------------------------------------------------
+
 @retry
 def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
-  return requests.post(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+  return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-
-# ------------------------------------------------------------------------------
-#@debug
 def getSearchTermsReportFromApple(client, campaignId):
   payload = { "startTime"                  : str(start_date), 
               "endTime"                    : str(end_date),
@@ -100,27 +89,19 @@ def getSearchTermsReportFromApple(client, campaignId):
               "returnRowTotals"            : True, 
               "returnRecordsWithNoMetrics" : False
             }
-  url = APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
-
+  url = config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
   headers = { "Authorization": "orgId=%s" % client.orgId }
-
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % payload)
   dprint ("Headers are %s." % headers)
-
   response = getSearchTermsReportFromAppleHelper(url,
                                                  cert=(S3Utils.getCert(client.pemFilename),
                                                        S3Utils.getCert(client.keyFilename)),
                                                  json=payload,
                                                  headers=headers)
   dprint ("Response is %s." % response)
-
   return json.loads(response.text) 
 
-
-
-# ------------------------------------------------------------------------------
-#@debug
 def analyzeKeywordsSharedCode(KAP,
                               targeted_kws_pre_de_dupe_text_only_second_step,
                               negative_kws_pre_de_dupe_text_only_second_step,
@@ -187,8 +168,8 @@ def analyzeKeywordsSharedCode(KAP,
   broad_match_negatives_for_upload = broad_match_negatives_df.to_json(orient = 'records')
 
   #JF 03/23/2020 apple v2 updgrade adding url for search match and broad match negatives
-  search_match_negatives_url = APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (search_match_campaign_id, search_match_ad_group_id)
-  broad_match_negatives_url = APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
+  search_match_negatives_url = config.APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (search_match_campaign_id, search_match_ad_group_id)
+  broad_match_negatives_url = config.APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
 
   #create dataframe for targeted keywords
   #update column name for targeted keywords & convert into dataframe
@@ -249,15 +230,13 @@ def analyzeKeywordsSharedCode(KAP,
   #add bid column and update value as per apple search api requirement
   broad_match_targeted_first_step_df['bidAmount'] = broad_match_targeted_first_step_df.shape[0]*[{"amount":""+str(KAP["BROAD_MATCH_DEFAULT_BID"]), "currency":currency}]
 
-  exact_match_targeted_url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (exact_match_campaign_id, exact_match_ad_group_id)
-  broad_match_targeted_url = APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
+  exact_match_targeted_url = config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (exact_match_campaign_id, exact_match_ad_group_id)
+  broad_match_targeted_url = config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
 
   #convert search and broad match targeted dataframes into jsons for uploading
   exact_match_targeted_for_upload = exact_match_targeted_first_step_df.to_json(orient = 'records')
   broad_match_targeted_for_upload = broad_match_targeted_first_step_df.to_json(orient = 'records')
 
-
-  
   return exact_match_targeted_for_upload, \
          exact_match_targeted_url, \
          broad_match_targeted_for_upload, \
@@ -269,12 +248,8 @@ def analyzeKeywordsSharedCode(KAP,
 
 
 
-# ------------------------------------------------------------------------------
-#@debug
 def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParameters, currency):
   KAP = keywordAdderParameters;
-  
-  #######mine search match search queries#######
   
   #nested dictionary containing search term data
   search_match_extract_first_step = search_match_data["data"]["reportingDataResponse"]
@@ -303,7 +278,7 @@ def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParame
   #convert to dataframe    
   search_match_extract_df = pd.DataFrame(search_match_extract_third_step)
   
-  #######mine broad match broad queries#######
+  ####### broad match broad queries#######
   
   #nested dictionary containing broad term data
   broad_match_extract_first_step = broad_match_data["data"]["reportingDataResponse"]
@@ -365,15 +340,11 @@ def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParame
                                    currency)
 
 
-
-# ------------------------------------------------------------------------------
 @retry
 def sendNonDuplicatesToAppleHelper(url, cert, data, headers):
-  return requests.post(url, cert=cert, data=data, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+  return requests.post(url, cert=cert, data=data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-
-# ------------------------------------------------------------------------------
 @debug
 def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndices):
   payloadPy = json.loads(payload)
@@ -382,7 +353,6 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
                 if index not in duplicateKeywordIndices]
 
   dprint("About to send non-duplicates payload %s." % pprint.pformat(newPayload))
-
   response = sendNonDuplicatesToAppleHelper(url,
                                             cert=(S3Utils.getCert(client.pemFilename),
                                                   S3Utils.getCert(client.keyFilename)),
@@ -399,25 +369,18 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
   return response
 
 
-
-# ------------------------------------------------------------------------------
 @retry
 def sendToAppleHelper(url, cert, data, headers):
-  return requests.post(url, cert=cert, data=data, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+  return requests.post(url, cert=cert, data=data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-# ------------------------------------------------------------------------------
-@debug
 def sendToApple(client, payloads):
-
     headers = { "Authorization": "orgId=%s" % client.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
-
     if sendG:
         responses = []
         for payload in payloads:
             appleEndpointUrl = payload[1]
             payloadForPost = payload[0]
-
             dprint("runKeywordAdder:::sendToApple:::Payload: '%s'" % payloadForPost)
             dprint("runKeywordAdder:::sendToApple:::appleEndpointUrl: '%s'" % appleEndpointUrl)
 
@@ -541,8 +504,6 @@ def sendToApple(client, payloads):
     return sendG
 
 
-# ------------------------------------------------------------------------------
-#@debug
 def createEmailBody(data, sent):
   content = ["""Keywords Added Report""",
              """Sent to Apple is %s.""" % sent,
@@ -561,19 +522,15 @@ def createEmailBody(data, sent):
   return "\n".join(content)
 
 
-
-# ------------------------------------------------------------------------------
-@debug
 def emailSummaryReport(data, sent):
     messageString = createEmailBody(data, sent);
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString ="Keyword Adder summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
 
-# ------------------------------------------------------------------------------
-#@debug
+
 def convertAnalysisIntoApplePayloadAndSend(client,
                                            CSRI,
                                            exactPositive,
@@ -607,12 +564,9 @@ def convertAnalysisIntoApplePayloadAndSend(client,
     # JF release-1 airlift bid counts and keywords to dynamo
     client.positiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
     client.negativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
-
     return sent
 
 
-
-# ------------------------------------------------------------------------------
 @debug
 def process():
   summaryReportInfo = { }
@@ -643,17 +597,13 @@ def process():
   emailSummaryReport(summaryReportInfo, sent)
 
 
-# ------------------------------------------------------------------------------
 @debug
 def terminate():
   pass
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 

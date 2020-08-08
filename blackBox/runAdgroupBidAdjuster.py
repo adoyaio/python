@@ -11,7 +11,6 @@ import pandas as pd
 import requests
 from configuration import config
 from debug import debug, dprint
-# from wrappers import debug
 from retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
 from Client import Client
@@ -19,7 +18,6 @@ from Client import Client
 BIDDING_LOOKBACK = 7
 sendG = False #enable sending data to Apple
 
-###### date and time parameters for bidding lookback ######
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -66,7 +64,7 @@ def getAdgroupReportFromAppleHelper(url, cert, json, headers):
 def getAdgroupReportFromApple(client):
   """The data from Apple looks like this (Pythonically):
 
-{'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
+  {'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
                                                           'adGroupId': 152725486,
                                                           'adGroupName': 'search_match',
                                                           'adGroupServingStateReasons': None,
@@ -96,9 +94,9 @@ def getAdgroupReportFromApple(client):
                                                                       'currency': 'USD'},
                                                        'taps': 0,
                                                        'ttr': 0.0}}]}},
- 'error': None,
- 'pagination': {'itemsPerPage': 1, 'startIndex': 0, 'totalResults': 1}}
-"""
+  'error': None,
+  'pagination': {'itemsPerPage': 1, 'startIndex': 0, 'totalResults': 1}}
+  """
 
   payload = { "startTime"                  : str(start_date), 
               "endTime"                    : str(end_date),
@@ -126,30 +124,29 @@ def getAdgroupReportFromApple(client):
   url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % client.keywordAdderIds["campaignId"]["search"];
 
   headers = { "Authorization": "orgId=%s" % client.orgId }
-  dprint ("URL is '%s'." % url)
-  dprint ("Payload is '%s'." % payload)
-  dprint ("Headers are %s." % headers)
+  dprint ("\n\nURL is '%s'." % url)
+  dprint ("\n\nPayload is '%s'." % payload)
+  dprint ("\n\nHeaders are %s." % headers)
   response = getAdgroupReportFromAppleHelper(url,
                                              cert=(S3Utils.getCert(client.pemFilename),
                                                    S3Utils.getCert(client.keyFilename)),
                                              json=payload,
                                              headers=headers)
-  dprint ("Response is %s." % response)
+  dprint ("\n\nResponse is %s." % response)
   return json.loads(response.text) 
 
 
 def createUpdatedAdGroupBids(data, client):
   rows = data["data"]["reportingDataResponse"]["row"]
-
+  
   if len(rows) == 0:
     return False
 
-  # In email of 28-Feb-2019, Scott asked use to use bidParameters, not adGroupBidParameters. --DS
-  #ABP = client.adgroupBidParameters;
-  ABP = client.bidParameters;
+  # NOTE using bidParams vs adgroupBidParameters e.g ABP = client.adgroupBidParameters
+  ABP = client.bidParameters
   dprint("Using adgroup bid parameters %s." % ABP)
 
-  #compile data from json library and put into dataframe
+  # compile data from json library and put into dataframe
   adGroup_info = defaultdict(list)
   for row in rows:
       adGroup_info['adGroupName']            .append(row['metadata']['adGroupName'])

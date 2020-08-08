@@ -14,13 +14,10 @@ from boto3.dynamodb.conditions import Key, Attr
 from debug import debug, dprint
 from retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
-from utils.DynamoUtils import DecimalEncoder
 from Client import Client
 from configuration import config
 
 BIDDING_LOOKBACK = 14  # days
-
-###### date and time parameters for bidding lookback ######
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -28,11 +25,11 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
 
-### CPI History Lookback seperate from Apple lookback ###
+# cpi history kookback seperate from apple lookback
 start_date_delta_cpi_lookback = datetime.timedelta(config.TOTAL_COST_PER_INSTALL_LOOKBACK)
 start_date_cpi_lookback = today - start_date_delta_cpi_lookback
 
-# FOR QA PURPOSES set these fields explicitly
+# for qa set fields explicitly
 # start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 # end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 sendG = False  # Set to True to enable sending data to Apple, else a test run
@@ -44,7 +41,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global clientsG
     global dynamodb
     global EMAIL_TO
-
     EMAIL_TO = emailToInternal
 
     if env == "lcl":
@@ -108,7 +104,6 @@ def getKeywordReportFromApple(client, campaignId):
     dprint("Response is %s." % response)
     return json.loads(response.text)
 
-
 @debug
 def createUpdatedKeywordBids(data, campaignId, client):
     rows = data["data"]["reportingDataResponse"]["row"]
@@ -136,7 +131,6 @@ def createUpdatedKeywordBids(data, campaignId, client):
         keyword_info["keywordDisplayStatus"].append(metadata["keywordDisplayStatus"])
         keyword_info["modificationTime"].append(metadata["modificationTime"])
         totals = row["total"]
-
         keyword_info["impressions"].append(totals["impressions"])
         keyword_info["taps"].append(totals["taps"])
         keyword_info["ttr"].append(totals["ttr"])
@@ -305,8 +299,7 @@ def convertKeywordFileToApplePayload(keyword_file_to_post, currency):
 
     return payload
 
-# JF quick fix for V2 update to urls.
-# TODO can we assume adgroup Id is always consistent for this cal though
+# JF quick fix for V2 update to urls TODO we can clean up to use lookup of the campaignId key to adGroupId key
 def getAppleKeywordsEndpoint(keyword_file_to_post):
     url = ""
     for item in keyword_file_to_post:

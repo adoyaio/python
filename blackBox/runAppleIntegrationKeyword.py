@@ -8,12 +8,9 @@ import pandas as pd
 import requests
 import boto3
 from boto3.dynamodb.conditions import Key
-# this was to eliminate the inexact and rounding errors
-from boto3.dynamodb.types import DYNAMODB_CONTEXT
-# Inhibit Inexact Exceptions
+from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and rounding errors
 from botocore.exceptions import ClientError
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
-# Inhibit Rounded Exceptions
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
 from debug import debug, dprint
@@ -128,7 +125,7 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
                                                json=payload,
                                                headers=headers)
 
-    print("runAppleIntegrationKeyword:::Response is " + str(response))
+    print("runAppleIntegrationKeyword:::Response:::" + str(response))
     if response.status_code == 200:
         return json.loads(response.text, parse_float=decimal.Decimal)
     else:
@@ -210,7 +207,6 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     local_spend = decimal.Decimal(str(granularity['localSpend']['amount']))
                     avg_cpt = decimal.Decimal(str(granularity['avgCPT']['amount']))
 
-                #put the item into db
                 try:
                     response = keyword_table.put_item(
                         Item={
@@ -254,14 +250,14 @@ def export_dict_to_csv(raw_dict, filename):
 
 def process():
     keyword_table = dynamodb.Table('apple_keyword')
-    # To output the keyword_table use the following command. For QC only.
+    # qa purposes
     # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
 
     for client in clientsG:
         print("runAppleIntegrationKeyword:::" + client.clientName + ":::" + str(client.orgId))
         campaignIds = client.campaignIds
         for campaignId in campaignIds:
-                # TODO JF maybe should implement a max date call, but pull ONE value, sorted and read max date
+                # TODO JF implement max date call pull ONE value sorted & read max date
                 # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
                 start_date = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
                 end_date = datetime.date.today()
@@ -278,7 +274,7 @@ def process():
 def terminate():
     pass
 
-# ------------------------------------------------------------------------------
+
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
