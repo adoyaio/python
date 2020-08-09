@@ -1,7 +1,7 @@
 import boto3
 
+ # TODO reevaluate this approach
 def getDynamoHost(event):
-    # TODO reevaluate this approach
     headers = event["headers"]
     host = "prod"
     if headers is not None:
@@ -12,8 +12,8 @@ def getDynamoHost(event):
 
     if host == "localhost:3000" or host == "127.0.0.1:3000":
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url='http://dynamodb:8000')
-        print("ApiUtils.getDynamoHost:::using db LOCALHOST") 
+        print("ApiUtils.getDynamoHost:::LOCALHOST") 
     else:
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        print("ApiUtils.getDynamoHost:::using db PROD")
+        print("ApiUtils.getDynamoHost:::PROD")
     return dynamodb
