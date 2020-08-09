@@ -2,7 +2,8 @@ import decimal
 import time
 import boto3
 import json
-from utils import DynamoUtils, ApiUtils
+from utils import DynamoUtils, ApiUtils, EmailUtils
+from configuration import config
 
 class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
@@ -47,7 +48,7 @@ def lambda_handler(event, context):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Client updated %s" % dateString
-    EmailUtils.sendTextEmail(json.dumps(payload, cls=DecimalEncoder, indent=2), subjectString, EMAIL_TO, [], EMAIL_FROM)
+    EmailUtils.sendTextEmail(json.dumps(payload, cls=DecimalEncoder, indent=2), subjectString, config.EMAIL_TO, [], config.EMAIL_FROM)
 
     return {
         'statusCode': 200,
