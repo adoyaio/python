@@ -1,7 +1,7 @@
 # GLOBAL
 EMAIL_FROM = "info@adoya.io"
-# EMAIL_TO = ["james@adoya.io", "scott.kaplan@adoya.io"]
-EMAIL_TO = ["james@adoya.io"]
+EMAIL_TO = ["james@adoya.io", "scott.kaplan@adoya.io"]
+# EMAIL_TO = ["james@adoya.io"]
 TOTAL_COST_PER_INSTALL_LOOKBACK = 3
 HTTP_REQUEST_TIMEOUT = 600
 
