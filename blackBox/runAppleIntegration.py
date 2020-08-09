@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 import logging
 import decimal
 from decimal import *
@@ -25,20 +24,15 @@ from datetime import date
 
 from utils import EmailUtils
 from Client import CLIENTS
-from configuration import EMAIL_FROM, \
-                          APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
-                          APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
-                          TOTAL_COST_PER_INSTALL_LOOKBACK, \
-                          HTTP_REQUEST_TIMEOUT
+from configuration import config
+
 
 from debug import debug, dprint
 from retry import retry
 
+sendG = False
 
-BIDDING_LOOKBACK = 7 # days
-sendG = False # Set to True to enable sending data to Apple, else a test run.
-
-###### date and time parameters for bidding lookback ######
+BIDDING_LOOKBACK = 7
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -49,24 +43,9 @@ start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 # FOR QA PURPOSES set these fields explicitly
 #start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 #end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
-
 logger = logging.getLogger()
 
 
-# Helper class to convert a DynamoDB item to JSON.
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            if o % 1 > 0:
-                return float(o)
-            else:
-                return int(o)
-        return super(DecimalEncoder, self).default(o)
-
-
-
-
-#@debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
@@ -82,7 +61,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-        # debug.disableDebug() TODO disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -90,18 +68,15 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
     logger.info("In runAppleIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
-# ------------------------------------------------------------------------------
+
 @retry
 def getAdgroupReportFromAppleHelper(url, cert, json, headers):
   return requests.post(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
 
 
-
-# ------------------------------------------------------------------------------
 @debug
 def getAdgroupReportFromApple(client, start_date, end_date):
   """The data from Apple looks like this (Pythonically):
-
   {'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
                                                           'adGroupId': 152725486,
                                                           'adGroupName': 'search_match',
@@ -137,7 +112,6 @@ def getAdgroupReportFromApple(client, start_date, end_date):
   'pagination': {'itemsPerPage': 1, 'startIndex': 0, 'totalResults': 1}}
   """
 
-
   payload = { "startTime"                  : str(start_date), 
               "endTime"                    : str(end_date),
               "granularity"                : "DAILY",
@@ -164,12 +138,8 @@ def getAdgroupReportFromApple(client, start_date, end_date):
               "returnRecordsWithNoMetrics" : True
             }
   
-  
   url = APPLE_ADGROUP_REPORTING_URL_TEMPLATE % client.keywordAdderIds["campaignId"]["search"]
-  print(url)
-
   headers = { "Authorization": "orgId=%s" % client.orgId }
-
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % payload)
   dprint ("Headers are %s." % headers)
@@ -182,7 +152,6 @@ def getAdgroupReportFromApple(client, start_date, end_date):
   logger.debug("Response is " + str(response))
 
   return json.loads(response.text, parse_float=decimal.Decimal) 
-
 
 def calc_date_range_list(start_date, end_date, maximum_dates = 90):
   '''

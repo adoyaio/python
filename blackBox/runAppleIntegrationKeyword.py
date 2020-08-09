@@ -1,4 +1,3 @@
-#! /usr/bin/python3
 import logging
 import decimal
 from decimal import *
@@ -9,44 +8,25 @@ import pandas as pd
 import requests
 import boto3
 from boto3.dynamodb.conditions import Key
-# this was to eliminate the inexact and rounding errors
-from boto3.dynamodb.types import DYNAMODB_CONTEXT
-# Inhibit Inexact Exceptions
+from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and rounding errors
 from botocore.exceptions import ClientError
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
-# Inhibit Rounded Exceptions
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
-
-from utils import DynamoUtils, S3Utils
-from configuration import APPLE_KEYWORD_REPORTING_URL_TEMPLATE, \
-    HTTP_REQUEST_TIMEOUT
-
-from debug import debug, dprint
-from retry import retry
+from utils.debug import debug, dprint
+from utils.retry import retry
 from Client import Client
+from utils import DynamoUtils, S3Utils
+from configuration import config
 
-BIDDING_LOOKBACK = 7  # days
-sendG = False  # will enable data to Apple, else a test run
+LOOKBACK = 14 # TODO reduce for nightly
+sendG = False  # enable Apple post else test run
 logger = logging.getLogger()
-
-
-# Helper class to convert a DynamoDB item to JSON.
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            if o % 1 > 0:
-                return float(o)
-            else:
-                return int(o)
-        return super(DecimalEncoder, self).default(o)
-
 
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global dynamodb
     global EMAIL_TO
     global clientsG
-
     EMAIL_TO = emailToInternal
 
     if env == "lcl":
@@ -57,27 +37,22 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # reduce AWS logging in production
-        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)
 
     clientsG = Client.getClients(dynamodb)
-    logger.info("In runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    logger.info("runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
-# ------------------------------------------------------------------------------
 @retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
-    return requests.post(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+    return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-# ------------------------------------------------------------------------------
-#@debug
 def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     """The data from Apple looks like this (Pythonically):
-
     {'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
                                                             'adGroupId': 152725486,
                                                             'adGroupName': 'search_match',
@@ -137,74 +112,28 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
                "returnRecordsWithNoMetrics": True
                }
 
-    url = APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
-    print(url)
-
+    url = config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
     headers = {"Authorization": "orgId=%s" % client.orgId}
-
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
-
     response = getKeywordReportFromAppleHelper(url,
                                                cert=(S3Utils.getCert(client.pemFilename),
                                                      S3Utils.getCert(client.keyFilename)),
                                                json=payload,
                                                headers=headers)
 
-    print("runAppleIntegrationKeyword:::Response is " + str(response))
-
+    print("runAppleIntegrationKeyword:::Response:::" + str(response))
     if response.status_code == 200:
         return json.loads(response.text, parse_float=decimal.Decimal)
     else:
-        return 'false'
+        return False
 
-def calc_date_range_list(start_date, end_date, maximum_dates=90):
-    '''
-    The Apple Keyword API does not allow more than 90 days per request.
-
-    If the date range is longer than 90 days, then this function will create
-    groups of date ranges that are 90 days apart. It returns a list of tuples
-    with the start and end dates for each grouping of dates.
-
-    Example: start_date='2019-01-01' and end_date='2019-04-30'
-    Return List: [('2019-01-01, '2019-03-31'),('2019-04-01', '2019-04-30')]
-
-    '''
-    # final list to return
-    group_list = []
-    # this is a date that will be iterated over until the iter_date is greater than or equal to the end_date
-    iter_start = start_date
-    iter_end = start_date + datetime.timedelta(days=maximum_dates - 1)
-
-    # Do until the iter_end date is greater or equal to the end_date
-    while (end_date - iter_end).days > 0:
-        group_list.append((iter_start, iter_end))
-        # update start and end dates to iterate over
-        iter_start = iter_end + datetime.timedelta(days=1)
-        iter_end = iter_start + datetime.timedelta(days=maximum_dates - 1)
-
-    # After the while condition is met, we need to add the final date range that includes the final end date
-    group_list.append((iter_start, end_date))
-
-    return group_list
-
-
-# ------------------------------------------------------------------------------
-#@debug
 def loadAppleKeywordToDynamo(data, keyword_table):
-    """
-    This data will take the raw data from the Apple API call and it will load the data to a DynamoDB.
-
-    The name of the DynamoDB table is apple_keyword
-
-    apple_adgroup
-    """
-
     rows = data["data"]["reportingDataResponse"]["row"]
     if len(rows) == 0:
-        logger.debug("loadAppleKeywordToDynamo::NO ROWS")
-        return False  # EARLY RETURN
+        logger.debug("loadAppleKeywordToDynamo::no rows")
+        return False
 
     for row in rows:
             logger.debug("loadAppleKeywordToDynamo:::row:::" + str(row))
@@ -213,7 +142,8 @@ def loadAppleKeywordToDynamo(data, keyword_table):
             else:
                 field_key = "granularity"
 
-            logger.debug("loadAppleKeywordToDynamo:::using field key:::" + field_key)
+            logger.debug("loadAppleKeywordToDynamo:::field_key:::" + field_key)
+            
             for granularity in row["granularity"]:
                 logger.debug("granularity:" + str(granularity))
 
@@ -275,7 +205,6 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     local_spend = decimal.Decimal(str(granularity['localSpend']['amount']))
                     avg_cpt = decimal.Decimal(str(granularity['avgCPT']['amount']))
 
-                #now put the item into db
                 try:
                     response = keyword_table.put_item(
                         Item={
@@ -306,106 +235,42 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                         }
                     )
                 except ClientError as e:
-                    logger.info("runAppleIntegrationKeyword:process:::PutItem failed due to" + e.response['Error']['Message'])
+                    logger.info("runAppleIntegrationKeyword:::process:::PutItem failed due to" + e.response['Error']['Message'])
                 else:
-                    logger.debug("runAppleIntegrationKeyword:process:::PutItem succeeded:")
+                    logger.debug("runAppleIntegrationKeyword:::process:::PutItem succeeded:")
 
     return True
 
 
-def get_max_date(item_list):
-    '''
-    This function takes a list of items returned from a dynamoDB table, and it returns the max_date from the list.
-    Example:
-    [
-      {'date': '2019-03-04', 'lat_on_installs': Decimal('0')},
-      {'date': '2019-03-05', 'lat_on_installs': Decimal('0')}
-    ]
-    Should return '2019-03-05'
-    '''
-    # Initialize a max date
-    max_date = dt.strptime("2000-01-01", "%Y-%m-%d").date()
-
-    for elmt in item_list:
-        elmt_date = dt.strptime(elmt["date"], "%Y-%m-%d").date()
-        print(elmt_date)
-        if elmt_date > max_date:
-            max_date = elmt_date
-
-    return max_date
-
-
 def export_dict_to_csv(raw_dict, filename):
-    '''
-    This function takes a json and a filename, and it exports the json as a csv to the given filename.
-    '''
     df = pd.DataFrame.from_dict(raw_dict)
     df.to_csv(filename, index=None)
 
-
-# ------------------------------------------------------------------------------
-# @debug
 def process():
-    # This first for loop is to load all the keyword data
-    keyword_loading_lookback = 14
     keyword_table = dynamodb.Table('apple_keyword')
-
-    # To output the keyword_table use the following command. For QC only.
+    # qa purposes
     # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
-    # input()
 
     for client in clientsG:
-        print("Loading Keyword Data for: " + str(client.clientName))
-        print(client.orgId)
-
-        campaign_keys = client.keywordAdderIds["campaignId"].keys()
-
-        for campaign_key in campaign_keys:
-            print("campaign_key in " + str(campaign_key))
-
-            for campaign_id in [client.keywordAdderIds["campaignId"][campaign_key]]:  # iterate all campaigns
-                logger.debug("campaign_id in " + str(campaign_id))
-                date_results = keyword_table.scan(FilterExpression=Key('campaign_id').eq(str(campaign_id)))
-                logger.debug("date results:::" + str(len(date_results["Items"])))
-                logger.debug("date results:::" + str(date_results["Count"]))
-
-                if len(date_results["Items"]) == 0:
-                    start_date = datetime.date.today() - datetime.timedelta(days=keyword_loading_lookback)
-                    end_date = datetime.date.today()
-                else:
-                    # Get the start date from the maximum date in the table
-                    start_date = get_max_date(date_results["Items"])
-                    end_date = datetime.date.today()
-
-                print("START_DATE::: " + str(start_date))
-                print("END_DATE::: " + str(end_date))
-
-                # if the start date matches 2000-01-01, then none of the values in the able were later than that date
-                # TODO this might be a bad implementation
-                if start_date == dt.strptime("2000-01-01", "%Y-%m-%d").date():
-                    print("There was an error with getting the maximum date")
-                    break
-
-                # if the start_date and the end_date are equal, then the table is up to date
-                elif start_date == end_date:
-                    print("The apple_keyword table are up to date for {}".format(str(campaign_id)))
-                    break
-
-                data = getKeywordReportFromApple(client, campaign_id, start_date, end_date)
-                # load the data into Dynamo
+        print("runAppleIntegrationKeyword:::" + client.clientName + ":::" + str(client.orgId))
+        campaignIds = client.campaignIds
+        for campaignId in campaignIds:
+                # TODO JF implement max date call pull ONE value sorted & read max date
+                # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
+                start_date = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
+                end_date = datetime.date.today()
+                print("start_date:::" + str(start_date))
+                print("end_date::: " + str(end_date))
+                data = getKeywordReportFromApple(client, campaignId, start_date, end_date)
                 if (data is not None) and (data != 'false'):
                     loaded = loadAppleKeywordToDynamo(data, keyword_table)
                 else:
-                    print("There was no data returned.")
+                    print("runAppleIntegrationKeyword:::no data returned")
 
-# ------------------------------------------------------------------------------
-#@debug
 def terminate():
     pass
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
+
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()

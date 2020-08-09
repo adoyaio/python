@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+
 import datetime
 import decimal
 import json
@@ -9,20 +9,15 @@ import boto3
 import numpy as np
 import pandas as pd
 import requests
-from configuration import EMAIL_FROM, \
-    APPLE_ADGROUP_REPORTING_URL_TEMPLATE, \
-    APPLE_ADGROUP_UPDATE_URL_TEMPLATE, \
-    TOTAL_COST_PER_INSTALL_LOOKBACK, \
-    HTTP_REQUEST_TIMEOUT
-from debug import debug, dprint
-from retry import retry
+from configuration import config
+from utils.debug import debug, dprint
+from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
 from Client import Client
 
-BIDDING_LOOKBACK = 7 # days
-sendG = False # Set to True to enable sending data to Apple, else a test run.
+BIDDING_LOOKBACK = 7
+sendG = False #enable sending data to Apple
 
-###### date and time parameters for bidding lookback ######
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -33,16 +28,7 @@ end_date = today - end_date_delta
 # FOR QA PURPOSES set these fields explicitly
 #start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 #end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
-
 logger = logging.getLogger()
-
-# Helper class to convert a DynamoDB item to JSON.
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            return str(o)
-        return super(DecimalEncoder, self).default(o)
-
 
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
@@ -61,7 +47,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
         sendG = True
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
         logger.setLevel(logging.INFO)  # reduce AWS logging in production
-        # debug.disableDebug() disable debug wrappers in production
     else:
         sendG = False
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -70,19 +55,16 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     clientsG = Client.getClients(dynamodb)
     logger.info("In runAdgroupBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
-# ------------------------------------------------------------------------------
+
 @retry
 def getAdgroupReportFromAppleHelper(url, cert, json, headers):
-  return requests.post(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+  return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-
-# ------------------------------------------------------------------------------
-#@debug
 def getAdgroupReportFromApple(client):
   """The data from Apple looks like this (Pythonically):
 
-{'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
+  {'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
                                                           'adGroupId': 152725486,
                                                           'adGroupName': 'search_match',
                                                           'adGroupServingStateReasons': None,
@@ -112,9 +94,9 @@ def getAdgroupReportFromApple(client):
                                                                       'currency': 'USD'},
                                                        'taps': 0,
                                                        'ttr': 0.0}}]}},
- 'error': None,
- 'pagination': {'itemsPerPage': 1, 'startIndex': 0, 'totalResults': 1}}
-"""
+  'error': None,
+  'pagination': {'itemsPerPage': 1, 'startIndex': 0, 'totalResults': 1}}
+  """
 
   payload = { "startTime"                  : str(start_date), 
               "endTime"                    : str(end_date),
@@ -139,42 +121,32 @@ def getAdgroupReportFromApple(client):
               "returnRowTotals"            : True, 
               "returnRecordsWithNoMetrics" : True
             }
-  url = APPLE_ADGROUP_REPORTING_URL_TEMPLATE % client.keywordAdderIds["campaignId"]["search"];
+  url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % client.keywordAdderIds["campaignId"]["search"];
 
   headers = { "Authorization": "orgId=%s" % client.orgId }
-
-  dprint ("URL is '%s'." % url)
-  dprint ("Payload is '%s'." % payload)
-  dprint ("Headers are %s." % headers)
-
+  dprint ("\n\nURL is '%s'." % url)
+  dprint ("\n\nPayload is '%s'." % payload)
+  dprint ("\n\nHeaders are %s." % headers)
   response = getAdgroupReportFromAppleHelper(url,
                                              cert=(S3Utils.getCert(client.pemFilename),
                                                    S3Utils.getCert(client.keyFilename)),
                                              json=payload,
                                              headers=headers)
-  dprint ("Response is %s." % response)
-
+  dprint ("\n\nResponse is %s." % response)
   return json.loads(response.text) 
 
 
-
-# ------------------------------------------------------------------------------
-#@debug
 def createUpdatedAdGroupBids(data, client):
   rows = data["data"]["reportingDataResponse"]["row"]
-
-  if len(rows) == 0:
-    return False # EARLY RETURN
   
-  ######make bid adjustments######
+  if len(rows) == 0:
+    return False
 
-  # In email of 28-Feb-2019, Scott asked use to use bidParameters, not adGroupBidParameters. --DS
-  #ABP = client.adgroupBidParameters;
-  ABP = client.bidParameters;
-
+  # NOTE using bidParams vs adgroupBidParameters e.g ABP = client.adgroupBidParameters
+  ABP = client.bidParameters
   dprint("Using adgroup bid parameters %s." % ABP)
 
-  #compile data from json library and put into dataframe
+  # compile data from json library and put into dataframe
   adGroup_info = defaultdict(list)
   for row in rows:
       adGroup_info['adGroupName']            .append(row['metadata']['adGroupName'])
@@ -240,7 +212,7 @@ def createUpdatedAdGroupBids(data, client):
 
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
   total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
-                                                         TOTAL_COST_PER_INSTALL_LOOKBACK)
+                                                         config.TOTAL_COST_PER_INSTALL_LOOKBACK)
   dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
@@ -270,30 +242,22 @@ def createUpdatedAdGroupBids(data, client):
   
   #convert dataframe back to json file for updating
   adGroup_file_to_post = adGroup_info.to_json(orient = 'records')
-
   result = json.loads(adGroup_file_to_post)
   return result, len(result)
 
-
-
-# ------------------------------------------------------------------------------
 @retry
 def sendOneUpdatedBidToAppleHelper(url, cert, json, headers):
-  return requests.put(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+  return requests.put(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-
-# ------------------------------------------------------------------------------
 @debug
 def sendOneUpdatedBidToApple(client, adGroup, headers, currency):
   campaignId, adGroupId, bid = adGroup["campaignId"], adGroup["id"], adGroup["defaultCPCBid"]
-
   del adGroup["campaignId"]
   del adGroup["id"]
   del adGroup["defaultCPCBid"]
   adGroup["defaultCpcBid"] = {"amount": "%.2f" % bid, "currency": currency}
-
-  url = APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaignId, adGroupId)
+  url = config.APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaignId, adGroupId)
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % adGroup)
 
@@ -306,14 +270,10 @@ def sendOneUpdatedBidToApple(client, adGroup, headers, currency):
     
   else:
     response = "Not actually sending anything to Apple."
-
   print ("The result of sending the update to Apple: %s" % response)
-
   return sendG
 
 
-
-# ------------------------------------------------------------------------------
 @debug
 def sendUpdatedBidsToApple(client, adGroupFileToPost):
   # The adGroupFileToPost payload looks like this:
@@ -339,9 +299,6 @@ def sendUpdatedBidsToApple(client, adGroupFileToPost):
   results = [sendOneUpdatedBidToApple(client, item, headers, client.currency) for item in adGroupFileToPost]
   return True in results # Convert the vector into a scalar.
 
-
-
-# ------------------------------------------------------------------------------
 @debug
 def createEmailBody(data, sent):
   content = ["""Sent to Apple is %s.""" % sent,
@@ -355,8 +312,6 @@ def createEmailBody(data, sent):
   return "\n".join(content)
 
 
-
-# ------------------------------------------------------------------------------
 @debug
 def emailSummaryReport(data, sent):
     messageString = createEmailBody(data, sent);
@@ -364,9 +319,9 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Ad Group Bid Adjuster summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
 
-# ------------------------------------------------------------------------------
+
 @debug
 def process():
   summaryReportInfo = { }
@@ -379,8 +334,6 @@ def process():
     for campaignId in campaignIds:
       data = getAdgroupReportFromApple(client)
       stuff = createUpdatedAdGroupBids(data, client)
-
-      print("runAdgroupBidAdjuster: stuff " + str(stuff))
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
         print("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
@@ -389,20 +342,15 @@ def process():
         #if sent:
           # TODO: Pull just the relevant field (defaultCPCBid?) from updatedBids, not the whole thing. --DS, 31-Dec-2018
         clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
-        client.updatedAdgroupBids(dynamodb, numberOfBids)
+        client.writeUpdatedAdgroupBids(dynamodb, numberOfBids)
 
   emailSummaryReport(summaryReportInfo, sent)
 
-
-
-# ------------------------------------------------------------------------------
 @debug
 def terminate():
   pass
 
 
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])

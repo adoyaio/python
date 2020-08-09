@@ -2,12 +2,24 @@ import datetime
 import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key
+from decimal import *
+from decimal import Decimal
+import json
 
 dashG = "-"
 
+# Helper class to convert a DynamoDB item to JSON.
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, decimal.Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
+
 def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
     table = dynamoResource.Table('branch_commerce_events')
-   
     # normalize search term to how its being stored in db
     event_key = str(campaign_id) + dashG + str(ad_set_id) + dashG + keyword.replace(" ", dashG)
     response = table.query(
@@ -29,7 +41,7 @@ def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end
 
         return total_branch_events
 
-
+# TODO add global getBranch methods
 def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
     table = dynamoResource.Table('branch_commerce_events')
     response = table.query(
@@ -54,7 +66,8 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
     return response
 
 # cast to int here because client table was migrated from client.json 
-# TODO in dynamo numbers are serialized so there is no advantage to using int consider using string for consistency
+# TODO in dynamo numbers are serialized so there is no advantage to using int 
+# consider using string for consistency
 def getClient(dynamoResource, client_id):
     table = dynamoResource.Table('clients')
     response = table.query(

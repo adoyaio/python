@@ -35,7 +35,7 @@ Resources:
   postClient:
     Type: "AWS::Serverless::Function"
     Properties:
-      Handler: postClient.lambda_handler
+      Handler: clientApi.postClientHandler
       Runtime: python3.7
       CodeUri: .
       Description: ""
@@ -54,10 +54,30 @@ Resources:
             Method: ANY
             Auth:
               ApiKeyRequired: true
+  postClientAdmin:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.postClientAdminHandler
+      Runtime: python3.7
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "postClientAdmin"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/client/admin
+            Method: post
   getClient:
     Type: "AWS::Serverless::Function"
     Properties:
-      Handler: getClient.lambda_handler
+      Handler: clientApi.getClientHandler
       Runtime: python3.7
       CodeUri: .
       Description: ""
@@ -79,7 +99,7 @@ Resources:
   getClientHistory:
     Type: "AWS::Serverless::Function"
     Properties:
-      Handler: getClientHistory.lambda_handler
+      Handler: clientApi.getClientHistoryHandler
       Runtime: python3.7
       CodeUri: .
       Description: ""
@@ -98,23 +118,25 @@ Resources:
             Method: GET
             Auth:
               ApiKeyRequired: true
-  postAdmin:
+  getKeywordHistory:
     Type: "AWS::Serverless::Function"
     Properties:
-      Handler: postAdmin.lambda_handler
+      Handler: keywordApi.getKeywordHistoryHandler
       Runtime: python3.7
       CodeUri: .
       Description: ""
       MemorySize: 448
       Timeout: 60
-      FunctionName: "postAdmin"
+      FunctionName: "getKeywordHistory"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
       Environment:
         Variables:
-          env: "lcl"
+          env: "prod"
       Events:
         Api:
           Type: Api
           Properties:
-            Path: /api/admin
-            Method: post
+            Path: /api/keyword/history
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
