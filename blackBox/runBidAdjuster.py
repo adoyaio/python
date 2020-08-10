@@ -250,41 +250,14 @@ def createUpdatedKeywordBids(data, campaignId, client):
     return finalized, summaryReportInfo, len(finalized)
 
 def convertKeywordFileToApplePayload(keyword_file_to_post, currency):
-    '''
-    At  https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Keyword_Resources.html I see this:
-    Bulk Targeted Keywords JSON Representation
-    { "importAction" : enum,
-      "id"           : number,
-      "campaignId"   : number,
-      "adGroupId"    : number,
-      "text"         : string,
-      "matchType"    : enum,
-      "status"       : enum,
-      "deleted"      : boolean,
-      "bidAmount"    : {Amount object}
-    }
-    The last field, bidAmount, is an "Amount object." At https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Campaign_Resources.html, an Amount object is defined as { "currency": string, "amount": string }
-    (I see something different at https://developer.apple.com/library/archive/documentation/General/Conceptual/AppStoreSearchAdsAPIReference/Campaign_Resources.html.)
-    The keyword_file_to_post parameter is an array of these objects:
-   {  "keyword"		: "freelancing time",
-      "matchType"	: "BROAD",
-      "adGroupId"	: 152710576,
-      "keywordId"	: 152834423,
-      "impressions"	: 0,
-      "taps"		: 0,
-      "installs"	: 0,
-      "avgCPA"		: 0.0,
-      "localSpend"	: "0",
-      "bid"			: 12.0,
-      "Action"		: "UPDATE",
-      "campaignId"	: 152708992  }
-    '''
-
     # pull the campaign and adgroup ids into an array and check if there are
-    payload = [{"id": item["keywordId"],
-                "bidAmount": {"currency": currency, "amount": str(item["bid"])}
-                } for item in keyword_file_to_post]
-
+    payload = [
+        {
+            "id": item["keywordId"],
+            "bidAmount": {"currency": currency, "amount": str(item["bid"])}
+        } 
+        for item in keyword_file_to_post
+    ]
     return payload
 
 # quick fix for V2 update to urls TODO we can clean up to use lookup of the campaignId key to adGroupId key
@@ -295,13 +268,18 @@ def getAppleKeywordsEndpoint(keyword_file_to_post):
         campaignIdForEndpoint = item["campaignId"]
         url = config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignIdForEndpoint, adGroupId)
         break
-
     print("getAppleKeywordsEndpoint:::found url" + url)
     return url
 
 @retry
 def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
-    return requests.put(url, cert=cert, json=json, headers=headers, timeout=HTTP_REQUEST_TIMEOUT)
+    return requests.put(
+        url, 
+        cert=cert, 
+        json=json, 
+        headers=headers, 
+        timeout=config.HTTP_REQUEST_TIMEOUT
+    )
 
 def sendUpdatedBidsToApple(client, keywordFileToPost):
     print("sendUpdatedBidsToApple:::client.currency " + client.currency)
@@ -320,17 +298,17 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
 
     if url and payload:
         if sendG:
-            response = sendUpdatedBidsToAppleHelper(url,
-                                                    cert=(S3Utils.getCert(client.pemFilename),
-                                                          S3Utils.getCert(client.keyFilename)),
-                                                    json=payload,
-                                                    headers=headers)
-
+            response = sendUpdatedBidsToAppleHelper(
+                url,
+                cert=(S3Utils.getCert(client.pemFilename),
+                S3Utils.getCert(client.keyFilename)),
+                json=payload,
+                headers=headers
+            )
         else:
             response = "Not actually sending anything to Apple."
-
         print("The result of sending the update to Apple: %s" % response)
-
+        
     return sendG
 
 def createEmailBody(data, sent):
@@ -392,7 +370,7 @@ def process():
 def terminate():
     pass
 
-# ------------------------------------------------------------------------------
+\
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()

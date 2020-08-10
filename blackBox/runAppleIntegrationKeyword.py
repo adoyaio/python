@@ -129,7 +129,8 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     else:
         return False
 
-def loadAppleKeywordToDynamo(data, keyword_table):
+def loadAppleKeywordToDynamo(data, orgId, campaignId):
+    table = dynamodb.Table('apple_keyword')
     rows = data["data"]["reportingDataResponse"]["row"]
     if len(rows) == 0:
         logger.debug("loadAppleKeywordToDynamo::no rows")
@@ -205,8 +206,9 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     local_spend = decimal.Decimal(str(granularity['localSpend']['amount']))
                     avg_cpt = decimal.Decimal(str(granularity['avgCPT']['amount']))
 
+                # TODO insert campaign_id and org_id 
                 try:
-                    response = keyword_table.put_item(
+                    response = table.put_item(
                         Item={
                             'date': date,
                             'keyword': keyword,
@@ -231,7 +233,9 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                             'avg_cpa': avg_cpa,
                             'conversion_rate': conversion_rate,
                             'local_spend': local_spend,
-                            'avg_cpt': avg_cpt
+                            'avg_cpt': avg_cpt,
+                            'org_id' : orgId,
+                            'campaign_id' : campaignId
                         }
                     )
                 except ClientError as e:
@@ -247,23 +251,24 @@ def export_dict_to_csv(raw_dict, filename):
     df.to_csv(filename, index=None)
 
 def process():
-    keyword_table = dynamodb.Table('apple_keyword')
+
     # qa purposes
     # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
 
     for client in clientsG:
         print("runAppleIntegrationKeyword:::" + client.clientName + ":::" + str(client.orgId))
+        orgId = client.orgId
         campaignIds = client.campaignIds
         for campaignId in campaignIds:
                 # TODO JF implement max date call pull ONE value sorted & read max date
                 # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
-                start_date = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
-                end_date = datetime.date.today()
-                print("start_date:::" + str(start_date))
-                print("end_date::: " + str(end_date))
-                data = getKeywordReportFromApple(client, campaignId, start_date, end_date)
+                startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
+                endDate = datetime.date.today()
+                # print("start_date:::" + str(start_date))
+                # print("end_date::: " + str(end_date))
+                data = getKeywordReportFromApple(client, campaignId, startDate, endDate)
                 if (data is not None) and (data != 'false'):
-                    loaded = loadAppleKeywordToDynamo(data, keyword_table)
+                    loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
                 else:
                     print("runAppleIntegrationKeyword:::no data returned")
 
