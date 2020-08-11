@@ -132,15 +132,51 @@ def getClientBranchHistory(dynamoResource, org_id, total_recs):
     return response['Items']
 
 # TODO swap for apple_branch_keyword when available
-def getClientKeywordHistory(dynamoResource, org_id, total_recs):
+def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
     table = dynamoResource.Table('apple_keyword')
-    response = table.query(
+    if offset == "init":
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(org_id),
+            IndexName='org_id-timestamp-index',
+            ScanIndexForward=False,
+            Limit=int(total_recs)
+        )
+    else:
+        offsetComposite = offset.split("|")
+        offsetFinalized = {
+            'date': offsetComposite[0],
+            'keyword_id':offsetComposite[1],
+            'org_id':offsetComposite[2]
+        }
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(org_id),
+            IndexName='org_id-timestamp-index',
+            ScanIndexForward=False,
+            Limit=int(total_recs),
+            ExclusiveStartKey = offsetFinalized
+        )
+    
+    count = table.query(
+        Select="COUNT",
         KeyConditionExpression=Key('org_id').eq(org_id),
         IndexName='org_id-timestamp-index',
-        ScanIndexForward=False,
-        Limit=int(total_recs)
     )
-    return response['Items']
+
+    try:
+        nextOffset =  response['LastEvaluatedKey']
+    except KeyError as error:
+        nextOffset = {
+            'date': '',
+            'keyword_id': '',
+            'org_id':''
+        }
+
+    return { 
+            'history': response['Items'], 
+            'offset': nextOffset,
+            'count': count['Count']
+            }
+    
 
 def getClientKeywordHistoryByTime(dynamoResource, org_id, start_date, end_date):
     table = dynamoResource.Table('apple_keyword')

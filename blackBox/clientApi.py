@@ -152,16 +152,16 @@ def getClientKeywordHistoryHandler(event, context):
     query_by_time = False
     try:
         total_recs = queryStringParameters["total_recs"]
+        offset = queryStringParameters["offset"]
     except KeyError as error:
         query_by_time = True
-
+        
     if query_by_time:
         start_date = queryStringParameters["start_date"]
         end_date = queryStringParameters["end_date"]
         history = DynamoUtils.getClientKeywordHistoryByTime(dynamodb, org_id, start_date, end_date)
     else:
-        history = DynamoUtils.getClientKeywordHistory(dynamodb, org_id, total_recs)
-
+        response = DynamoUtils.getClientKeywordHistory(dynamodb, org_id, total_recs, offset)
 
     return {
         'statusCode': 200,
@@ -170,5 +170,5 @@ def getClientKeywordHistoryHandler(event, context):
             'Access-Control-Allow-Methods': 'GET',
             'Access-Control-Allow-Headers': 'x-api-key'
         },
-        'body': json.dumps(history, cls=DecimalEncoder)
+        'body': json.dumps(response, cls=DecimalEncoder)
     }

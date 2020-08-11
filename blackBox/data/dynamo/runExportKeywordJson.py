@@ -49,10 +49,11 @@ def process():
     data = []
     table = dynamodb.Table('apple_keyword')
     adgroup_id = "197913349"
-    response = table.scan(
-        Limit=100
-    )
+    # response = table.scan(
+    #     Limit=100
+    # )
 
+    response = table.scan()
     # response = table.query(
     #     KeyConditionExpression=Key('adgroup_id').eq(adgroup_id),
     #     ScanIndexForward=False,
