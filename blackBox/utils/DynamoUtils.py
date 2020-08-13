@@ -66,9 +66,6 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
     return response
 
 
-
-
-
 # cast to int here because client table was migrated from client.json 
 # TODO in dynamo numbers are serialized so there is no advantage to using int 
 # consider using string for consistency
@@ -134,7 +131,7 @@ def getClientBranchHistory(dynamoResource, org_id, total_recs):
 # TODO swap for apple_branch_keyword when available
 def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
     table = dynamoResource.Table('apple_keyword')
-    if offset == "init":
+    if offset.get("keyword_id") == "init":
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(org_id),
             IndexName='org_id-timestamp-index',
@@ -142,18 +139,13 @@ def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
             Limit=int(total_recs)
         )
     else:
-        offsetComposite = offset.split("|")
-        offsetFinalized = {
-            'date': offsetComposite[0],
-            'keyword_id':offsetComposite[1],
-            'org_id':offsetComposite[2]
-        }
+        
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(org_id),
             IndexName='org_id-timestamp-index',
             ScanIndexForward=False,
             Limit=int(total_recs),
-            ExclusiveStartKey = offsetFinalized
+            ExclusiveStartKey = offset
         )
     
     count = table.query(
@@ -168,16 +160,14 @@ def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
         nextOffset = {
             'date': '',
             'keyword_id': '',
-            'org_id':''
+            'org_id': ''
         }
-
     return { 
             'history': response['Items'], 
             'offset': nextOffset,
             'count': count['Count']
             }
     
-
 def getClientKeywordHistoryByTime(dynamoResource, org_id, start_date, end_date):
     table = dynamoResource.Table('apple_keyword')
     response = table.query(

@@ -57,7 +57,7 @@ def postClientHandler(event, context):
     }
 
 def postClientAdminHandler(event, context):
-    print('Loading postClientAdminHandler...')
+    print('Loading postClientAdminHandler....')
     body = json.loads(event["body"])
     operation = body["operation"]
     payload = body["payload"]
@@ -89,7 +89,7 @@ def postClientAdminHandler(event, context):
 
 
 def getClientHandler(event, context):
-    print('Loading getClientHandler...')
+    print('Loading getClientHandler....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
     print("Received context: " + str(context.client_context))
@@ -108,14 +108,13 @@ def getClientHandler(event, context):
     }
 
 def getClientCostHistoryHandler(event, context):
-    print('Loading getClientCostHistoryHandler...')
+    print('Loading getClientCostHistoryHandler....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
     dynamodb = ApiUtils.getDynamoHost(event)
 
-    # determine how to query dynamo
     query_by_time = False
     try:
         total_recs = queryStringParameters["total_recs"]
@@ -141,27 +140,40 @@ def getClientCostHistoryHandler(event, context):
 
 
 def getClientKeywordHistoryHandler(event, context):
-    print('Loading getClientKeywordHistoryHandler...')
+    print('Loading getClientKeywordHistoryHandler....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
     dynamodb = ApiUtils.getDynamoHost(event)
 
-    # determine how to query dynamo
     query_by_time = False
     try:
         total_recs = queryStringParameters["total_recs"]
-        offset = queryStringParameters["offset"]
+        offset = {
+            "org_id": queryStringParameters["offsetOrgId"],
+            "date": queryStringParameters["offsetDate"],
+            "keyword_id": queryStringParameters["offsetKeywordId"]
+        }
     except KeyError as error:
         query_by_time = True
-        
+
     if query_by_time:
         start_date = queryStringParameters["start_date"]
         end_date = queryStringParameters["end_date"]
-        history = DynamoUtils.getClientKeywordHistoryByTime(dynamodb, org_id, start_date, end_date)
+        history = DynamoUtils.getClientKeywordHistoryByTime(
+            dynamodb, 
+            org_id, 
+            start_date, 
+            end_date
+        )
     else:
-        response = DynamoUtils.getClientKeywordHistory(dynamodb, org_id, total_recs, offset)
+        response = DynamoUtils.getClientKeywordHistory(
+            dynamodb, 
+            org_id, 
+            total_recs, 
+            offset
+        )
 
     return {
         'statusCode': 200,
