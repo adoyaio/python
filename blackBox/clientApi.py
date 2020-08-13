@@ -24,12 +24,13 @@ def postClientHandler(event, context):
     tableName = body["tableName"]
 
     # init dynamo 
-    dynamodb = ApiUtils.getDynamoHost(event)
-    dynamo = dynamodb.Table(tableName)
+    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    send = ApiUtils.getDynamoHost(event).get('send')
+    table = dynamodb.Table(tableName)
 
     # operation to callback mapping TODO error on invalid
     operations = {
-        'create': lambda x: dynamo.put_item(
+        'create': lambda x: table.put_item(
             Item={**x}
         )
     }
@@ -40,10 +41,20 @@ def postClientHandler(event, context):
     # execute callback(client)
     response = operations[operation](client)
 
-    # send email notification
-    dateString = time.strftime("%m/%d/%Y")
-    subjectString = "Client updated %s" % dateString
-    EmailUtils.sendTextEmail(json.dumps(client, cls=DecimalEncoder, indent=2), subjectString, config.EMAIL_TO, [], config.EMAIL_FROM)
+    if send:
+        # send email notification
+        dateString = time.strftime("%m/%d/%Y")
+        subjectString = "Client updated %s" % dateString
+        EmailUtils.sendTextEmail(
+            json.dumps(
+                client, 
+                cls=DecimalEncoder, 
+                indent=2
+            ), 
+            subjectString, 
+            config.EMAIL_TO, 
+            [],
+            config.EMAIL_FROM)
 
      # return parsed json from dynamo
     return {
@@ -63,17 +74,18 @@ def postClientAdminHandler(event, context):
     payload = body["payload"]
     tableName = body["tableName"]
 
-    dynamodb = ApiUtils.getDynamoHost(event)
-    dynamo = dynamodb.Table(tableName)
+    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    send = ApiUtils.getDynamoHost(event).get('send')
+    table = dynamodb.Table(tableName)
 
     operations = {
-        'create': lambda x: dynamo.put_item(
+        'create': lambda x: table.put_item(
             Item={**x}
         ),
-        'read': lambda x: dynamo.get_item(**x),
-        'update': lambda x: dynamo.update_item(**x),
-        'delete': lambda x: dynamo.delete_item(**x),
-        'list': lambda x: dynamo.scan(**x),
+        'read': lambda x: table.get_item(**x),
+        'update': lambda x: table.update_item(**x),
+        'delete': lambda x: table.delete_item(**x),
+        'list': lambda x: table.scan(**x),
         'echo': lambda x: x,
         'ping': lambda x: 'pong'
     }
@@ -95,8 +107,10 @@ def getClientHandler(event, context):
     print("Received context: " + str(context.client_context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
-    dynamodb = ApiUtils.getDynamoHost(event)
+
+    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
     client = DynamoUtils.getClient(dynamodb, org_id)
+
     return {
         'statusCode': 200,
         'headers': {
@@ -113,7 +127,7 @@ def getClientCostHistoryHandler(event, context):
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
-    dynamodb = ApiUtils.getDynamoHost(event)
+    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
 
     query_by_time = False
     try:
@@ -145,7 +159,7 @@ def getClientKeywordHistoryHandler(event, context):
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
-    dynamodb = ApiUtils.getDynamoHost(event)
+    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
 
     query_by_time = False
     try:
