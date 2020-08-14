@@ -582,6 +582,10 @@ if 'apple_keyword' not in existing_tables:
         {
             'AttributeName': 'keyword',
             'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
         }
         ],
         GlobalSecondaryIndexes=[
@@ -648,6 +652,22 @@ if 'apple_keyword' not in existing_tables:
             'Projection': {
                 'ProjectionType': 'ALL'
             }
+        },
+        {
+            'IndexName': 'org_id-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
         }
         ],
         BillingMode="PAY_PER_REQUEST"
@@ -655,7 +675,7 @@ if 'apple_keyword' not in existing_tables:
     print("Table status:", table.table_name, table.table_status)
 
 # dynamo numbers are serialized to strings so no advantage to using number here
-# TODO rework to use string key instead of number 
+# TODO string vs of number 
 if 'clients' not in existing_tables:
     table = dynamodb.create_table(
         TableName='clients',
@@ -740,6 +760,10 @@ if 'apple_branch_keyword' not in existing_tables:
             'AttributeName': 'keyword',
             'AttributeType': 'S'
         },
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        }
         ],
         GlobalSecondaryIndexes=[
         {
@@ -795,6 +819,22 @@ if 'apple_branch_keyword' not in existing_tables:
             'KeySchema': [
                 {
                     'AttributeName': 'keyword',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {

@@ -558,7 +558,6 @@ if 'apple_keyword' not in existing_tables:
         },
         ],
         AttributeDefinitions=[
-
         {
             'AttributeName': 'keyword_id',
             'AttributeType': 'S'
@@ -581,6 +580,10 @@ if 'apple_keyword' not in existing_tables:
         },
         {
             'AttributeName': 'keyword',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'org_id',
             'AttributeType': 'S'
         }
         ],
@@ -638,6 +641,22 @@ if 'apple_keyword' not in existing_tables:
             'KeySchema': [
                 {
                     'AttributeName': 'keyword',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {
@@ -740,6 +759,10 @@ if 'apple_branch_keyword' not in existing_tables:
             'AttributeName': 'keyword',
             'AttributeType': 'S'
         },
+        {
+            'AttributeName': 'org_id',
+            'AttributeType': 'S'
+        },
         ],
         GlobalSecondaryIndexes=[
         {
@@ -795,6 +818,22 @@ if 'apple_branch_keyword' not in existing_tables:
             'KeySchema': [
                 {
                     'AttributeName': 'keyword',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'date',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-timestamp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {

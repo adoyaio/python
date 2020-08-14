@@ -50,44 +50,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
-
+@debug
 def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
-    """The data from Apple looks like this (Pythonically):
-    {'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
-                                                            'adGroupId': 152725486,
-                                                            'adGroupName': 'search_match',
-                                                            'adGroupServingStateReasons': None,
-                                                            'adGroupServingStatus': 'RUNNING',
-                                                            'adGroupStatus': 'ENABLED',
-                                                            'automatedKeywordsOptIn': True,
-                                                            'cpaGoal': {'amount': '1',
-                                                                        'currency': 'USD'},
-                                                            'defaultCpcBid': {'amount': '0.5',
-                                                                              'currency': 'USD'},
-                                                            'deleted': False,
-                                                            'endTime': None,
-                                                            'modificationTime': '2018-08-29T07:58:51.872',
-                                                            'startTime': '2018-05-26T00:00:00.000'},
-                                               'other': False,
-                                               'total': {'avgCPA': {'amount': '0',
-                                                                    'currency': 'USD'},
-                                                         'avgCPT': {'amount': '0',
-                                                                    'currency': 'USD'},
-                                                         'conversionRate': 0.0,
-                                                         'installs': 0,
-                                                         'latOffInstalls': 0,
-                                                         'latOnInstalls': 0,
-                                                         'newDownloads': 0,
-                                                         'redownloads': 0,
-                                                         'impressions': 0,
-                                                         'localSpend': {'amount': '0',
-                                                                        'currency': 'USD'},
-                                                         'taps': 0,
-                                                         'ttr': 0.0}}]}},
-    'error': None,
-    'pagination': {'itemsPerPage': 1, 'startIndex': 0, 'totalResults': 1}}
-    """
-
     payload = {"startTime": str(start_date),
                "endTime": str(end_date),
                "timeZone": "ORTZ",
@@ -117,11 +81,13 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
-    response = getKeywordReportFromAppleHelper(url,
-                                               cert=(S3Utils.getCert(client.pemFilename),
-                                                     S3Utils.getCert(client.keyFilename)),
-                                               json=payload,
-                                               headers=headers)
+    response = getKeywordReportFromAppleHelper(
+        url,
+        cert=(S3Utils.getCert(client.pemFilename),
+            S3Utils.getCert(client.keyFilename)),
+        json=payload,
+        headers=headers
+    )
 
     print("runAppleIntegrationKeyword:::Response:::" + str(response))
     if response.status_code == 200:
@@ -129,7 +95,8 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     else:
         return False
 
-def loadAppleKeywordToDynamo(data, keyword_table):
+def loadAppleKeywordToDynamo(data, orgId, campaignId):
+    table = dynamodb.Table('apple_keyword')
     rows = data["data"]["reportingDataResponse"]["row"]
     if len(rows) == 0:
         logger.debug("loadAppleKeywordToDynamo::no rows")
@@ -142,7 +109,7 @@ def loadAppleKeywordToDynamo(data, keyword_table):
             else:
                 field_key = "granularity"
 
-            logger.debug("loadAppleKeywordToDynamo:::field_key:::" + field_key)
+            print("loadAppleKeywordToDynamo:::field_key:::" + field_key)
             
             for granularity in row["granularity"]:
                 logger.debug("granularity:" + str(granularity))
@@ -177,20 +144,6 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     local_spend = decimal.Decimal(str(row[field_key]['localSpend']['amount']))
                     avg_cpt = decimal.Decimal(str(row[field_key]['avgCPT']['amount']))
 
-                    # enable for local debugging
-                    # dprint("date=%s" % date)
-                    # dprint("impressions=%s" % impressions)
-                    # dprint("taps=%s" % taps)
-                    # dprint("installs=%s" % installs)
-                    # dprint("ttr=%s" % ttr)
-                    # dprint("new_downloads=%s" % new_downloads)
-                    # dprint("re_downloads=%s" % re_downloads)
-                    # dprint("avg_cpt=%s" % avg_cpt)
-                    # print("avg_cpt" + str(avg_cpt))
-                    # print("local_spend" + str(local_spend))
-                    # print("conversion_rate" + str(conversion_rate))
-                    # print("avg_cpa" + str(avg_cpa))
-
                 else:
                     impressions = granularity['impressions']
                     taps = granularity['taps']
@@ -205,37 +158,39 @@ def loadAppleKeywordToDynamo(data, keyword_table):
                     local_spend = decimal.Decimal(str(granularity['localSpend']['amount']))
                     avg_cpt = decimal.Decimal(str(granularity['avgCPT']['amount']))
 
-                try:
-                    response = keyword_table.put_item(
-                        Item={
-                            'date': date,
-                            'keyword': keyword,
-                            'keyword_id': keyword_id,
-                            'keywordStatus': keywordStatus,
-                            'keywordDisplayStatus': keywordDisplayStatus,
-                            'matchType': matchType,
-                            'adgroup_name': adgroup_name,
-                            'adgroup_id' : adgroup_id,
-                            'adgroup_deleted': adgroup_deleted,
-                            'bid': bid,
-                            'deleted': deleted,
-                            'modification_time': modification_time,
-                            'impressions': impressions,
-                            'taps': taps,
-                            'installs': installs,
-                            'ttr': ttr,
-                            'new_downloads': new_downloads,
-                            're_downloads': re_downloads,
-                            'lat_on_installs': lat_on_installs,
-                            'lat_off_installs': lat_off_installs,
-                            'avg_cpa': avg_cpa,
-                            'conversion_rate': conversion_rate,
-                            'local_spend': local_spend,
-                            'avg_cpt': avg_cpt
-                        }
-                    )
+                i={
+                    'date': date,
+                    'keyword': keyword,
+                    'keyword_id': keyword_id,
+                    'keywordStatus': keywordStatus,
+                    'keywordDisplayStatus': keywordDisplayStatus,
+                    'matchType': matchType,
+                    'adgroup_name': adgroup_name,
+                    'adgroup_id' : adgroup_id,
+                    'adgroup_deleted': adgroup_deleted,
+                    'bid': bid,
+                    'deleted': deleted,
+                    'modification_time': modification_time,
+                    'impressions': impressions,
+                    'taps': taps,
+                    'installs': installs,
+                    'ttr': ttr,
+                    'new_downloads': new_downloads,
+                    're_downloads': re_downloads,
+                    'lat_on_installs': lat_on_installs,
+                    'lat_off_installs': lat_off_installs,
+                    'avg_cpa': avg_cpa,
+                    'conversion_rate': conversion_rate,
+                    'local_spend': local_spend,
+                    'avg_cpt': avg_cpt,
+                    'org_id' : orgId,
+                    'campaign_id' : campaignId
+                }
+
+                try: 
+                    response = table.put_item(Item=i)
                 except ClientError as e:
-                    logger.info("runAppleIntegrationKeyword:::process:::PutItem failed due to" + e.response['Error']['Message'])
+                    logger.critical("runAppleIntegrationKeyword:::process:::PutItem failed due to" + e.response['Error']['Message'])
                 else:
                     logger.debug("runAppleIntegrationKeyword:::process:::PutItem succeeded:")
 
@@ -247,23 +202,20 @@ def export_dict_to_csv(raw_dict, filename):
     df.to_csv(filename, index=None)
 
 def process():
-    keyword_table = dynamodb.Table('apple_keyword')
-    # qa purposes
-    # export_dict_to_csv(keyword_table.scan()["Items"], "./apple_keyword.txt")
-
     for client in clientsG:
         print("runAppleIntegrationKeyword:::" + client.clientName + ":::" + str(client.orgId))
+        orgId = str(client.orgId)
         campaignIds = client.campaignIds
         for campaignId in campaignIds:
                 # TODO JF implement max date call pull ONE value sorted & read max date
                 # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
-                start_date = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
-                end_date = datetime.date.today()
-                print("start_date:::" + str(start_date))
-                print("end_date::: " + str(end_date))
-                data = getKeywordReportFromApple(client, campaignId, start_date, end_date)
+                startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
+                endDate = datetime.date.today()
+                # print("start_date:::" + str(start_date))
+                # print("end_date::: " + str(end_date))
+                data = getKeywordReportFromApple(client, campaignId, startDate, endDate)
                 if (data is not None) and (data != 'false'):
-                    loaded = loadAppleKeywordToDynamo(data, keyword_table)
+                    loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
                 else:
                     print("runAppleIntegrationKeyword:::no data returned")
 

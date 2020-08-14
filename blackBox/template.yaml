@@ -60,7 +60,7 @@ Resources:
       Handler: clientApi.postClientAdminHandler
       Runtime: python3.7
       CodeUri: .
-      Description: ""
+      Description: "Internal use 'shortcut' endpoint for admins, supports read, update, delete, & list operations on any table"
       MemorySize: 448
       Timeout: 60
       FunctionName: "postClientAdmin"
@@ -96,16 +96,16 @@ Resources:
             Method: GET
             Auth:
               ApiKeyRequired: true
-  getClientHistory:
+  getClientCostHistory:
     Type: "AWS::Serverless::Function"
     Properties:
-      Handler: clientApi.getClientHistoryHandler
+      Handler: clientApi.getClientCostHistoryHandler
       Runtime: python3.7
       CodeUri: .
       Description: ""
       MemorySize: 448
       Timeout: 60
-      FunctionName: "getClientHistory"
+      FunctionName: "getClientCostHistory"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
       Environment:
         Variables:
@@ -114,20 +114,20 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/client/history
+            Path: /api/client/cost/history
             Method: GET
             Auth:
               ApiKeyRequired: true
-  getKeywordHistory:
+  getClientKeywordHistory:
     Type: "AWS::Serverless::Function"
     Properties:
-      Handler: keywordApi.getKeywordHistoryHandler
+      Handler: clientApi.getClientKeywordHistoryHandler
       Runtime: python3.7
       CodeUri: .
       Description: ""
       MemorySize: 448
       Timeout: 60
-      FunctionName: "getKeywordHistory"
+      FunctionName: "getClientKeywordHistory"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
       Environment:
         Variables:
@@ -136,7 +136,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/keyword/history
+            Path: /api/client/keyword/history/
             Method: GET
             Auth:
               ApiKeyRequired: true

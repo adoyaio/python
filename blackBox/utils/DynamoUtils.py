@@ -65,18 +65,20 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
     )
     return response
 
+
 # cast to int here because client table was migrated from client.json 
 # TODO in dynamo numbers are serialized so there is no advantage to using int 
 # consider using string for consistency
-def getClient(dynamoResource, client_id):
+
+def getClient(dynamoResource, org_id):
     table = dynamoResource.Table('clients')
     response = table.query(
-        KeyConditionExpression=Key('orgId').eq(int(client_id))
+        KeyConditionExpression=Key('orgId').eq(int(org_id))
     )
     return response['Items']
 
 
-def getClientHistory(dynamoResource, client_id):
+def getClientHistory(dynamoResource, org_id):
     today = datetime.date.today()
     end_date_delta = datetime.timedelta(days=1)
     start_date_delta = datetime.timedelta(365)
@@ -85,43 +87,92 @@ def getClientHistory(dynamoResource, client_id):
 
     table = dynamoResource.Table('cpi_history')
     response = table.query(
-        KeyConditionExpression=Key('org_id').eq(client_id & Key('timestamp').between(start_date.strftime(
+        KeyConditionExpression=Key('org_id').eq(org_id & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         ))
     return response['Items']
 
 
-def getClientHistoryByTime(dynamoResource, client_id, start_date, end_date):
-    table = dynamoResource.Table('cpi_history')
+# def getClientHistoryByTime(dynamoResource, client_id, start_date, end_date):
+#     table = dynamoResource.Table('cpi_history')
+#     response = table.query(
+#         KeyConditionExpression=Key('org_id').eq(client_id) & Key('timestamp').between(end_date, start_date),
+#     )
+#     return response['Items']
+
+
+# def getClientHistoryNumRecs(dynamoResource, org_id, total_recs):
+#     table = dynamoResource.Table('cpi_history')
+#     response = table.query(
+#         KeyConditionExpression=Key('org_id').eq(org_id),
+#         ScanIndexForward=False,
+#         Limit=int(total_recs)
+#     )
+#     return response['Items']
+
+
+def getClientBranchHistoryByTime(dynamoResource, org_id, start_date, end_date):
+    table = dynamoResource.Table('cpi_branch_history')
     response = table.query(
-        KeyConditionExpression=Key('org_id').eq(client_id) & Key('timestamp').between(end_date, start_date),
+        KeyConditionExpression=Key('org_id').eq(org_id) & Key('timestamp').between(end_date, start_date),
     )
     return response['Items']
 
 
-def getClientHistoryNumRecs(dynamoResource, client_id, total_recs):
-    table = dynamoResource.Table('cpi_history')
+def getClientBranchHistory(dynamoResource, org_id, total_recs):
+    table = dynamoResource.Table('cpi_branch_history')
     response = table.query(
-        KeyConditionExpression=Key('org_id').eq(client_id),
+        KeyConditionExpression=Key('org_id').eq(org_id),
         ScanIndexForward=False,
         Limit=int(total_recs)
     )
     return response['Items']
 
-
-def getClientBranchHistoryByTime(dynamoResource, client_id, start_date, end_date):
-    table = dynamoResource.Table('cpi_branch_history')
-    response = table.query(
-        KeyConditionExpression=Key('org_id').eq(client_id) & Key('timestamp').between(end_date, start_date),
+# TODO swap for apple_branch_keyword when available
+def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
+    table = dynamoResource.Table('apple_keyword')
+    if offset.get("keyword_id") == "init":
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(org_id),
+            IndexName='org_id-timestamp-index',
+            ScanIndexForward=False,
+            Limit=int(total_recs)
+        )
+    else:
+        
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(org_id),
+            IndexName='org_id-timestamp-index',
+            ScanIndexForward=False,
+            Limit=int(total_recs),
+            ExclusiveStartKey = offset
+        )
+    
+    count = table.query(
+        Select="COUNT",
+        KeyConditionExpression=Key('org_id').eq(org_id),
+        IndexName='org_id-timestamp-index',
     )
-    return response['Items']
 
-
-def getClientBranchHistoryNumRecs(dynamoResource, client_id, total_recs):
-    table = dynamoResource.Table('cpi_branch_history')
+    try:
+        nextOffset =  response['LastEvaluatedKey']
+    except KeyError as error:
+        nextOffset = {
+            'date': '',
+            'keyword_id': '',
+            'org_id': ''
+        }
+    return { 
+            'history': response['Items'], 
+            'offset': nextOffset,
+            'count': count['Count']
+            }
+    
+def getClientKeywordHistoryByTime(dynamoResource, org_id, start_date, end_date):
+    table = dynamoResource.Table('apple_keyword')
     response = table.query(
-        KeyConditionExpression=Key('org_id').eq(client_id),
+        KeyConditionExpression=Key('org_id').eq(org_id) & Key('date').between(end_date, start_date),
         ScanIndexForward=False,
-        Limit=int(total_recs)
+        IndexName='org_id-timestamp-index'
     )
     return response['Items']
