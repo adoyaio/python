@@ -115,6 +115,7 @@ def getClientBranchHistoryByTime(dynamoResource, org_id, start_date, end_date):
     table = dynamoResource.Table('cpi_branch_history')
     response = table.query(
         KeyConditionExpression=Key('org_id').eq(org_id) & Key('timestamp').between(end_date, start_date),
+        ScanIndexForward=True
     )
     return response['Items']
 
@@ -123,7 +124,7 @@ def getClientBranchHistory(dynamoResource, org_id, total_recs):
     table = dynamoResource.Table('cpi_branch_history')
     response = table.query(
         KeyConditionExpression=Key('org_id').eq(org_id),
-        ScanIndexForward=False,
+        ScanIndexForward=True,
         Limit=int(total_recs)
     )
     return response['Items']
