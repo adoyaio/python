@@ -161,33 +161,40 @@ def getClientKeywordHistoryHandler(event, context):
     org_id = queryStringParameters["org_id"]
     dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
 
-    query_by_time = False
-    try:
-        total_recs = queryStringParameters["total_recs"]
-        offset = {
-            "org_id": queryStringParameters["offsetOrgId"],
-            "date": queryStringParameters["offsetDate"],
-            "keyword_id": queryStringParameters["offsetKeywordId"]
-        }
-    except KeyError as error:
-        query_by_time = True
+    # query_by_time = False
+    # try:
+    total_recs = queryStringParameters["total_recs"]
+    start_date = queryStringParameters["start_date"]
+    end_date = queryStringParameters["end_date"]
 
-    if query_by_time:
-        start_date = queryStringParameters["start_date"]
-        end_date = queryStringParameters["end_date"]
-        history = DynamoUtils.getClientKeywordHistoryByTime(
-            dynamodb, 
-            org_id, 
-            start_date, 
-            end_date
-        )
-    else:
-        response = DynamoUtils.getClientKeywordHistory(
-            dynamodb, 
-            org_id, 
-            total_recs, 
-            offset
-        )
+    offset = {
+        "org_id": queryStringParameters["offsetOrgId"],
+        "date": queryStringParameters["offsetDate"],
+        "keyword_id": queryStringParameters["offsetKeywordId"]
+    }
+    # except KeyError as error:
+    #     query_by_time = True
+
+    # if query_by_time:
+    adgroup_name = queryStringParameters["adgroup_name"]
+    matchType = queryStringParameters["matchType"]
+    #     history = DynamoUtils.getClientKeywordHistoryByTime(
+    #         dynamodb, 
+    #         org_id, 
+    #         start_date, 
+    #         end_date
+    #     )
+    # else:
+    response = DynamoUtils.getClientKeywordHistory(
+        dynamodb, 
+        org_id, 
+        total_recs, 
+        offset,
+        start_date,
+        end_date,
+        adgroup_name,
+        matchType
+    )
 
     return {
         'statusCode': 200,
