@@ -173,105 +173,114 @@ def getClientBranchHistory(dynamoResource, org_id, total_recs):
 #             'count': count['Count']
 #             }
     
-def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset, start_date, end_date, adgroup_name, matchType):
+def getClientKeywordHistory(
+        dynamoResource, 
+        org_id, 
+        total_recs, 
+        offset, 
+        start_date, 
+        end_date, 
+        adgroup_name, 
+        matchType
+        ):
+
     table = dynamoResource.Table('apple_keyword')
 
     # build the KeyConditionExpression
     if start_date == 'all':
-        keyExp = "Key('org_id').eq(" + org_id + ")"
+        keyExp = "Key('org_id').eq('" + org_id + "')"
     else:
-        keyExp = "Key('org_id').eq(" + org_id + ")& Key('date').between(" + end_date + ", "  + start_date + ")"
+        keyExp = "Key('org_id').eq('" + org_id + "') & Key('date').between('" + end_date + "','"  + start_date + "')"
     
     # build the FilterExpression
     filterExp = ""
     if matchType != 'all' and adgroup_name != 'all':
-        filterExp = "Attr('adgroup_name').eq(" + adgroup_name + ") & Attr('matchType').eq(" + matchType + ")"   
+        filterExp = "Attr('adgroup_name').eq('" + adgroup_name + "') & Attr('matchType').eq('" + matchType + "')"   
     elif adgroup_name != 'all':
-       filterExp = "Attr('adgroup_name').eq(" + adgroup_name + ")"
+       filterExp = "Attr('adgroup_name').eq'" + adgroup_name + "')"
     elif matchType != 'all':
-       filterExp = "Attr('matchType').eq(" + matchType + ")"
+       filterExp = "Attr('matchType').eq('" + matchType + "')"
 
-    # response = table.query(
-    #     KeyConditionExpression=Key('org_id').eq(org_id) & Key('date').between(end_date, start_date),
-    #     ScanIndexForward=False,
-    #     IndexName='org_id-timestamp-index'
-        
-    # )
-    # return response['Items']
+    print("getClientKeywordHistory:::" + filterExp)
+    print("getClientKeywordHistory:::" + keyExp)
 
-    # first page dont send ExclusiveStartKey
+    # first page: dont send ExclusiveStartKey
     if offset.get("keyword_id") == "init":
 
+        # apply filter expression if needed
         if len(filterExp) > 0:
             response = table.query(
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
                 ScanIndexForward=False,
                 Limit=int(total_recs),
-                FilterExpression=filterExp
+                FilterExpression=eval(filterExp)
             )
             count = table.query(
                 Select="COUNT",
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',  
-                FilterExpression=filterExp
+                FilterExpression=eval(filterExp)
             )
         else:
             response = table.query(
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
                 ScanIndexForward=False,
                 Limit=int(total_recs)
             )
             count = table.query(
                 Select="COUNT",
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index'
             )
 
-    # not first page send ExclusiveStartKey
+    # > first page: send ExclusiveStartKey
     else: 
 
+        # apply filter expression if needed
         if len(filterExp) > 0:
             response = table.query(
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
                 ScanIndexForward=False,
                 Limit=int(total_recs),
                 ExclusiveStartKey = offset,  
-                FilterExpression=filterExp 
+                FilterExpression=eval(filterExp)
             )
 
+            # calc total for pagingation
             count = table.query(
                 Select="COUNT",
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',  
-                FilterExpression=filterExp
+                FilterExpression=eval(filterExp)
             )
         else:
             response = table.query(
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
                 ScanIndexForward=False,
                 Limit=int(total_recs),
                 ExclusiveStartKey = offset,  
-                FilterExpression=filterExp 
+                FilterExpression=eval(filterExp)
             )
 
+            # calc total for pagingation
             count = table.query(
                 Select="COUNT",
-                KeyConditionExpression=keyExp,
+                KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',  
-                FilterExpression=filterExp
+                FilterExpression=eval(filterExp)
             )
 
     
-    # calc total for pagingation
-    count = table.query(
-        Select="COUNT",
-        KeyConditionExpression=Key('org_id').eq(org_id),
-        IndexName='org_id-timestamp-index',  
-    )
+    # # calc total for pagingation
+    # count = table.query(
+    #     Select="COUNT",
+    #     KeyConditionExpression=Key('org_id').eq(org_id),
+    #     IndexName='org_id-timestamp-index',  
+    # )
 
     # determine whether next page exists and send response
     try:
