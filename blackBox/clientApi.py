@@ -170,9 +170,9 @@ def getClientKeywordHistoryHandler(event, context):
     total_recs = queryStringParameters.get("total_recs", "100")
     start_date = queryStringParameters.get("start_date", "all")
     end_date = queryStringParameters.get("end_date", "all")
-    keywordStatus = queryStringParameters.get("keywordStatus",'all')
     matchType = queryStringParameters.get("matchType",'all')
- 
+    keywordStatus = queryStringParameters.get("keywordStatus",'all')
+
     response = DynamoUtils.getClientKeywordHistory(
         dynamodb, 
         org_id, 
@@ -180,8 +180,8 @@ def getClientKeywordHistoryHandler(event, context):
         offset,
         end_date,
         start_date,
-        keywordStatus,
-        matchType
+        matchType,
+        keywordStatus
     )
 
     return {
