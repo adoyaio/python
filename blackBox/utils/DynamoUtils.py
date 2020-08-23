@@ -2,9 +2,11 @@ import datetime
 import boto3
 from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key, Attr
-from decimal import *
-from decimal import Decimal
+# from decimal import *
+# from decimal import Decimal
+import decimal
 import json
+
 
 dashG = "-"
 
@@ -180,11 +182,117 @@ def getClientKeywordHistory(
         offset, 
         start_date, 
         end_date, 
-        adgroup_name, 
+        keywordStatus, 
         matchType
         ):
 
     table = dynamoResource.Table('apple_keyword')
+
+    # # build the KeyConditionExpression
+    # if start_date == 'all':
+    #     keyExp = "Key('org_id').eq('" + org_id + "')"
+    # else:
+    #     keyExp = "Key('org_id').eq('" + org_id + "') & Key('date').between('" + end_date + "','"  + start_date + "')"
+    
+    # # build the FilterExpression
+    # filterExp = ""
+    # if matchType != 'all' and keywordStatus != 'all':
+    #     filterExp = "Attr('keywordStatus').eq(:) & Attr('matchType').eq('" + matchType + "')"
+
+    # elif keywordStatus != 'all':
+    #    filterExp = "Attr('keywordStatus').eq'" + keywordStatus + "')"
+    # elif matchType != 'all':
+    #    filterExp = "Attr('matchType').eq('" + matchType + "')"
+
+    
+    # print("getClientKeywordHistory:::filterExp" + filterExp)
+    # print("getClientKeywordHistory:::keyExp" + keyExp)
+
+    # # first page: dont send ExclusiveStartKey
+    # if offset.get("keyword_id") == "init":
+
+    #     print("first page init offset")
+
+    #     # apply filter expression if needed
+    #     if len(filterExp) > 0:
+
+    #         print("filter expression > 0 len" + filterExp)
+            
+    #         response = table.query(
+    #             KeyConditionExpression=eval(keyExp),
+    #             FilterExpression=eval(filterExp),
+    #             IndexName='org_id-timestamp-index',
+    #             ScanIndexForward=False,
+    #             Limit=int(total_recs)
+    #         )
+
+    #         print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+
+    #         count = table.query(
+    #             Select="COUNT",
+    #             KeyConditionExpression=eval(keyExp),
+    #             IndexName='org_id-timestamp-index',  
+    #             FilterExpression=eval(filterExp)
+    #         )
+    #     else:
+
+    #         print("filter expression = 0 len" + filterExp)
+
+    #         response = table.query(
+    #             KeyConditionExpression=eval(keyExp),
+    #             IndexName='org_id-timestamp-index',
+    #             ScanIndexForward=False,
+    #             Limit=int(total_recs)
+    #         )
+
+    #         print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+
+    #         count = table.query(
+    #             Select="COUNT",
+    #             KeyConditionExpression=eval(keyExp),
+    #             IndexName='org_id-timestamp-index'
+    #         )
+
+    # # > first page: send ExclusiveStartKey
+    # else: 
+
+    #     # apply filter expression if needed
+    #     if len(filterExp) > 0:
+    #         response = table.query(
+    #             KeyConditionExpression=eval(keyExp),
+    #             IndexName='org_id-timestamp-index',
+    #             ScanIndexForward=False,
+    #             Limit=int(total_recs),
+    #             ExclusiveStartKey = offset,  
+    #             FilterExpression=eval(filterExp)
+    #         )
+
+    #         # calc total for pagingation
+    #         count = table.query(
+    #             Select="COUNT",
+    #             KeyConditionExpression=eval(keyExp),
+    #             IndexName='org_id-timestamp-index',  
+    #             FilterExpression=eval(filterExp)
+    #         )
+    #     else:
+    #         response = table.query(
+    #             KeyConditionExpression=eval(keyExp),
+    #             IndexName='org_id-timestamp-index',
+    #             ScanIndexForward=False,
+    #             Limit=int(total_recs),
+    #             ExclusiveStartKey = offset,  
+    #             FilterExpression=eval(filterExp)
+    #         )
+
+    #         # calc total for pagingation
+    #         count = table.query(
+    #             Select="COUNT",
+    #             KeyConditionExpression=eval(keyExp),
+    #             IndexName='org_id-timestamp-index',  
+    #             FilterExpression=eval(filterExp)
+    #         )
 
     # build the KeyConditionExpression
     if start_date == 'all':
@@ -194,48 +302,60 @@ def getClientKeywordHistory(
     
     # build the FilterExpression
     filterExp = ""
-    if matchType != 'all' and adgroup_name != 'all':
-        filterExp = "Attr('adgroup_name').eq('" + adgroup_name + "') & Attr('matchType').eq('" + matchType + "')"   
-    elif adgroup_name != 'all':
-       filterExp = "Attr('adgroup_name').eq'" + adgroup_name + "')"
+    if matchType != 'all' and keywordStatus != 'all':
+        # filterExp = "Attr('keywordStatus').eq('" + keywordStatus + "') & Attr('matchType').eq('" + matchType + "')"
+        filterExp = "Attr('keywordStatus').eq(keywordStatus) & Attr('matchType').eq(matchType)"
+    elif keywordStatus != 'all':
+        #filterExp = "Attr('keywordStatus').eq'" + keywordStatus + "')"
+        filterExp = "Attr('keywordStatus').eq(keywordStatus)"
     elif matchType != 'all':
-       filterExp = "Attr('matchType').eq('" + matchType + "')"
-
-    print("getClientKeywordHistory:::" + filterExp)
-    print("getClientKeywordHistory:::" + keyExp)
+        filterExp = "Attr('matchType').eq(matchType)"
+       
+    print("getClientKeywordHistory:::filterExp" + filterExp)
+    print("getClientKeywordHistory:::keyExp" + keyExp)
 
     # first page: dont send ExclusiveStartKey
     if offset.get("keyword_id") == "init":
+        print("first page init offset")
 
         # apply filter expression if needed
         if len(filterExp) > 0:
+            print("filter expression > 0 len::" + filterExp)
+            
             response = table.query(
                 KeyConditionExpression=eval(keyExp),
+                FilterExpression=eval(filterExp),
                 IndexName='org_id-timestamp-index',
-                ScanIndexForward=False,
-                Limit=int(total_recs),
-                FilterExpression=eval(filterExp)
+                Limit=int(total_recs)
             )
+            print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
             count = table.query(
                 Select="COUNT",
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',  
                 FilterExpression=eval(filterExp)
             )
+        
+        # no filter
         else:
+            print("filter expression = 0 len" + filterExp)
+
             response = table.query(
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
-                ScanIndexForward=False,
                 Limit=int(total_recs)
             )
+
+            print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
             count = table.query(
                 Select="COUNT",
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index'
             )
 
-    # > first page: send ExclusiveStartKey
+    # gt first page: send ExclusiveStartKey
     else: 
 
         # apply filter expression if needed
@@ -243,7 +363,6 @@ def getClientKeywordHistory(
             response = table.query(
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
-                ScanIndexForward=False,
                 Limit=int(total_recs),
                 ExclusiveStartKey = offset,  
                 FilterExpression=eval(filterExp)
@@ -256,11 +375,11 @@ def getClientKeywordHistory(
                 IndexName='org_id-timestamp-index',  
                 FilterExpression=eval(filterExp)
             )
+        # no filter
         else:
             response = table.query(
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
-                ScanIndexForward=False,
                 Limit=int(total_recs),
                 ExclusiveStartKey = offset,  
                 FilterExpression=eval(filterExp)
@@ -273,14 +392,6 @@ def getClientKeywordHistory(
                 IndexName='org_id-timestamp-index',  
                 FilterExpression=eval(filterExp)
             )
-
-    
-    # # calc total for pagingation
-    # count = table.query(
-    #     Select="COUNT",
-    #     KeyConditionExpression=Key('org_id').eq(org_id),
-    #     IndexName='org_id-timestamp-index',  
-    # )
 
     # determine whether next page exists and send response
     try:

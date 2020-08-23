@@ -13,7 +13,7 @@ import time
 import boto3
 from boto3.dynamodb.conditions import Key
 
-#TODO this was to eliminate the inexact and rounding errors
+# TODO this was to eliminate the inexact and rounding errors
 from boto3.dynamodb.types import DYNAMODB_CONTEXT
 # Inhibit Inexact Exceptions
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
