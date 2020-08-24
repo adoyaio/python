@@ -762,7 +762,7 @@ if 'apple_branch_keyword' not in existing_tables:
         {
             'AttributeName': 'org_id',
             'AttributeType': 'S'
-        },
+        }
         ],
         GlobalSecondaryIndexes=[
         {

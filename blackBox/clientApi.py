@@ -156,38 +156,33 @@ def getClientCostHistoryHandler(event, context):
 def getClientKeywordHistoryHandler(event, context):
     print('Loading getClientKeywordHistoryHandler....')
     print("Received event: " + json.dumps(event, indent=2))
-    print("Received context: " + str(context))
+    
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
     dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
 
-    query_by_time = False
-    try:
-        total_recs = queryStringParameters["total_recs"]
-        offset = {
-            "org_id": queryStringParameters["offsetOrgId"],
-            "date": queryStringParameters["offsetDate"],
-            "keyword_id": queryStringParameters["offsetKeywordId"]
-        }
-    except KeyError as error:
-        query_by_time = True
+    offset = {
+        "org_id": queryStringParameters.get("offsetOrgId"),
+        "date": queryStringParameters.get("offsetDate"),
+        "keyword_id": queryStringParameters.get("offsetKeywordId")
+    }
 
-    if query_by_time:
-        start_date = queryStringParameters["start_date"]
-        end_date = queryStringParameters["end_date"]
-        history = DynamoUtils.getClientKeywordHistoryByTime(
-            dynamodb, 
-            org_id, 
-            start_date, 
-            end_date
-        )
-    else:
-        response = DynamoUtils.getClientKeywordHistory(
-            dynamodb, 
-            org_id, 
-            total_recs, 
-            offset
-        )
+    total_recs = queryStringParameters.get("total_recs", "100")
+    start_date = queryStringParameters.get("start_date", "all")
+    end_date = queryStringParameters.get("end_date", "all")
+    matchType = queryStringParameters.get("matchType",'all')
+    keywordStatus = queryStringParameters.get("keywordStatus",'all')
+
+    response = DynamoUtils.getClientKeywordHistory(
+        dynamodb, 
+        org_id, 
+        total_recs, 
+        offset,
+        end_date,
+        start_date,
+        matchType,
+        keywordStatus
+    )
 
     return {
         'statusCode': 200,

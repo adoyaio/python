@@ -1,10 +1,12 @@
 import datetime
 import boto3
 from boto3 import dynamodb
-from boto3.dynamodb.conditions import Key
-from decimal import *
-from decimal import Decimal
+from boto3.dynamodb.conditions import Key, Attr
+# from decimal import *
+# from decimal import Decimal
+import decimal
 import json
+
 
 dashG = "-"
 
@@ -92,7 +94,7 @@ def getClientHistory(dynamoResource, org_id):
         ))
     return response['Items']
 
-
+# TODO non branch history
 # def getClientHistoryByTime(dynamoResource, client_id, start_date, end_date):
 #     table = dynamoResource.Table('cpi_history')
 #     response = table.query(
@@ -129,34 +131,166 @@ def getClientBranchHistory(dynamoResource, org_id, total_recs):
     )
     return response['Items']
 
-# TODO swap for apple_branch_keyword when available
-def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
-    table = dynamoResource.Table('apple_keyword')
-    if offset.get("keyword_id") == "init":
-        response = table.query(
-            KeyConditionExpression=Key('org_id').eq(org_id),
-            IndexName='org_id-timestamp-index',
-            ScanIndexForward=False,
-            Limit=int(total_recs)
-        )
-    else:
-        
-        response = table.query(
-            KeyConditionExpression=Key('org_id').eq(org_id),
-            IndexName='org_id-timestamp-index',
-            ScanIndexForward=False,
-            Limit=int(total_recs),
-            ExclusiveStartKey = offset
-        )
+# # TODO swap for apple_branch_keyword when available
+# def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
+#     table = dynamoResource.Table('apple_keyword')
     
-    count = table.query(
-        Select="COUNT",
-        KeyConditionExpression=Key('org_id').eq(org_id),
-        IndexName='org_id-timestamp-index',
-    )
+#     # first page dont send ExclusiveStartKey
+#     if offset.get("keyword_id") == "init":
+#         response = table.query(
+#             KeyConditionExpression=Key('org_id').eq(org_id),
+#             IndexName='org_id-timestamp-index',
+#             ScanIndexForward=False,
+#             Limit=int(total_recs),
+#         )
+#     # not first page send ExclusiveStartKey
+#     else: 
+#         response = table.query(
+#             KeyConditionExpression=Key('org_id').eq(org_id),
+#             IndexName='org_id-timestamp-index',
+#             ScanIndexForward=False,
+#             Limit=int(total_recs),
+#             ExclusiveStartKey = offset,   
+#         )
+    
+#     # calc total for pagingation
+#     count = table.query(
+#         Select="COUNT",
+#         KeyConditionExpression=Key('org_id').eq(org_id),
+#         IndexName='org_id-timestamp-index',  
+#     )
 
+#     # determine whether next page exists and send response
+#     try:
+#         nextOffset =  response['LastEvaluatedKey']
+#     except KeyError as error:
+#         nextOffset = {
+#             'date': '',
+#             'keyword_id': '',
+#             'org_id': ''
+#         }
+#     return { 
+#             'history': response['Items'], 
+#             'offset': nextOffset,
+#             'count': count['Count']
+#             }
+    
+def getClientKeywordHistory(
+        dynamoResource, 
+        org_id, 
+        total_recs, 
+        offset, 
+        start_date, 
+        end_date, 
+        matchType,
+        keywordStatus
+        ):
+
+    table = dynamoResource.Table('apple_keyword')
+
+    # build the KeyConditionExpression
+    if start_date == 'all':
+        keyExp = "Key('org_id').eq('" + org_id + "')"
+    else:
+        keyExp = "Key('org_id').eq('" + org_id + "') & Key('date').between('" + end_date + "','"  + start_date + "')"
+    
+    # build the FilterExpression
+    filterExp = ""
+    if matchType != 'all' and keywordStatus != 'all':
+        # filterExp = "Attr('keywordStatus').eq('" + keywordStatus + "') & Attr('matchType').eq('" + matchType + "')"
+        filterExp = "Attr('keywordStatus').eq(keywordStatus) & Attr('matchType').eq(matchType)"
+    elif keywordStatus != 'all':
+        #filterExp = "Attr('keywordStatus').eq'" + keywordStatus + "')"
+        filterExp = "Attr('keywordStatus').eq(keywordStatus)"
+    elif matchType != 'all':
+        filterExp = "Attr('matchType').eq(matchType)"
+       
+    print("getClientKeywordHistory:::filterExp" + filterExp)
+    print("getClientKeywordHistory:::keyExp" + keyExp)
+
+    # first page: dont send ExclusiveStartKey
+    if offset.get("keyword_id") == "init":
+        print("first page init offset")
+
+        # apply filter expression if needed
+        if len(filterExp) > 0:
+            print("filter expression > 0 len::" + filterExp)
+            
+            response = table.query(
+                KeyConditionExpression=eval(keyExp),
+                FilterExpression=eval(filterExp),
+                IndexName='org_id-timestamp-index',
+                Limit=int(total_recs)
+            )
+            print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+            count = table.query(
+                Select="COUNT",
+                KeyConditionExpression=eval(keyExp),
+                IndexName='org_id-timestamp-index',  
+                FilterExpression=eval(filterExp)
+            )
+        
+        # no filter
+        else:
+            print("filter expression = 0 len" + filterExp)
+
+            response = table.query(
+                KeyConditionExpression=eval(keyExp),
+                IndexName='org_id-timestamp-index',
+                Limit=int(total_recs)
+            )
+
+            print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+            count = table.query(
+                Select="COUNT",
+                KeyConditionExpression=eval(keyExp),
+                IndexName='org_id-timestamp-index'
+            )
+
+    # gt first page: send ExclusiveStartKey
+    else: 
+
+        print("next page offset" + str(offset))
+
+        # apply filter expression if needed
+        if len(filterExp) > 0:
+            response = table.query(
+                KeyConditionExpression=eval(keyExp),
+                IndexName='org_id-timestamp-index',
+                Limit=int(total_recs),
+                ExclusiveStartKey=offset,  
+                FilterExpression=eval(filterExp)
+            )
+
+            # calc total for pagingation
+            count = table.query(
+                Select="COUNT",
+                KeyConditionExpression=eval(keyExp),
+                IndexName='org_id-timestamp-index',  
+                FilterExpression=eval(filterExp)
+            )
+        # no filter
+        else:
+            response = table.query(
+                KeyConditionExpression=eval(keyExp),
+                IndexName='org_id-timestamp-index',
+                Limit=int(total_recs),
+                ExclusiveStartKey=offset
+            )
+
+            # calc total for pagingation
+            count = table.query(
+                Select="COUNT",
+                KeyConditionExpression=eval(keyExp),
+                IndexName='org_id-timestamp-index'
+            )
+
+    # determine whether next page exists and send response
     try:
         nextOffset =  response['LastEvaluatedKey']
+        print("nextOffset:::" + str(nextOffset))
     except KeyError as error:
         nextOffset = {
             'date': '',
@@ -168,12 +302,3 @@ def getClientKeywordHistory(dynamoResource, org_id, total_recs, offset):
             'offset': nextOffset,
             'count': count['Count']
             }
-    
-def getClientKeywordHistoryByTime(dynamoResource, org_id, start_date, end_date):
-    table = dynamoResource.Table('apple_keyword')
-    response = table.query(
-        KeyConditionExpression=Key('org_id').eq(org_id) & Key('date').between(end_date, start_date),
-        ScanIndexForward=False,
-        IndexName='org_id-timestamp-index'
-    )
-    return response['Items']
