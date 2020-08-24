@@ -15,7 +15,7 @@ from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils
 from Client import Client
 
-BIDDING_LOOKBACK = 7
+BIDDING_LOOKBACK = 14
 sendG = False #enable sending data to Apple
 
 date = datetime.date
@@ -189,25 +189,48 @@ def createUpdatedAdGroupBids(data, client):
   adGroup_info['avgCPA']      = adGroup_info['avgCPA'].astype(float)
   adGroup_info['localSpend']  = adGroup_info['localSpend'].astype(float)
   adGroup_info['bid']         = adGroup_info['bid'].astype(float)
-  
+
+  # calculate bid multiplier and create a new column
+  adGroup_info["bid_multiplier"] = ABP["HIGH_CPI_BID_DECREASE_THRESH"] / adGroup_info["avgCPA"]
+
+  # cap bid multiplier
+  if ABP["OBJECTIVE"] == "aggressive":
+      adGroup_info['bid_multiplier_capped'] = np.clip(adGroup_info['bid_multiplier'], 0.90, 1.30)
+  elif ABP["OBJECTIVE"] == "standard":
+      adGroup_info['bid_multiplier_capped'] = np.clip(adGroup_info['bid_multiplier'], 0.80, 1.20)
+  elif ABP["OBJECTIVE"] == "conservative":
+      adGroup_info['bid_multiplier_capped'] = np.clip(adGroup_info['bid_multiplier'], 0.70, 1.10)
+  else:
+      print("no objective selected")
+
+  # create upper bid cap tied to target cost per install.
+  if ABP["OBJECTIVE"] == "aggressive":
+      bidCap_targetCPI = ABP["HIGH_CPI_BID_DECREASE_THRESH"] * 1.20
+  elif ABP["OBJECTIVE"] == "standard":
+      bidCap_targetCPI = ABP["HIGH_CPI_BID_DECREASE_THRESH"] * 1
+  elif ABP["OBJECTIVE"] == "conservative":
+      bidCap_targetCPI = ABP["HIGH_CPI_BID_DECREASE_THRESH"] * 0.80
+  else:
+      print("no objective selected")
+
   #write your conditional statement for the different scenarios
   adGroup_info_cond = [(adGroup_info.avgCPA      <= ABP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]) & \
                        (adGroup_info.installs    >  ABP["NO_INSTALL_BID_DECREASE_THRESH"]),
                        (adGroup_info.avgCPA      >  ABP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]),
-                       (adGroup_info.taps        <  ABP["TAP_THRESHOLD"]), 
+                       (adGroup_info.taps        <  ABP["TAP_THRESHOLD"]),
                        (adGroup_info.installs    == ABP["NO_INSTALL_BID_DECREASE_THRESH"]) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"])]
-  
-  adGroup_info_choices = [adGroup_info.bid * ABP["LOW_CPA_BID_BOOST"],
-                          adGroup_info.bid * ABP["HIGH_CPA_BID_DECREASE"],
+
+  adGroup_info_choices = [adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2),
+                          adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2),
                           adGroup_info.bid * ABP["STALE_RAISE_BID_BOOST"],
-                          adGroup_info.bid * ABP["HIGH_CPA_BID_DECREASE"]]
-  
-  adGroup_info_choices_increases = [adGroup_info.bid * ABP["LOW_CPA_BID_BOOST"], 
-                                    adGroup_info.bid * 1, 
-                                    adGroup_info.bid * ABP["STALE_RAISE_BID_BOOST"], 
+                          adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2)]
+
+  adGroup_info_choices_increases = [adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2),
+                                    adGroup_info.bid * 1,
+                                    adGroup_info.bid * ABP["STALE_RAISE_BID_BOOST"],
                                     adGroup_info.bid * 1]
 
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
@@ -221,7 +244,10 @@ def createUpdatedAdGroupBids(data, client):
 
   #calculate the bid adjustments
   adGroup_info['bid'] = np.select(adGroup_info_cond, bid_decision, default = adGroup_info.taps)
-  
+
+  # enforce min and max bid
+  adGroup_info['bid'] = np.clip(adGroup_info['bid'], ABP["MIN_BID"], bidCap_targetCPI)
+
   #include campaign id info per apple search ads requirement
   adGroup_info['campaignId'] = adGroup_info.shape[0]*[client.keywordAdderIds["campaignId"]["search"]];
   
