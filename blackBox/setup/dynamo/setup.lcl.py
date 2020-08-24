@@ -585,18 +585,6 @@ if 'apple_keyword' not in existing_tables:
         {
             'AttributeName': 'org_id',
             'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'adgroup_name',
-            'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'keywordDisplayStatus',
-            'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'matchType',
-            'AttributeType': 'S'
         }
         ],
         GlobalSecondaryIndexes=[
@@ -669,54 +657,6 @@ if 'apple_keyword' not in existing_tables:
             'KeySchema': [
                 {
                     'AttributeName': 'org_id',
-                    'KeyType': 'HASH'  # Partition key
-                },
-                {
-                    'AttributeName': 'date',
-                    'KeyType': 'RANGE'  # Sort key
-                },
-            ],
-            'Projection': {
-                'ProjectionType': 'ALL'
-            }
-        },
-        {
-            'IndexName': 'adgroup_name-timestamp-index',
-            'KeySchema': [
-                {
-                    'AttributeName': 'adgroup_name',
-                    'KeyType': 'HASH'  # Partition key
-                },
-                {
-                    'AttributeName': 'date',
-                    'KeyType': 'RANGE'  # Sort key
-                },
-            ],
-            'Projection': {
-                'ProjectionType': 'ALL'
-            }
-        },
-        {
-            'IndexName': 'keywordDisplayStatus-timestamp-index',
-            'KeySchema': [
-                {
-                    'AttributeName': 'keywordDisplayStatus',
-                    'KeyType': 'HASH'  # Partition key
-                },
-                {
-                    'AttributeName': 'date',
-                    'KeyType': 'RANGE'  # Sort key
-                },
-            ],
-            'Projection': {
-                'ProjectionType': 'ALL'
-            }
-        },
-        {
-            'IndexName': 'matchType-timestamp-index',
-            'KeySchema': [
-                {
-                    'AttributeName': 'matchType',
                     'KeyType': 'HASH'  # Partition key
                 },
                 {
@@ -822,7 +762,7 @@ if 'apple_branch_keyword' not in existing_tables:
         {
             'AttributeName': 'org_id',
             'AttributeType': 'S'
-        },
+        }
         ],
         GlobalSecondaryIndexes=[
         {
