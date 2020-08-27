@@ -18,7 +18,7 @@ sendG = False  # to enable sending data to Apple else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-BIDDING_LOOKBACK = 7  # days
+BIDDING_LOOKBACK = 14  # days
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)

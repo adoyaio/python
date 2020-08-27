@@ -185,6 +185,16 @@ def createUpdatedKeywordBids(data, campaignId, client):
     else:
         print("no objective selected")
 
+    # create upper bid cap tied to target cost per install.
+    if BP["OBJECTIVE"] == "aggressive":
+        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 1.20
+    elif BP["OBJECTIVE"] == "standard":
+        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 1
+    elif BP["OBJECTIVE"] == "conservative":
+        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 0.80
+    else:
+        print("no objective selected")
+
     # subset keywords for stale raises
     stale_raise_kws = ex_keyword_info[ex_keyword_info["taps"] < BP["TAP_THRESHOLD"]]
 
@@ -238,11 +248,11 @@ def createUpdatedKeywordBids(data, campaignId, client):
     keywords_to_update_bids.rename(columns={"new_bid": "bid"}, inplace=True)
 
     # enforce min and max bid
-    keywords_to_update_bids["bid"] = np.clip(keywords_to_update_bids["bid"], BP["MIN_BID"], BP["MAX_BID"])
+    keywords_to_update_bids["bid"] = np.clip(keywords_to_update_bids["bid"], BP["MIN_BID"], bidCap_targetCPI)
 
     # send to apple
     finalized = json.loads(keywords_to_update_bids.to_json(orient="records"))
-    maximum_bid = BP["MAX_BID"]
+    maximum_bid = bidCap_targetCPI
     for item in finalized:
         item["bid"] = min(item["bid"], maximum_bid)  # IMPLEMENT CIRCUIT BREAKER
         summaryReportInfo[item["keywordId"]]["newBid"] = item["bid"]
