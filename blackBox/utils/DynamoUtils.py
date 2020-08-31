@@ -215,21 +215,47 @@ def getClientKeywordHistory(
         # apply filter expression if needed
         if len(filterExp) > 0:
             print("filter expression > 0 len::" + filterExp)
+                        
+            done = False
+            start_key = None
+            query_kwargs = {} 
+            query_kwargs['KeyConditionExpression'] = eval(keyExp)
+            query_kwargs['FilterExpression'] = eval(filterExp)
+            query_kwargs['IndexName'] = 'org_id-timestamp-index'
+            returnVal = []
+
+            while not done:
+                if start_key:
+                    query_kwargs['ExclusiveStartKey'] = start_key
+                response = table.query(**query_kwargs)
+                returnVal.extend(response.get('Items'))
+                start_key = response.get('LastEvaluatedKey', None)
+                done = len(returnVal) >= int(total_recs) or (start_key is None)
             
-            response = table.query(
-                KeyConditionExpression=eval(keyExp),
-                FilterExpression=eval(filterExp),
-                IndexName='org_id-timestamp-index',
-                Limit=int(total_recs)
-            )
-            print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+            # hack 
+            try:
+                last = returnVal[int(total_recs)]
+                org_id = last.get('org_id')
+                date = last.get('date')
+                keyword_id = last.get('keyword_id')
+                response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
+            except:
+                print("no last eval key")
+            
+            returnVal = returnVal[0:int(total_recs)-1]   
+
+            # print("response:::" + str(json.dumps(returnVal, cls=DecimalEncoder, indent=2)))
+            # print("response:::" + str(json.dumps(response.get('Count',0), cls=DecimalEncoder, indent=2)))
 
             count = table.query(
                 Select="COUNT",
                 KeyConditionExpression=eval(keyExp),
-                IndexName='org_id-timestamp-index',  
-                FilterExpression=eval(filterExp)
+                FilterExpression=eval(filterExp),
+                IndexName='org_id-timestamp-index'
             )
+
+            # print("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+            # print("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
         
         # no filter
         else:
@@ -241,6 +267,8 @@ def getClientKeywordHistory(
                 Limit=int(total_recs)
             )
 
+            returnVal = response.get('Items')
+
             print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
 
             count = table.query(
@@ -251,18 +279,45 @@ def getClientKeywordHistory(
 
     # gt first page: send ExclusiveStartKey
     else: 
-
         print("next page offset" + str(offset))
 
         # apply filter expression if needed
         if len(filterExp) > 0:
-            response = table.query(
-                KeyConditionExpression=eval(keyExp),
-                IndexName='org_id-timestamp-index',
-                Limit=int(total_recs),
-                ExclusiveStartKey=offset,  
-                FilterExpression=eval(filterExp)
-            )
+            # response = table.query(
+            #     KeyConditionExpression=eval(keyExp),
+            #     IndexName='org_id-timestamp-index',
+            #     Limit=int(total_recs),
+            #     ExclusiveStartKey=offset,  
+            #     FilterExpression=eval(filterExp)
+            # )
+
+            done = False
+            start_key = offset
+            query_kwargs = {} 
+            query_kwargs['KeyConditionExpression'] = eval(keyExp)
+            query_kwargs['FilterExpression'] = eval(filterExp)
+            query_kwargs['IndexName'] = 'org_id-timestamp-index'
+            returnVal = []
+
+            while not done:
+                if start_key:
+                    query_kwargs['ExclusiveStartKey'] = start_key
+                response = table.query(**query_kwargs)
+                returnVal.extend(response.get('Items'))
+                start_key = response.get('LastEvaluatedKey', None)
+                done = len(returnVal) >= int(total_recs) or (start_key is None)
+
+            # hack 
+            try:
+                last = returnVal[int(total_recs)]
+                org_id = last.get('org_id')
+                date = last.get('date')
+                keyword_id = last.get('keyword_id')
+                response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
+            except:
+                print("no last eval key")
+            
+            returnVal = returnVal[0:int(total_recs)-1] 
 
             # calc total for pagingation
             count = table.query(
@@ -279,6 +334,8 @@ def getClientKeywordHistory(
                 Limit=int(total_recs),
                 ExclusiveStartKey=offset
             )
+
+            returnVal = response.get('Items')
 
             # calc total for pagingation
             count = table.query(
@@ -298,7 +355,7 @@ def getClientKeywordHistory(
             'org_id': ''
         }
     return { 
-            'history': response['Items'], 
+            'history': returnVal, 
             'offset': nextOffset,
             'count': count['Count']
             }
