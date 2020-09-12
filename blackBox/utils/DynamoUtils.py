@@ -195,15 +195,13 @@ def getClientKeywordHistory(
         keyExp = "Key('org_id').eq('" + org_id + "') & Key('date').between('" + end_date + "','"  + start_date + "')"
     
     # build the FilterExpression
-    filterExp = ""
+    filterExp = "Attr('local_spend').gt(0)"
     if matchType != 'all' and keywordStatus != 'all':
-        # filterExp = "Attr('keywordStatus').eq('" + keywordStatus + "') & Attr('matchType').eq('" + matchType + "')"
-        filterExp = "Attr('keywordStatus').eq(keywordStatus) & Attr('matchType').eq(matchType)"
+        filterExp = filterExp + " & Attr('keywordStatus').eq(keywordStatus) & Attr('matchType').eq(matchType)"
     elif keywordStatus != 'all':
-        #filterExp = "Attr('keywordStatus').eq'" + keywordStatus + "')"
-        filterExp = "Attr('keywordStatus').eq(keywordStatus)"
+        filterExp = filterExp + " & Attr('keywordStatus').eq(keywordStatus)"
     elif matchType != 'all':
-        filterExp = "Attr('matchType').eq(matchType)"
+        filterExp = filterExp + " & Attr('matchType').eq(matchType)"
        
     print("getClientKeywordHistory:::filterExp" + filterExp)
     print("getClientKeywordHistory:::keyExp" + keyExp)
@@ -260,7 +258,6 @@ def getClientKeywordHistory(
         # no filter
         else:
             print("filter expression = 0 len" + filterExp)
-
             response = table.query(
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
@@ -268,7 +265,6 @@ def getClientKeywordHistory(
             )
 
             returnVal = response.get('Items')
-
             print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
 
             count = table.query(
@@ -283,14 +279,6 @@ def getClientKeywordHistory(
 
         # apply filter expression if needed
         if len(filterExp) > 0:
-            # response = table.query(
-            #     KeyConditionExpression=eval(keyExp),
-            #     IndexName='org_id-timestamp-index',
-            #     Limit=int(total_recs),
-            #     ExclusiveStartKey=offset,  
-            #     FilterExpression=eval(filterExp)
-            # )
-
             done = False
             start_key = offset
             query_kwargs = {} 
