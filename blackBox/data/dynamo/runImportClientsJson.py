@@ -16,7 +16,6 @@ with open("./clients.json") as json_file:
     clients = json.load(json_file, parse_float=decimal.Decimal)
     for client in clients:
         orgId = client['orgId']
-        currency = client['currency']
         print("Adding client line:", str(client))
         table.put_item(
             Item = {
