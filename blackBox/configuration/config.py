@@ -6,7 +6,7 @@ TOTAL_COST_PER_INSTALL_LOOKBACK = 3
 HTTP_REQUEST_TIMEOUT = 600
 
 # APPLE
-APPLE_SEARCHADS_URL_BASE                = "https://api.searchads.apple.com/api/v2/"
+APPLE_SEARCHADS_URL_BASE                = "https://api.searchads.apple.com/api/v3/"
 APPLE_KEYWORDS_REPORT_URL               = APPLE_SEARCHADS_URL_BASE + "reports/campaigns"
 APPLE_UPDATE_POSITIVE_KEYWORDS_URL      = APPLE_SEARCHADS_URL_BASE + "campaigns/%s/adgroups/%s/targetingkeywords/bulk"
 APPLE_UPDATE_NEGATIVE_KEYWORDS_URL      = APPLE_SEARCHADS_URL_BASE + "campaigns/%s/adgroups/%s/negativekeywords/bulk"
