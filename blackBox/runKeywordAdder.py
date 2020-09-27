@@ -8,7 +8,7 @@ import pprint
 import re
 import requests
 import time
-from utils import EmailUtils, DynamoUtils, S3Utils
+from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 import boto3
 from utils.debug import debug, dprint
 from utils.retry import retry
@@ -29,33 +29,20 @@ end_date = today - end_date_delta
 #start_date = dt.strptime('2019-12-15', '%Y-%m-%d').date()
 #end_date = dt.strptime('2019-12-22', '%Y-%m-%d').date()
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-sendG = False # Set to True to enable sending data to Apple, else a test run.
-
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global clientsG
     global dynamodb
     global EMAIL_TO
+    global logger
+    
     EMAIL_TO = emailToInternal
-
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # reduce AWS logging in production
-        # debug.disableDebug() disable debug wrappers in production
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
+    sendG = LambdaUtils.getSendG(env)
+    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
     clientsG = Client.getClients(dynamodb)
+
+    logger = LambdaUtils.getLogger(env)
     logger.info("In runKeywordAdder:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
