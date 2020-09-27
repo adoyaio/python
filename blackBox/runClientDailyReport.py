@@ -7,7 +7,7 @@ import requests
 from configuration import config
 from utils.debug import debug, dprint
 from utils.retry import retry
-from utils import EmailUtils, DynamoUtils, S3Utils
+from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 
 ONE_DAY = 1
@@ -16,32 +16,24 @@ THIRTY_DAYS = 30  # JF with branch integration using this rather than 4
 FOUR_YEARS = 365 * 4  # Ignoring leap years.
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
-logger = logging.getLogger()
-sendG = False  # to enable sending email to clients else a test run.
 
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
+    global emailClientsG
+    emailClientsG = LambdaUtils.getEmailClientsG(env)
+
     global sendG
     global clientsG
     global dynamodb
     global EMAIL_TO
+    global logger
+    
     EMAIL_TO = emailToInternal
-
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # reduce AWS logging in production
-        # debug.disableDebug()  disable debug wrappers in production
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
+    sendG = LambdaUtils.getSendG(env)
+    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
     clientsG = Client.getClients(dynamodb)
+
+    logger = LambdaUtils.getLogger(env)
     logger.info("runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
@@ -252,7 +244,7 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
         dateString = dateString[1:]
     subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
-    if sendG:
+    if emailClientsG:
         EmailUtils.sendEmailForACampaign(emailBody, 
         htmlBody, 
         subjectString, 

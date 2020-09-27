@@ -15,36 +15,25 @@ DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 from utils.debug import debug, dprint
 from utils.retry import retry
 from Client import Client
-from utils import DynamoUtils, S3Utils
+from utils import DynamoUtils, S3Utils, LambdaUtils
 from configuration import config
 
 LOOKBACK = 14 # TODO reduce for nightly
-sendG = False  # enable Apple post else test run
-logger = logging.getLogger()
 
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
-    global clientsG
+    global logger
+    
     EMAIL_TO = emailToInternal
-
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # reduce AWS logging in production
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
+    sendG = LambdaUtils.getSendG(env)
+    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
     clientsG = Client.getClients(dynamodb)
-    logger.info("runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
+    logger = LambdaUtils.getLogger(env)
+    logger.info("runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 @retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):

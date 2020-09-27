@@ -6,7 +6,7 @@ import boto3
 import requests
 from Client import Client
 from configuration import config
-from utils import DynamoUtils
+from utils import DynamoUtils, LambdaUtils
 from utils.debug import debug, dprint
 from utils.retry import retry
 from botocore.exceptions import ClientError # eliminate inexact and rounding errors
@@ -15,11 +15,7 @@ from botocore.exceptions import ClientError
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
-sendG = False  # Set to True to enable sending data to Apple, else a test run.
 dashG = "-"
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 BIDDING_LOOKBACK = 7  # days #make this 2
 date = datetime.date
 today = datetime.date.today()
@@ -48,22 +44,14 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global clientsG
     global dynamodb
     global EMAIL_TO
+    global logger
+    
     EMAIL_TO = emailToInternal
-
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # reduce AWS logging in production
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
+    sendG = LambdaUtils.getSendG(env)
+    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
     clientsG = Client.getClients(dynamodb)
+
+    logger = LambdaUtils.getLogger(env)
     logger.info("runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 @debug

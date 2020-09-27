@@ -22,8 +22,8 @@ DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 
 from datetime import date
 
-from utils import EmailUtils
-from Client import CLIENTS
+from utils import EmailUtils, LambdaUtils
+from Client import Client
 from configuration import config
 
 
@@ -48,24 +48,17 @@ logger = logging.getLogger()
 
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
+    global clientsG
     global dynamodb
     global EMAIL_TO
-
+    global logger
+    
     EMAIL_TO = emailToInternal
+    sendG = LambdaUtils.getSendG(env)
+    dynamodb = LambdaUtils.getDynamoHost(dynamoEndpoint, env)
+    clientsG = Client.getClients(dynamodb)
 
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # TODO reduce AWS logging in production
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
+    logger = LambdaUtils.getLogger(env)
     logger.info("In runAppleIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 

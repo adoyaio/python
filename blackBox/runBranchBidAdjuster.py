@@ -12,11 +12,7 @@ from configuration import config
 from utils.debug import debug, dprint
 from utils.retry import retry
 from Client import Client
-from utils import DynamoUtils, EmailUtils, S3Utils
-
-sendG = False  # to enable sending data to Apple else a test run.
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+from utils import DynamoUtils, EmailUtils, S3Utils, LambdaUtils
 
 BIDDING_LOOKBACK = 14  # days
 date = datetime.date
@@ -43,23 +39,14 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global clientsG
     global dynamodb
     global EMAIL_TO
+    global logger
+    
     EMAIL_TO = emailToInternal
-
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # reduce AWS logging in production
-        # debug.disableDebug() disable debug wrappers in production
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
+    sendG = LambdaUtils.getSendG(env)
+    dynamodb = LambdaUtils.getDynamoHost(env, dynamoEndpoint)
     clientsG = Client.getClients(dynamodb)
+
+    logger = LambdaUtils.getLogger(env)
     logger.info("In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 

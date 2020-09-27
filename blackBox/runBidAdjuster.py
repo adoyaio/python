@@ -13,7 +13,7 @@ from datetime import datetime as dt
 from boto3.dynamodb.conditions import Key, Attr
 from utils.debug import debug, dprint
 from utils.retry import retry
-from utils import EmailUtils, DynamoUtils, S3Utils
+from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 from configuration import config
 
@@ -32,8 +32,7 @@ start_date_cpi_lookback = today - start_date_delta_cpi_lookback
 # for qa set fields explicitly
 # start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 # end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
-sendG = False  # Set to True to enable sending data to Apple, else a test run
-logger = logging.getLogger()
+
 
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
@@ -41,22 +40,13 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global clientsG
     global dynamodb
     global EMAIL_TO
+    global logger
+    
     EMAIL_TO = emailToInternal
-
-    if env == "lcl":
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
-        logger.setLevel(logging.INFO)
-    elif env == "prod":
-        sendG = True
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)  # reduce AWS logging in production
-    else:
-        sendG = False
-        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-        logger.setLevel(logging.INFO)
-
+    sendG = LambdaUtils.getSendG(env)
+    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
     clientsG = Client.getClients(dynamodb)
+    logger = LambdaUtils.getLogger(env)
     logger.info("runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
         sendG, dynamoEndpoint, str(EMAIL_TO)))
 
@@ -380,7 +370,7 @@ def process():
 def terminate():
     pass
 
-\
+
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
