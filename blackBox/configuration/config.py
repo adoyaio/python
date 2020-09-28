@@ -1,9 +1,8 @@
 # GLOBAL
 EMAIL_FROM = "info@adoya.io"
-EMAIL_TO = ["james@adoya.io", "scott.kaplan@adoya.io"]
-# EMAIL_TO = ["james@adoya.io"]
+EMAIL_TO = ["james@adoya.io", "scott.kaplan@adoya.io"] #used in API only blackbox pulls from event data
 TOTAL_COST_PER_INSTALL_LOOKBACK = 3
-HTTP_REQUEST_TIMEOUT = 600
+HTTP_REQUEST_TIMEOUT = 300
 
 # APPLE
 APPLE_SEARCHADS_URL_BASE                = "https://api.searchads.apple.com/api/v3/"
@@ -25,7 +24,7 @@ DATA_SOURCES['branch_opens'] = 'eo_open'
 DATA_SOURCES['branch_installs'] = 'eo_install'
 DATA_SOURCES['branch_reinstalls'] = 'eo_reinstall'
 
-#  branch event to aggregation type
+# branch event to aggregation type
 AGGREGATIONS = {}
 AGGREGATIONS['eo_commerce_event'] = ['unique_count', 'revenue']
 AGGREGATIONS['eo_open'] = ['unique_count']

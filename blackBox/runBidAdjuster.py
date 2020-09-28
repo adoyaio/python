@@ -17,7 +17,7 @@ from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 from configuration import config
 
-BIDDING_LOOKBACK = 14  # days
+BIDDING_LOOKBACK = 14
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
@@ -32,7 +32,6 @@ start_date_cpi_lookback = today - start_date_delta_cpi_lookback
 # for qa set fields explicitly
 # start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 # end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
-
 
 @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
@@ -55,44 +54,61 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
-
 @retry
 def getKeywordReportFromApple(client, campaignId):
-    payload = {"startTime": str(start_date),
-               "endTime": str(end_date),
-               # "granularity"                : 2, # 1=hourly, 2=daily, 3=monthly, etc.
-               "selector": {"orderBy": [{"field": "localSpend",
-                                         "sortOrder": "DESCENDING"
-                                         }],
-                            "fields": ["localSpend",
-                                       "taps",
-                                       "impressions",
-                                       "installs",
-                                       "avgCPA",
-                                       "avgCPT",
-                                       "ttr",
-                                       "conversionRate"
-                                       ],
-                            "pagination": {"offset": 0,
-                                           "limit": 1000
-                                           }
-                            },
-               # "groupBy"                    : ["COUNTRY_CODE"],
-               "returnRowTotals": True,
-               "returnRecordsWithNoMetrics": True
-               }
+    payload = {
+        "startTime": str(start_date),
+        "endTime": str(end_date),
+        # "granularity": 2, # 1=hourly, 2=daily, 3=monthly, etc.
+        "selector": {
+            "orderBy": [
+                {
+                    "field": "localSpend",
+                    "sortOrder": "DESCENDING"
+                }
+            ],
+            "fields": [
+                "localSpend",
+                "taps",
+                "impressions",
+                "installs",
+                "avgCPA",
+                "avgCPT",
+                "ttr",
+                "conversionRate"
+            ],
+            "pagination": {
+                "offset": 0,
+                "limit": 1000
+            }
+        },
+        # "groupBy" : ["COUNTRY_CODE"],
+        "returnRowTotals": True,
+        "returnRecordsWithNoMetrics": True
+    }
     url = config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
     headers = {"Authorization": "orgId=%s" % client.orgId}
-    dprint("URL is '%s'." % url)
-    dprint("Payload is '%s'." % payload)
-    dprint("Headers are %s." % headers)
-    response = getKeywordReportFromAppleHelper(url,
-                                               cert=(S3Utils.getCert(client.pemFilename),
-                                                     S3Utils.getCert(client.keyFilename)),
-                                               json=payload,
-                                               headers=headers)
-    dprint("Response is %s." % response)
+    dprint("\nURL is %s" % url)
+    dprint("\nPayload is %s" % payload)
+    dprint("\nHeaders are %s" % headers)
+    response = getKeywordReportFromAppleHelper(
+        url,
+        cert=(S3Utils.getCert(client.pemFilename),S3Utils.getCert(client.keyFilename)),
+        json=payload,
+        headers=headers
+    )
+    if response.status_code != 200:
+        email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+        date = time.strftime("%m/%d/%Y")
+        subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
+        logger.warn(email)
+        logger.error(subject)
+        if sendG:
+            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+
+    dprint("Response is %s" % response)
     return json.loads(response.text)
+
 
 def createUpdatedKeywordBids(data, campaignId, client):
     rows = data["data"]["reportingDataResponse"]["row"]
@@ -104,9 +120,10 @@ def createUpdatedKeywordBids(data, campaignId, client):
     summaryReportInfo = {}
     for row in rows:
         metadata = row["metadata"]
-        summaryReportInfo[metadata["keywordId"]] = {"keyword": metadata["keyword"],
-                                                    "oldBid": metadata["bidAmount"]["amount"],
-                                                    }
+        summaryReportInfo[metadata["keywordId"]] = {
+            "keyword": metadata["keyword"],
+            "oldBid": metadata["bidAmount"]["amount"],
+        }
         keyword_info["keyword"].append(metadata["keyword"])
         keyword_info["keywordId"].append(metadata["keywordId"])
         keyword_info["keywordStatus"].append(metadata["keywordStatus"])
@@ -144,16 +161,20 @@ def createUpdatedKeywordBids(data, campaignId, client):
     df_keyword_info = df_keyword_info[df_keyword_info['keywordDisplayStatus'] == 'RUNNING']
 
     # extract only the columns you need for keyword bids
-    ex_keyword_info = df_keyword_info[["keyword",
-                                       "matchType",
-                                       "adGroupId",
-                                       "keywordId",
-                                       "impressions",
-                                       "taps",
-                                       "installs",
-                                       "avgCPA",
-                                       "localSpend",
-                                       "bid"]]
+    ex_keyword_info = df_keyword_info[
+        [
+            "keyword",
+            "matchType",
+            "adGroupId",
+            "keywordId",
+            "impressions",
+            "taps",
+            "installs",
+            "avgCPA",
+            "localSpend",
+            "bid"
+        ]
+    ]
 
     dprint("ex_keyword_info=%s." % str(ex_keyword_info))
     BP = client.bidParameters
@@ -189,17 +210,23 @@ def createUpdatedKeywordBids(data, campaignId, client):
     stale_raise_kws = ex_keyword_info[ex_keyword_info["taps"] < BP["TAP_THRESHOLD"]]
 
     # subset keywords for bid increase
-    low_cpa_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-                                       (ex_keyword_info["avgCPA"] <= BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
-                                       (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])]
+    low_cpa_keywords = ex_keyword_info[
+        (ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
+        (ex_keyword_info["avgCPA"] <= BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+        (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])
+    ]
 
     # subset keywords for bid decrease
-    high_cpa_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-                                        (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
-                                        (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])]
+    high_cpa_keywords = ex_keyword_info[
+        (ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
+        (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+        (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])
+    ]
 
-    no_install_keywords = ex_keyword_info[(ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-                                          (ex_keyword_info["installs"] == BP["NO_INSTALL_BID_DECREASE_THRESH"])]
+    no_install_keywords = ex_keyword_info[
+        (ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
+        (ex_keyword_info["installs"] == BP["NO_INSTALL_BID_DECREASE_THRESH"])
+    ]
 
     # raise bids for stale raise keywords
     stale_raise_kws["new_bid"] = (stale_raise_kws["bid"] * BP["STALE_RAISE_BID_BOOST"]).round(2)
@@ -208,8 +235,12 @@ def createUpdatedKeywordBids(data, campaignId, client):
     low_cpa_keywords["new_bid"] = (low_cpa_keywords["bid"] * low_cpa_keywords["bid_multiplier_capped"]).round(2)
 
     # check if overall CPI is within bid threshold, if not, fix it. JF 05/31/2020 use CPI Lookback vs apple lookback
-    total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date_cpi_lookback, end_date,
-                                                           config.TOTAL_COST_PER_INSTALL_LOOKBACK)
+    total_cost_per_install = client.getTotalCostPerInstall(
+        dynamodb, 
+        start_date_cpi_lookback, 
+        end_date,
+        config.TOTAL_COST_PER_INSTALL_LOOKBACK
+    )
     dprint("total cpi %s" % str(total_cost_per_install))
 
     # if cpi is below threshold, only do increases
@@ -282,48 +313,64 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
     )
 
 def sendUpdatedBidsToApple(client, keywordFileToPost):
-    print("sendUpdatedBidsToApple:::client.currency " + client.currency)
     url = getAppleKeywordsEndpoint(keywordFileToPost)
     payload = convertKeywordFileToApplePayload(keywordFileToPost, client.currency)
-    headers = {"Authorization": "orgId=%s" % client.orgId,
-               "Content-Type": "application/json",
-               "Accept": "application/json",
-               }
-
+    headers = {
+        "Authorization": "orgId=%s" % client.orgId,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
     dprint("PEM='%s'." % client.pemFilename)
     dprint("KEY='%s'." % client.keyFilename)
+     
+    if (len(payload) == 0):
+        print("No payload from convertKeywordFileToApplePayload. NOT actually sending anything to apple.")
+        return False
 
-    if url and payload:
-        if sendG:
-            response = sendUpdatedBidsToAppleHelper(
-                url,
-                cert=(S3Utils.getCert(client.pemFilename),
-                S3Utils.getCert(client.keyFilename)),
-                json=payload,
-                headers=headers
-            )
-        else:
-            response = "Not actually sending anything to Apple."
-        print("The result of sending the update to Apple: %s" % response)
+    if not sendG:
+        print("NOT actually sending anything to apple.")
+        return False
+
+    if sendG:
+        response = sendUpdatedBidsToAppleHelper(
+            url,
+            cert=(S3Utils.getCert(client.pemFilename),S3Utils.getCert(client.keyFilename)),
+            json=payload,
+            headers=headers
+        )
+        if response.status_code != 200:
+            email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+            date = time.strftime("%m/%d/%Y")
+            subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
+            logger.warn(email)
+            logger.error(subject)
+            if sendG:
+                EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
         
+        print("The result of sending the update to Apple: %s" % response)   
+                   
     return sendG
 
 def createEmailBody(data, sent):
-    """Take data like this:
-    '1105630 (Covetly)': {158675458: {159571482: {'keyword': 'Funko pop chase',
-                                               'newBid': 4.97664,
-                                               'oldBid': '4.1472'},
-                                   159571483: {'keyword': 'Funko pop track',
-                                               'newBid': 4.97664,
-                                               'oldBid': '4.1472'},
-                                   159571484: {'keyword': 'Funko Funko Pop '
-                                                          'Funko pop buy',
-                                               'newBid': 4.97664,
-    and convert it into an HTML table.
-    """
+    # Take data like this and pretty print
+    # '1105630 (Covetly)': {
+    #     158675458: {
+    #         159571482: {
+    #             'keyword': 'Funko pop chase',
+    #             'newBid': 4.97664,
+    #             'oldBid': '4.1472'
+    #         },
+    #         159571483: {
+    #             'keyword': 'Funko pop track',
+    #             'newBid': 4.97664,
+    #             'oldBid': '4.1472'
+    #         },
+    #         159571484: {
+    #             'keyword': 'Funko Funko Pop '
+    #             'newBid': 4.97664,
 
     content = ["""Sent to Apple is %s.""" % sent,
                """\t""".join(["Client", "Campaign", "Keyword ID", "Keyword", "Old Bid", "New Bid"])]
@@ -333,11 +380,15 @@ def createEmailBody(data, sent):
         for campaignId, campaignData in clientData.items():
             content.append("""\t\t%s""" % campaignId)
             for keywordId, keywordData in campaignData.items():
-                content.append("""\t\t\t\t%s\t%s\t%s\t%s""" % \
-                               (keywordId,
-                                keywordData["keyword"],
-                                keywordData["oldBid"],
-                                keywordData["newBid"] if "newBid" in keywordData else "n/a"))
+                content.append(
+                    """\t\t\t\t%s\t%s\t%s\t%s""" % \
+                    (
+                        keywordId,
+                        keywordData["keyword"],
+                        keywordData["oldBid"],
+                        keywordData["newBid"] if "newBid" in keywordData else "n/a"
+                    )
+                )
 
     return "\n".join(content)
 

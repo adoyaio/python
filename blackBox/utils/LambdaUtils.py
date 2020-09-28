@@ -37,7 +37,7 @@ def getLogger(env):
         logger.setLevel(logging.INFO)
         return logger
     elif env == "prod":
-        logger.setLevel(logging.INFO)  # reduce AWS logging in production
+        logger.setLevel(logging.INFO)
         return logger
     else:
         logger.setLevel(logging.INFO)
