@@ -47,81 +47,129 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
 @retry
 def getAdgroupReportFromAppleHelper(url, cert, json, headers):
-  return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
-
+  return requests.post(
+    url, 
+    cert=cert, 
+    json=json, 
+    headers=headers, 
+    timeout=config.HTTP_REQUEST_TIMEOUT
+  )
 
 def getAdgroupReportFromApple(client):
-  """The data from Apple looks like this (Pythonically):
+# The data from Apple looks like this (Pythonically):
+#   {
+#     'data': {
+#       'reportingDataResponse': {
+#         'row': [
+#           {
+#             'metadata': {
+#               'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
+#               'adGroupId': 152725486,
+#               'adGroupName': 'search_match',
+#               'adGroupServingStateReasons': None,
+#             'adGroupServingStatus': 'RUNNING',
+#             'adGroupStatus': 'ENABLED',
+#             'automatedKeywordsOptIn': True,
+#             'cpaGoal': {
+#               'amount': '1',
+#               'currency': 'USD'
+#             },
+#             'defaultCpcBid': {
+#               'amount': '0.5',
+#               'currency': 'USD'
+#             },
+#           'deleted': False,
+#           'endTime': None,
+#           'modificationTime': '2018-08-29T07:58:51.872',
+#           'startTime': '2018-05-26T00:00:00.000'
+#           },
+#           'other': False,
+#           'total': {
+#             'avgCPA': {
+#               'amount': '0',
+#               'currency': 'USD'
+#             },
+#             'avgCPT': {
+#               'amount': '0',
+#               'currency': 'USD'
+#             },
+#             'conversionRate': 0.0,
+#             'installs': 0,
+#             'latOffInstalls': 0,
+#             'latOnInstalls': 0,
+#             'newDownloads': 0,
+#             'redownloads': 0,
+#             'localSpend': {
+#               'amount': '0',
+#               'currency': 'USD'
+#             },
+#             'taps': 0,
+#             'ttr': 0.0
+#           }
+#         }
+#       ]
+#     }
+#   },
+#   'error': None,
+#   'pagination': {
+#     'itemsPerPage': 1, 
+#     'startIndex': 0, 
+#     'totalResults': 1
+#     }
+#   }
 
-  {'data': {'reportingDataResponse': {'row': [{'metadata': {'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
-                                                          'adGroupId': 152725486,
-                                                          'adGroupName': 'search_match',
-                                                          'adGroupServingStateReasons': None,
-                                                          'adGroupServingStatus': 'RUNNING',
-                                                          'adGroupStatus': 'ENABLED',
-                                                          'automatedKeywordsOptIn': True,
-                                                          'cpaGoal': {'amount': '1',
-                                                                      'currency': 'USD'},
-                                                          'defaultCpcBid': {'amount': '0.5',
-                                                                            'currency': 'USD'},
-                                                          'deleted': False,
-                                                          'endTime': None,
-                                                          'modificationTime': '2018-08-29T07:58:51.872',
-                                                          'startTime': '2018-05-26T00:00:00.000'},
-                                             'other': False,
-                                             'total': {'avgCPA': {'amount': '0',
-                                                                  'currency': 'USD'},
-                                                       'avgCPT': {'amount': '0',
-                                                                  'currency': 'USD'},
-                                                       'conversionRate': 0.0,
-                                                       'installs': 0,
-                                                       'latOffInstalls': 0,
-                                                       'latOnInstalls': 0,
-                                                       'newDownloads': 0,
-                                                       'redownloads': 0,
-                                                       'localSpend': {'amount': '0',
-                                                                      'currency': 'USD'},
-                                                       'taps': 0,
-                                                       'ttr': 0.0}}]}},
-  'error': None,
-  'pagination': {'itemsPerPage': 1, 'startIndex': 0, 'totalResults': 1}}
-  """
-
-  payload = { "startTime"                  : str(start_date), 
-              "endTime"                    : str(end_date),
-              #"granularity"                : 2, # 1=hourly, 2=daily, 3=monthly, etc.
-              "selector"                   : { "orderBy"    : [ { "field"     : "localSpend",
-                                                                  "sortOrder" : "DESCENDING"
-                                                                } ], 
-                                               "fields"     :  [ "localSpend",
-                                                                 "taps",
-                                                                 "impressions",
-                                                                 "installs",
-                                                                 "avgCPA",
-                                                                 "avgCPT",
-                                                                 "ttr",
-                                                                 "conversionRate"
-                                                               ],
-                                               "pagination" : { "offset" : 0,
-                                                                "limit"  : 1000
-                                                              }
-                                             },
-              #"groupBy"                    : ["COUNTRY_CODE"], 
-              "returnRowTotals"            : True, 
-              "returnRecordsWithNoMetrics" : True
-            }
-  url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % client.keywordAdderIds["campaignId"]["search"];
+  payload = { 
+    "startTime": str(start_date), 
+    "endTime": str(end_date),
+    #"granularity": 2, # 1=hourly, 2=daily, 3=monthly, etc.
+    "selector": {
+      "orderBy": [
+        {
+          "field":"localSpend",
+          "sortOrder" : "DESCENDING"
+        } 
+      ], 
+      "fields": [
+        "localSpend",
+        "taps",
+        "impressions",
+        "installs",
+        "avgCPA",
+        "avgCPT",
+        "ttr",
+        "conversionRate"
+      ],
+      "pagination": {
+        "offset":0,
+        "limit":1000
+      }
+    },
+    #"groupBy":["COUNTRY_CODE"], 
+    "returnRowTotals": True, 
+    "returnRecordsWithNoMetrics": True
+  }
+  
+  url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % client.keywordAdderIds["campaignId"]["search"]
 
   headers = { "Authorization": "orgId=%s" % client.orgId }
-  dprint ("\n\nURL is '%s'." % url)
-  dprint ("\n\nPayload is '%s'." % payload)
-  dprint ("\n\nHeaders are %s." % headers)
-  response = getAdgroupReportFromAppleHelper(url,
-                                             cert=(S3Utils.getCert(client.pemFilename),
-                                                   S3Utils.getCert(client.keyFilename)),
-                                             json=payload,
-                                             headers=headers)
-  dprint ("\n\nResponse is %s." % response)
+  dprint("\nURL is '%s'." % url)
+  dprint("\nPayload is '%s'." % payload)
+  dprint ("\nHeaders are %s." % headers)
+  response = getAdgroupReportFromAppleHelper(
+    url,
+    cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+    json=payload,
+    headers=headers
+  )
+  if response.status_code != 200:
+    email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+    date = time.strftime("%m/%d/%Y")
+    subject ="%s - %d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, client.clientName)
+    logger.warn(email)
+    logger.error(subject)
+    if sendG:
+      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+  dprint ("\nResponse is %s." % response)
   return json.loads(response.text) 
 
 
@@ -276,18 +324,32 @@ def sendOneUpdatedBidToApple(client, adGroup, headers, currency):
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % adGroup)
 
-  if sendG:
-    response = sendOneUpdatedBidToAppleHelper(url,
-                                              cert=(S3Utils.getCert(client.pemFilename),
-                                                    S3Utils.getCert(client.keyFilename)),
-                                              json=adGroup,
-                                              headers=headers)
-    
-  else:
-    response = "Not actually sending anything to Apple."
-  print ("The result of sending the update to Apple: %s" % response)
-  return sendG
+  if (len(adGroup) == 0):
+    print("No adGroup data. NOT actually sending anything to apple.")
+    return False
 
+  if not sendG:
+    print("NOT actually sending anything to apple.")
+    return False
+
+  if sendG:
+    response = sendOneUpdatedBidToAppleHelper(
+      url,
+      cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+      json=adGroup,
+      headers=headers
+    ) 
+    if response.status_code != 200:
+      email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+      date = time.strftime("%m/%d/%Y")
+      subject ="%s:%d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, client.clientName)
+      logger.warn(email)
+      logger.error(subject)
+      if sendG:
+        EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+        
+    print("The result of sending the update to Apple: %s" % response)   
+  return sendG
 
 @debug
 def sendUpdatedBidsToApple(client, adGroupFileToPost):
@@ -302,10 +364,11 @@ def sendUpdatedBidsToApple(client, adGroupFileToPost):
   #
   # It's an array; can it have more than one entry? Zero entries?
 
-  headers = { "Authorization": "orgId=%s" % client.orgId,
-              "Content-Type" : "application/json",
-              "Accept"       : "application/json",
-            }
+  headers = {
+    "Authorization": "orgId=%s" % client.orgId,
+    "Content-Type" : "application/json",
+    "Accept"       : "application/json",
+  }
 
   dprint ("Headers are %s." % headers)
   dprint ("PEM='%s'." % client.pemFilename)
@@ -314,7 +377,6 @@ def sendUpdatedBidsToApple(client, adGroupFileToPost):
   results = [sendOneUpdatedBidToApple(client, item, headers, client.currency) for item in adGroupFileToPost]
   return True in results # Convert the vector into a scalar.
 
-@debug
 def createEmailBody(data, sent):
   content = ["""Sent to Apple is %s.""" % sent,
              """\t""".join(["Client", "Campaign", "Updated Ad Group Bids"])]
@@ -327,7 +389,6 @@ def createEmailBody(data, sent):
   return "\n".join(content)
 
 
-@debug
 def emailSummaryReport(data, sent):
     messageString = createEmailBody(data, sent);
     dateString = time.strftime("%m/%d/%Y")
@@ -351,8 +412,8 @@ def process():
       stuff = createUpdatedAdGroupBids(data, client)
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
-        print("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
-        print("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
+        logger.info("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
+        logger.info("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
         sent = sendUpdatedBidsToApple(client, updatedBids)
         #if sent:
           # TODO: Pull just the relevant field (defaultCPCBid?) from updatedBids, not the whole thing. --DS, 31-Dec-2018

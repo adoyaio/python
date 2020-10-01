@@ -42,7 +42,7 @@ def postClientHandler(event, context):
     response = operations[operation](client)
 
     if send:
-        # send email notification
+        # send email notification, should only happen in live
         dateString = time.strftime("%m/%d/%Y")
         subjectString = "Client updated %s" % dateString
         EmailUtils.sendTextEmail(

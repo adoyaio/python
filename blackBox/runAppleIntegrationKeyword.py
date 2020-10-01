@@ -39,31 +39,38 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
-@debug
+
 def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
-    payload = {"startTime": str(start_date),
-               "endTime": str(end_date),
-               "timeZone": "ORTZ",
-               "granularity": "DAILY",
-               "selector": {"orderBy": [{"field": "localSpend",
-                                         "sortOrder": "DESCENDING"
-                                         }],
-                            "fields": ["localSpend",
-                                       "taps",
-                                       "impressions",
-                                       "installs",
-                                       "avgCPA",
-                                       "avgCPT",
-                                       "ttr",
-                                       "conversionRate"
-                                       ],
-                            "pagination": {"offset": 0,
-                                           "limit": 1000
-                                           }
-                            },
-               "returnRowTotals": False,
-               "returnRecordsWithNoMetrics": True
-               }
+    payload = {
+        "startTime": str(start_date),
+        "endTime": str(end_date),
+        "timeZone": "ORTZ",
+        "granularity": "DAILY",
+        "selector": {
+            "orderBy": [
+                {
+                    "field": "localSpend",
+                    "sortOrder": "DESCENDING"
+                }
+            ],
+            "fields": [
+                "localSpend",
+                "taps",
+                "impressions",
+                "installs",
+                "avgCPA",
+                "avgCPT",
+                "ttr",
+                "conversionRate"
+            ],
+            "pagination": {
+                "offset": 0,
+                "limit": 1000
+            }
+        },
+        "returnRowTotals": False,
+        "returnRecordsWithNoMetrics": True
+    }
 
     url = config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
     headers = {"Authorization": "orgId=%s" % client.orgId}
@@ -72,8 +79,7 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     dprint("Headers are %s." % headers)
     response = getKeywordReportFromAppleHelper(
         url,
-        cert=(S3Utils.getCert(client.pemFilename),
-            S3Utils.getCert(client.keyFilename)),
+        cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
         json=payload,
         headers=headers
     )
@@ -98,8 +104,7 @@ def loadAppleKeywordToDynamo(data, orgId, campaignId):
             else:
                 field_key = "granularity"
 
-            print("loadAppleKeywordToDynamo:::field_key:::" + field_key)
-            
+            # print("loadAppleKeywordToDynamo:::field_key:::" + field_key)
             for granularity in row["granularity"]:
                 logger.debug("granularity:" + str(granularity))
 

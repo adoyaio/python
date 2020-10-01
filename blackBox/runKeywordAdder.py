@@ -48,56 +48,81 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 
 @retry
 def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
-  return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+  return requests.post(
+    url, 
+    cert=cert, 
+    json=json, 
+    headers=headers, 
+    timeout=config.HTTP_REQUEST_TIMEOUT
+  )
 
 
 def getSearchTermsReportFromApple(client, campaignId):
-  payload = { "startTime"                  : str(start_date), 
-              "endTime"                    : str(end_date),
-              #"granularity"                : 2, # 1=hourly, 2=daily, 3=monthly, etc.
-              "selector"                   : { "orderBy"    : [ { "field"     : "localSpend",
-                                                                  "sortOrder" : "DESCENDING"
-                                                                } ], 
-                                               "fields"     :  [ "localSpend",
-                                                                 "taps",
-                                                                 "impressions",
-                                                                 "installs",
-                                                                 "avgCPA",
-                                                                 "avgCPT",
-                                                                 "ttr",
-                                                                 "conversionRate"
-                                                               ],
-                                               "pagination" : { "offset" : 0,
-                                                                "limit"  : 1000
-                                                              }
-                                             },
-              #"groupBy"                    : ["COUNTRY_CODE"], 
-              "returnRowTotals"            : True, 
-              "returnRecordsWithNoMetrics" : False
-            }
+  payload = {
+    "startTime": str(start_date), 
+    "endTime": str(end_date),
+    #"granularity": 2, # 1=hourly, 2=daily, 3=monthly, etc.
+    "selector": {
+      "orderBy": [
+        {
+          "field": "localSpend",
+          "sortOrder": "DESCENDING"
+        }
+      ], 
+      "fields": [
+        "localSpend",
+        "taps",
+        "impressions",
+        "installs",
+        "avgCPA",
+        "avgCPT",
+        "ttr",
+        "conversionRate"
+      ],
+      "pagination": { 
+        "offset": 0,
+        "limit": 1000
+      }
+    },
+    #"groupBy": ["COUNTRY_CODE"], 
+    "returnRowTotals": True, 
+    "returnRecordsWithNoMetrics": False
+  }
   url = config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
   headers = { "Authorization": "orgId=%s" % client.orgId }
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % payload)
   dprint ("Headers are %s." % headers)
-  response = getSearchTermsReportFromAppleHelper(url,
-                                                 cert=(S3Utils.getCert(client.pemFilename),
-                                                       S3Utils.getCert(client.keyFilename)),
-                                                 json=payload,
-                                                 headers=headers)
+  response = getSearchTermsReportFromAppleHelper(
+    url,
+    cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+    json=payload,
+    headers=headers
+  )
+  if response.status_code != 200:
+        email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+        date = time.strftime("%m/%d/%Y")
+        subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
+        logger.warn(email)
+        logger.error(subject)
+        if sendG:
+            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+
   dprint ("Response is %s." % response)
   return json.loads(response.text) 
 
-def analyzeKeywordsSharedCode(KAP,
-                              targeted_kws_pre_de_dupe_text_only_second_step,
-                              negative_kws_pre_de_dupe_text_only_second_step,
-                              search_match_campaign_id,
-                              broad_match_campaign_id,
-                              exact_match_campaign_id,
-                              search_match_ad_group_id,
-                              broad_match_ad_group_id,
-                              exact_match_ad_group_id,
-                              currency):
+def analyzeKeywordsSharedCode(
+  KAP,
+  targeted_kws_pre_de_dupe_text_only_second_step,
+  negative_kws_pre_de_dupe_text_only_second_step,
+  search_match_campaign_id,
+  broad_match_campaign_id,
+  exact_match_campaign_id,
+  search_match_ad_group_id,
+  broad_match_ad_group_id,
+  exact_match_ad_group_id,
+  currency
+):
   #deploy negative keywords accross search and broad match campaigns by first creating a dataframe
   #combine negative and targeted keywords as you have to negative exact match all of them
   all_negatives_combined_first_step_df = [targeted_kws_pre_de_dupe_text_only_second_step, negative_kws_pre_de_dupe_text_only_second_step]
@@ -233,8 +258,13 @@ def analyzeKeywordsSharedCode(KAP,
          broad_match_negatives_url
 
 
-
-def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParameters, currency):
+def analyzeKeywords(
+  search_match_data, 
+  broad_match_data, 
+  ids, 
+  keywordAdderParameters, 
+  currency
+):
   KAP = keywordAdderParameters;
   
   #nested dictionary containing search term data
@@ -314,24 +344,31 @@ def analyzeKeywords(search_match_data, broad_match_data, ids, keywordAdderParame
   targeted_kws_pre_de_dupe_text_only_first_step = targeted_kws_pre_de_dupe['searchTermText']
   targeted_kws_pre_de_dupe_text_only_second_step = targeted_kws_pre_de_dupe_text_only_first_step[targeted_kws_pre_de_dupe_text_only_first_step != 'none']
   
-  return analyzeKeywordsSharedCode(KAP,
-                                   targeted_kws_pre_de_dupe_text_only_second_step,
-                                   negative_kws_pre_de_dupe_text_only_second_step,
-                                   ids["campaignId"]["search"],
-                                   ids["campaignId"]["broad"],
-                                   ids["campaignId"]["exact"],
-                                   ids["adGroupId"]["search"],
-                                   ids["adGroupId"]["broad"],
-                                   ids["adGroupId"]["exact"],
-                                   currency)
+  return analyzeKeywordsSharedCode(
+    KAP,
+    targeted_kws_pre_de_dupe_text_only_second_step,
+    negative_kws_pre_de_dupe_text_only_second_step,
+    ids["campaignId"]["search"],
+    ids["campaignId"]["broad"],
+    ids["campaignId"]["exact"],
+    ids["adGroupId"]["search"],
+    ids["adGroupId"]["broad"],
+    ids["adGroupId"]["exact"],
+    currency
+  )
 
 
 @retry
 def sendNonDuplicatesToAppleHelper(url, cert, data, headers):
-  return requests.post(url, cert=cert, data=data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+  return requests.post(
+    url, 
+    cert=cert, 
+    data=data, 
+    headers=headers, 
+    timeout=config.HTTP_REQUEST_TIMEOUT
+  )
 
-
-@debug
+# @debug
 def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndices):
   payloadPy = json.loads(payload)
   
@@ -339,26 +376,37 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
                 if index not in duplicateKeywordIndices]
 
   dprint("About to send non-duplicates payload %s." % pprint.pformat(newPayload))
-  response = sendNonDuplicatesToAppleHelper(url,
-                                            cert=(S3Utils.getCert(client.pemFilename),
-                                                  S3Utils.getCert(client.keyFilename)),
-                                            data=json.dumps(newPayload),
-                                            headers=headers)
+  response = sendNonDuplicatesToAppleHelper(
+    url,
+    cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+    data=json.dumps(newPayload),
+    headers=headers
+  )
 
   if response.status_code == 200:
     dprint("NonDuplicate send worked.");
 
   else:
-    print("WARNING: Error %s received from Apple URL '%s'.  Response of type '%s' is %s." % \
-            (response.status_code, url, response.headers["Content-Type"], response.text))
+    email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+    date = time.strftime("%m/%d/%Y")
+    subject ="%s:%d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
+    logger.warn(email)
+    logger.error(subject)
+    if sendG:
+      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
        
   return response
 
 
 @retry
 def sendToAppleHelper(url, cert, data, headers):
-  return requests.post(url, cert=cert, data=data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
-
+  return requests.post(
+    url, 
+    cert=cert, 
+    data=data, 
+    headers=headers, 
+    timeout=config.HTTP_REQUEST_TIMEOUT
+  )
 
 def sendToApple(client, payloads):
     headers = { "Authorization": "orgId=%s" % client.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
@@ -370,11 +418,12 @@ def sendToApple(client, payloads):
             dprint("runKeywordAdder:::sendToApple:::Payload: '%s'" % payloadForPost)
             dprint("runKeywordAdder:::sendToApple:::appleEndpointUrl: '%s'" % appleEndpointUrl)
 
-            response = sendToAppleHelper(appleEndpointUrl,
-                                         cert=(S3Utils.getCert(client.pemFilename),
-                                               S3Utils.getCert(client.keyFilename)),
-                                   data=payloadForPost,
-                                   headers=headers)
+            response = sendToAppleHelper(
+              appleEndpointUrl,
+              cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+              data=payloadForPost,
+              headers=headers
+            )
 
             if response.status_code == 200:
                 continue
@@ -491,16 +540,19 @@ def sendToApple(client, payloads):
 
 
 def createEmailBody(data, sent):
-  content = ["""Keywords Added Report""",
-             """Sent to Apple is %s.""" % sent,
-            ]
+  content = [
+    """Keywords Added Report""",
+    """Sent to Apple is %s.""" % sent,
+  ]
 
   for client, clientData in data.items():
     content.append(client)
-    for item in (("+e", "Exact Matches Added"),
-                 ("+b", "Broad Matches Added"),
-                 ("-e", "Exact Negative Matches Added"),
-                 ("-b", "Broad Negative Matches Added")):
+    for item in (
+      ("+e", "Exact Matches Added"),
+      ("+b", "Broad Matches Added"),
+      ("-e", "Exact Negative Matches Added"),
+      ("-b", "Broad Negative Matches Added")
+    ):
       content.append(item[1])
 
       content.append("""\n""".join([keyword["text"] for keyword in clientData[item[0]]]))
@@ -517,16 +569,17 @@ def emailSummaryReport(data, sent):
     EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
 
 
-def convertAnalysisIntoApplePayloadAndSend(client,
-                                           CSRI,
-                                           exactPositive,
-                                           exactPositiveUrl,
-                                           broadPositive,
-                                           broadPositiveUrl,
-                                           exactNegative,
-                                           exactNegativeUrl,
-                                           broadNegative,
-                                           broadNegativeUrl
+def convertAnalysisIntoApplePayloadAndSend(
+  client,
+  CSRI,
+  exactPositive,
+  exactPositiveUrl,
+  broadPositive,
+  broadPositiveUrl,
+  exactNegative,
+  exactNegativeUrl,
+  broadNegative,
+  broadNegativeUrl
 ):
     CSRI["+e"] = json.loads(exactPositive)
     CSRI["+b"] = json.loads(broadPositive)
@@ -553,7 +606,7 @@ def convertAnalysisIntoApplePayloadAndSend(client,
     return sent
 
 
-@debug
+# @debug
 def process():
   summaryReportInfo = { }
 
@@ -569,21 +622,23 @@ def process():
     exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
       analyzeKeywords(searchMatchData, broadMatchData, kAI, client.keywordAdderParameters, client.currency)
 
-    sent = convertAnalysisIntoApplePayloadAndSend(client,
-                                                  CSRI,
-                                                  exactPositive,
-                                                  exactPositiveUrl,
-                                                  broadPositive,
-                                                  broadPositiveUrl,
-                                                  exactNegative,
-                                                  exactNegativeUrl,
-                                                  broadNegative,
-                                                  broadNegativeUrl)
-
+    sent = convertAnalysisIntoApplePayloadAndSend(
+      client,
+      CSRI,
+      exactPositive,
+      exactPositiveUrl,
+      broadPositive,
+      broadPositiveUrl,
+      exactNegative,
+      exactNegativeUrl,
+      broadNegative,
+      broadNegativeUrl
+    )
+    
   emailSummaryReport(summaryReportInfo, sent)
 
 
-@debug
+# @debug
 def terminate():
   pass
 
