@@ -194,7 +194,8 @@ def createUpdatedKeywordBids(data, campaignId, client):
     elif BP["OBJECTIVE"] == "conservative":
         ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.70, 1.10)
     else:
-        print("no objective selected")
+        print("no objective selected default to standard")
+        ex_keyword_info['bid_multiplier_capped'] = np.clip(ex_keyword_info['bid_multiplier'], 0.80, 1.20)
 
     # create upper bid cap tied to target cost per install.
     if BP["OBJECTIVE"] == "aggressive":
@@ -204,7 +205,8 @@ def createUpdatedKeywordBids(data, campaignId, client):
     elif BP["OBJECTIVE"] == "conservative":
         bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 0.80
     else:
-        print("no objective selected")
+        print("no objective selected default to standard")
+        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 1
 
     # subset keywords for stale raises
     stale_raise_kws = ex_keyword_info[ex_keyword_info["taps"] < BP["TAP_THRESHOLD"]]
