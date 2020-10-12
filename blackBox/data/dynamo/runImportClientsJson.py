@@ -6,6 +6,8 @@ import boto3
 
 # UNCOMMENT FOR PROD
 # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+
+# UNCOMMENT FOR LOCAL
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
 
 

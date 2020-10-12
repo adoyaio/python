@@ -4,6 +4,7 @@ from boto3 import dynamodb
 from boto3.dynamodb.conditions import Key, Attr
 # from decimal import *
 # from decimal import Decimal
+import logging
 import decimal
 import json
 
@@ -186,6 +187,10 @@ def getClientKeywordHistory(
         keywordStatus
         ):
 
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.info("getClientKeywordHistory")
+
     table = dynamoResource.Table('apple_keyword')
 
     # build the KeyConditionExpression
@@ -203,16 +208,17 @@ def getClientKeywordHistory(
     elif matchType != 'all':
         filterExp = filterExp + " & Attr('matchType').eq(matchType)"
        
-    print("getClientKeywordHistory:::filterExp" + filterExp)
-    print("getClientKeywordHistory:::keyExp" + keyExp)
+    logger.info("getClientKeywordHistory:::filterExp" + filterExp)
+    logger.info("getClientKeywordHistory:::keyExp" + keyExp)
 
     # first page: dont send ExclusiveStartKey
     if offset.get("keyword_id") == "init":
-        print("first page init offset")
+        logger.info("first page init offset")
+
 
         # apply filter expression if needed
         if len(filterExp) > 0:
-            print("filter expression > 0 len::" + filterExp)
+            logger.info("filter expression > 0 len::" + filterExp)
                         
             done = False
             start_key = None
@@ -230,15 +236,15 @@ def getClientKeywordHistory(
                 start_key = response.get('LastEvaluatedKey', None)
                 done = len(returnVal) >= int(total_recs) or (start_key is None)
             
-            # hack 
+            # hack for dynamo paging and filtering to work together
             try:
-                last = returnVal[int(total_recs)]
+                last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
                 org_id = last.get('org_id')
                 date = last.get('date')
                 keyword_id = last.get('keyword_id')
                 response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
             except:
-                print("no last eval key")
+                logger.info("no last eval key")
             
             returnVal = returnVal[0:int(total_recs)-1]   
 
@@ -252,12 +258,12 @@ def getClientKeywordHistory(
                 IndexName='org_id-timestamp-index'
             )
 
-            # print("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
-            # print("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+            logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+            logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
         
         # no filter
         else:
-            print("filter expression = 0 len" + filterExp)
+            logger.info("filter expression = 0 len" + filterExp)
             response = table.query(
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index',
@@ -265,7 +271,7 @@ def getClientKeywordHistory(
             )
 
             returnVal = response.get('Items')
-            print("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+            logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
 
             count = table.query(
                 Select="COUNT",
@@ -273,9 +279,12 @@ def getClientKeywordHistory(
                 IndexName='org_id-timestamp-index'
             )
 
+            logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+            logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+
     # gt first page: send ExclusiveStartKey
     else: 
-        print("next page offset" + str(offset))
+        logger.info("next page offset" + str(offset))
 
         # apply filter expression if needed
         if len(filterExp) > 0:
@@ -303,7 +312,7 @@ def getClientKeywordHistory(
                 keyword_id = last.get('keyword_id')
                 response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
             except:
-                print("no last eval key")
+                logger.info("no last eval key")
             
             returnVal = returnVal[0:int(total_recs)-1] 
 
@@ -314,6 +323,11 @@ def getClientKeywordHistory(
                 IndexName='org_id-timestamp-index',  
                 FilterExpression=eval(filterExp)
             )
+
+            logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+            logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+
+
         # no filter
         else:
             response = table.query(
@@ -331,6 +345,9 @@ def getClientKeywordHistory(
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index'
             )
+
+            logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+            logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
 
     # determine whether next page exists and send response
     try:
