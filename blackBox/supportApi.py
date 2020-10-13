@@ -6,7 +6,7 @@ from utils import DynamoUtils, ApiUtils, EmailUtils
 from configuration import config
 
 def postSupportItemHandler(event, context):  
-    print('Loading postClientHandler...')
+    print('Loading postSupportItemHandler...')
     
     # parse event data
     body = json.loads(event["body"])
@@ -23,7 +23,7 @@ def postSupportItemHandler(event, context):
 
     
     if send:
-        
+
         # send email notification internal, should only happen in live
         EmailUtils.sendTextEmail(
             json.dumps(
