@@ -215,7 +215,6 @@ def getClientKeywordHistory(
     if offset.get("keyword_id") == "init":
         logger.info("first page init offset")
 
-
         # apply filter expression if needed
         if len(filterExp) > 0:
             logger.info("filter expression > 0 len::" + filterExp)
@@ -246,22 +245,29 @@ def getClientKeywordHistory(
             except:
                 logger.info("no last eval key")
             
-            returnVal = returnVal[0:int(total_recs)-1]   
+            returnVal = returnVal[0:int(total_recs)-1]
 
-            # print("response:::" + str(json.dumps(returnVal, cls=DecimalEncoder, indent=2)))
-            # print("response:::" + str(json.dumps(response.get('Count',0), cls=DecimalEncoder, indent=2)))
 
-            count = table.query(
-                Select="COUNT",
-                KeyConditionExpression=eval(keyExp),
-                FilterExpression=eval(filterExp),
-                IndexName='org_id-timestamp-index'
-            )
+            done = False
+            start_key = None
+            query_kwargs = {} 
+            query_kwargs['KeyConditionExpression'] = eval(keyExp)
+            query_kwargs['FilterExpression'] = eval(filterExp)
+            query_kwargs['IndexName'] = 'org_id-timestamp-index'
+            query_kwargs['Select'] = 'COUNT'
+            count = 0
 
-            logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
-            logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+            while not done:
+                if start_key:
+                    query_kwargs['ExclusiveStartKey'] = start_key
+                count_response = table.query(**query_kwargs)
+                count = count + count_response['Count']
+                start_key = count_response.get('LastEvaluatedKey', None)
+                done = start_key is None
+
+            logger.info("count:::" + str(count))
         
-        # no filter
+        # no filter TODO used?
         else:
             logger.info("filter expression = 0 len" + filterExp)
             response = table.query(
@@ -278,9 +284,6 @@ def getClientKeywordHistory(
                 KeyConditionExpression=eval(keyExp),
                 IndexName='org_id-timestamp-index'
             )
-
-            logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
-            logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
 
     # gt first page: send ExclusiveStartKey
     else: 
@@ -317,15 +320,24 @@ def getClientKeywordHistory(
             returnVal = returnVal[0:int(total_recs)-1] 
 
             # calc total for pagingation
-            count = table.query(
-                Select="COUNT",
-                KeyConditionExpression=eval(keyExp),
-                IndexName='org_id-timestamp-index',  
-                FilterExpression=eval(filterExp)
-            )
+            done = False
+            start_key = None
+            query_kwargs = {} 
+            query_kwargs['KeyConditionExpression'] = eval(keyExp)
+            query_kwargs['FilterExpression'] = eval(filterExp)
+            query_kwargs['IndexName'] = 'org_id-timestamp-index'
+            query_kwargs['Select'] = 'COUNT'
+            count = 0
 
-            logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
-            logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+            while not done:
+                if start_key:
+                    query_kwargs['ExclusiveStartKey'] = start_key
+                count_response = table.query(**query_kwargs)
+                count = count + count_response['Count']
+                start_key = count_response.get('LastEvaluatedKey', None)
+                done = start_key is None
+
+            logger.info("count:::" + str(count))
 
 
         # no filter
@@ -362,5 +374,10 @@ def getClientKeywordHistory(
     return { 
             'history': returnVal, 
             'offset': nextOffset,
-            'count': count['Count']
+            'count': count
             }
+    # return { 
+    #         'history': returnVal, 
+    #         'offset': nextOffset,
+    #         'count': count['Count']
+    #         }
