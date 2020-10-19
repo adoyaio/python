@@ -259,8 +259,9 @@ def process():
             min_apple_installs = BBP["min_apple_installs"]
 
             # send email
-            # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
-            # raw_data_df.to_csv(fp.name)
+            #fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
+            fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
+            raw_data_df.to_csv(fp.name)
             # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
             
             
