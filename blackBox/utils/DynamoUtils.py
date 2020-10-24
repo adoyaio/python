@@ -58,15 +58,30 @@ def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_d
             total_branch_revenue += float(i['revenue'])
 
     return total_branch_revenue
+          
 
 def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
+    start_date = start_date.strftime('%Y-%m-%d')
+    end_date = end_date.strftime('%Y-%m-%d')
     table = dynamoResource.Table('apple_keyword')
-    response = table.query(
-        KeyConditionExpression=Key('adgroup_id').eq(str(ad_group_id)) & Key('date').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
-        IndexName='adgroup_id-timestamp-index'
-    )
-    return response
+    keyExp = "Key('adgroup_id').eq('" + str(ad_group_id) + "') & Key('date').between('" + start_date + "','"  + end_date + "')"
+    done = False
+    start_key = None
+    query_kwargs = {} 
+    query_kwargs['KeyConditionExpression'] = eval(keyExp)
+    query_kwargs['IndexName'] = 'adgroup_id-timestamp-index'
+    returnVal = {}
+    returnVal['Items'] = []
+    returnVal['Count'] = 0
+    while not done:
+        if start_key:
+            query_kwargs['ExclusiveStartKey'] = start_key
+        response = table.query(**query_kwargs)
+        returnVal['Items'].extend(response.get('Items'))
+        returnVal['Count'] = response.get('Count') + returnVal['Count']
+        start_key = response.get('LastEvaluatedKey', None)
+        done = start_key is None 
+    return returnVal
 
 
 # cast to int here because client table was migrated from client.json 
