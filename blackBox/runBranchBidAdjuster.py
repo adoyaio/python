@@ -52,7 +52,12 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     logger.info("In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
-def return_active_keywords_dataFrame(ads_data, min_apple_installs, keyword_status, adgroup_deleted):
+def return_active_keywords_dataFrame(
+    ads_data, 
+    min_apple_installs, 
+    keyword_status, 
+    adgroup_deleted
+):
     # SK: This part is all business logic
     first_filter = ads_data[(ads_data["keywordStatus"] == "ACTIVE") & \
                             (ads_data["adGroupDeleted"] == "False")]
@@ -66,8 +71,13 @@ def return_active_keywords_dataFrame(ads_data, min_apple_installs, keyword_statu
     return second_filter[
         ["adGroupId", "keywordId", "bid", "installs", "branch_commerce_event_count", "branch_revenue", "localSpend"]]
 
-def return_cost_per_purchase_optimized_bid(active_keywords_dataFrame, branch_min_bid, branch_bid_adjustment,
-                                           cost_per_purchase_threshold, cost_per_purchase_threshold_buffer):
+def return_cost_per_purchase_optimized_bid(
+    active_keywords_dataFrame, 
+    branch_min_bid, 
+    branch_bid_adjustment,
+    cost_per_purchase_threshold, 
+    cost_per_purchase_threshold_buffer
+):
     lower_cost_per_purchase_threshold = cost_per_purchase_threshold * (1 - cost_per_purchase_threshold_buffer)
     upper_cost_per_purchase_threshold = cost_per_purchase_threshold * (1 + cost_per_purchase_threshold_buffer)
 
@@ -98,8 +108,13 @@ def return_cost_per_purchase_optimized_bid(active_keywords_dataFrame, branch_min
     return active_keywords_dataFrame[(active_keywords_dataFrame["adjusted_bid"] != active_keywords_dataFrame["bid"])]
 
 
-def return_revenue_over_ad_spend_optimized_bid(active_keywords_dataFrame, branch_min_bid, branch_bid_adjustment,
-                                               revenue_over_ad_spend_threshold, revenue_over_ad_spend_threshold_buffer):
+def return_revenue_over_ad_spend_optimized_bid(
+    active_keywords_dataFrame, 
+    branch_min_bid, 
+    branch_bid_adjustment,
+    revenue_over_ad_spend_threshold, 
+    revenue_over_ad_spend_threshold_buffer
+):
     lower_revenue_over_ad_spend_threshold = revenue_over_ad_spend_threshold * (
             1 - revenue_over_ad_spend_threshold_buffer)
     upper_revenue_over_ad_spend_threshold = revenue_over_ad_spend_threshold * (
@@ -123,18 +138,34 @@ def return_revenue_over_ad_spend_optimized_bid(active_keywords_dataFrame, branch
     return active_keywords_dataFrame[(active_keywords_dataFrame["adjusted_bid"] != active_keywords_dataFrame["bid"])]
 
 
-def return_adjusted_bids(branch_optimization_goal, active_keywords_dataFrame, branch_min_bid, branch_bid_adjustment,
-                         cost_per_purchase_threshold, cost_per_purchase_threshold_buffer,
-                         revenue_over_ad_spend_threshold, revenue_over_ad_spend_threshold_buffer):
+def return_adjusted_bids(
+    branch_optimization_goal, 
+    active_keywords_dataFrame, 
+    branch_min_bid, 
+    branch_bid_adjustment,
+    cost_per_purchase_threshold, 
+    cost_per_purchase_threshold_buffer,
+    revenue_over_ad_spend_threshold, 
+    revenue_over_ad_spend_threshold_buffer
+):
     if branch_optimization_goal == "cost_per_purchase":
         print("Optimizing Cost Per Purchase")
-        return return_cost_per_purchase_optimized_bid(active_keywords_dataFrame, branch_min_bid, branch_bid_adjustment,
-                                                      cost_per_purchase_threshold, cost_per_purchase_threshold_buffer)
+        return return_cost_per_purchase_optimized_bid(
+            active_keywords_dataFrame, 
+            branch_min_bid, 
+            branch_bid_adjustment,
+            cost_per_purchase_threshold, 
+            cost_per_purchase_threshold_buffer
+        )
     elif branch_optimization_goal == "revenue_over_ad_spend":
         print("Optimizing Revenue Over Ad Spend")
-        return return_revenue_over_ad_spend_optimized_bid(active_keywords_dataFrame, branch_min_bid,
-                                                          branch_bid_adjustment, revenue_over_ad_spend_threshold,
-                                                          revenue_over_ad_spend_threshold_buffer)
+        return return_revenue_over_ad_spend_optimized_bid(
+            active_keywords_dataFrame, 
+            branch_min_bid,
+            branch_bid_adjustment, 
+            revenue_over_ad_spend_threshold,
+            revenue_over_ad_spend_threshold_buffer
+        )
     else:
         print("Unknown Optimization Goal")
         # TODO JF why are we returning here
@@ -254,16 +285,17 @@ def process():
                 keyword_info["branch_commerce_event_count"].append(branch_commerce_event_count)
                 keyword_info["branch_revenue"].append(branch_revenue)
 
+
             raw_data_df = pd.DataFrame(keyword_info)
             BBP = client.branchBidParameters
             min_apple_installs = BBP["min_apple_installs"]
 
-            # send email
-            # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
-            # raw_data_df.to_csv(fp.name)
+            #fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
+            # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
+            # raw_data_df.to_csv(adgroup_id + ".csv")
+            
             # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
-            
-            
+               
             if raw_data_df.empty:
                 print("Error: There was an issue reading the data to a dataFrame")
                 continue
