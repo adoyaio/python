@@ -290,7 +290,6 @@ def process():
             BBP = client.branchBidParameters
             min_apple_installs = BBP["min_apple_installs"]
 
-            # TODO send email
             #fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
             # raw_data_df.to_csv(adgroup_id + ".csv")
