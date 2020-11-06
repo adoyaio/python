@@ -354,8 +354,7 @@ def getClientKeywordHistory(
 
             logger.info("count:::" + str(count))
 
-
-        # no filter
+        # no filter TODO used?
         else:
             response = table.query(
                 KeyConditionExpression=eval(keyExp),
@@ -391,8 +390,3 @@ def getClientKeywordHistory(
             'offset': nextOffset,
             'count': count
             }
-    # return { 
-    #         'history': returnVal, 
-    #         'offset': nextOffset,
-    #         'count': count['Count']
-    #         }

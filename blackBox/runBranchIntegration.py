@@ -4,6 +4,7 @@ import json
 import logging
 import boto3
 import requests
+import time
 from Client import Client
 from configuration import config
 from utils import DynamoUtils, LambdaUtils
@@ -54,14 +55,14 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     logger = LambdaUtils.getLogger(env)
     logger.info("runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
-@debug
+@retry
 def getKeywordReportFromBranchHelper(url, payload, headers):
     dprint("url=%s." % url)
     dprint("json=%s." % json)
     return requests.post(url, json=payload, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 @retry
-def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation):
+def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, aggregation):
     payload = {
         "branch_key": branch_key,
         "branch_secret": branch_secret,
@@ -101,6 +102,18 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
     logger.info("Headers are %s." % headers)
     response = getKeywordReportFromBranchHelper(url, payload, headers)
     logger.info("Response is %s." % response)
+    
+    if response.status_code != 200:
+        email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+        date = time.strftime("%m/%d/%Y")
+        subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
+        logger.warn(email)
+        logger.error(subject)
+        if sendG:
+            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+        
+        return False
+
     return json.loads(response.text)
 
 
@@ -130,14 +143,20 @@ def process():
                     branch_job_aggregations = config.AGGREGATIONS[branch_job]
 
                     for aggregation in branch_job_aggregations:
-                        data = {
-                            aggregation: getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation)}
-
-                        results = data[aggregation]['results']
-
-                        if len(results) == 0:
+                        response = getKeywordReportFromBranch(
+                            client,
+                            branch_job, 
+                            branch_key, 
+                            branch_secret, 
+                            aggregation
+                        )
+                        
+                        if not response:
                             logger.info("runBranchIntegration:process:::no results from:::" + branch_job)
+                            continue
 
+                        data = { aggregation: response }
+                        results = data[aggregation]['results']
                         for result in results:
                             if 'last_attributed_touch_data_tilde_campaign' in result["result"]:
                                 if aggregation != "revenue":
