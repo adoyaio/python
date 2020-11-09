@@ -25,26 +25,30 @@ if 'branch_commerce_events' not in existing_tables:
             },
         ],
         AttributeDefinitions=[
-        {
-            'AttributeName': 'branch_commerce_event_key',
-            'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'timestamp',
-            'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'keyword',
-            'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'campaign_id',
-            'AttributeType': 'S'
-        },
-        {
-            'AttributeName': 'ad_set_id',
-            'AttributeType': 'S'
-        },
+            {
+                'AttributeName': 'branch_commerce_event_key',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'timestamp',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'keyword',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'campaign_id',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'ad_set_id',
+                'AttributeType': 'S'
+            },
+            {
+                'AttributeName': 'org_id',
+                'AttributeType': 'S'
+            }
         ],
         GlobalSecondaryIndexes=[
             {
@@ -84,6 +88,22 @@ if 'branch_commerce_events' not in existing_tables:
                 'KeySchema': [
                     {
                         'AttributeName': 'ad_set_id',
+                        'KeyType': 'HASH'  # Partition key
+                    },
+                    {
+                        'AttributeName': 'timestamp',
+                        'KeyType': 'RANGE'  # Sort key
+                    },
+                ],
+                'Projection': {
+                    'ProjectionType': 'ALL'
+                }
+            },
+            {
+                'IndexName': 'org_id-timestamp-index',
+                'KeySchema': [
+                    {
+                        'AttributeName': 'org_id',
                         'KeyType': 'HASH'  # Partition key
                     },
                     {

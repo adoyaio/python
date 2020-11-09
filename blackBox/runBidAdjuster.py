@@ -54,7 +54,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
-@retry
 def getKeywordReportFromApple(client, campaignId):
     payload = {
         "startTime": str(start_date),
@@ -97,7 +96,11 @@ def getKeywordReportFromApple(client, campaignId):
         json=payload,
         headers=headers
     )
-    if response.status_code != 200:
+    dprint("Response is %s" % response)
+
+    if response.status_code == 200:
+        return json.loads(response.text)
+    else:
         email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
         date = time.strftime("%m/%d/%Y")
         subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
@@ -105,10 +108,8 @@ def getKeywordReportFromApple(client, campaignId):
         logger.error(subject)
         if sendG:
             EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
-
-    dprint("Response is %s" % response)
-    return json.loads(response.text)
-
+        return False
+   
 
 def createUpdatedKeywordBids(data, campaignId, client):
     rows = data["data"]["reportingDataResponse"]["row"]
@@ -410,7 +411,12 @@ def process():
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
         for campaignId in campaignIds:
+            sent = False
             data = getKeywordReportFromApple(client, campaignId)
+            if not data:
+                logger.info("runBidAjuster:process:::no results from api:::")
+                continue
+
             stuff = createUpdatedKeywordBids(data, campaignId, client)
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff

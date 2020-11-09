@@ -88,6 +88,7 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     if response.status_code == 200:
         return json.loads(response.text, parse_float=decimal.Decimal)
     else:
+        # TODO email
         return False
 
 def loadAppleKeywordToDynamo(data, orgId, campaignId):
@@ -208,10 +209,11 @@ def process():
                 # print("start_date:::" + str(start_date))
                 # print("end_date::: " + str(end_date))
                 data = getKeywordReportFromApple(client, campaignId, startDate, endDate)
-                if (data is not None) and (data != 'false'):
-                    loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
-                else:
-                    print("runAppleIntegrationKeyword:::no data returned")
+                if not data:
+                    logger.info("runAppleIntegrationKeyword:::no data returned")
+                    continue
+
+                loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
 
 def terminate():
     pass

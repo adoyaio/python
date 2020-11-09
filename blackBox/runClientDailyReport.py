@@ -65,11 +65,12 @@ def getCampaignData(orgId, pemFilename, keyFilename, daysToGoBack):
     dprint("\n\nPayload: %s" % payload)
     dprint("\n\nApple URL: %s" % config.APPLE_KEYWORDS_REPORT_URL)
 
-    response = getCampaignDataHelper(config.APPLE_KEYWORDS_REPORT_URL,
-                                     cert=(S3Utils.getCert(pemFilename),
-                                           S3Utils.getCert(keyFilename)),
-                                     json=payload,
-                                     headers=headers)
+    response = getCampaignDataHelper(
+        config.APPLE_KEYWORDS_REPORT_URL,
+        cert=(S3Utils.getCert(pemFilename), S3Utils.getCert(keyFilename)),
+        json=payload,
+        headers=headers
+    )
 
     dprint("\n\nResponse: '%s'" % response)
     if response.status_code == 200:
@@ -262,10 +263,27 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
 
 def sendEmailReport(client, dataForVariousTimes):
     today = datetime.date.today()
-    summary = {ONE_DAY: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
-               SEVEN_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0},
-               THIRTY_DAYS: {"installs": 0, "spend": 0.0, "purchases": 0, "revenue": 0.0}
-               }
+    summary = {
+        ONE_DAY: {
+            "installs": 0, 
+            "spend": 0.0, 
+            "purchases": 0, 
+            "revenue": 0.0
+            },
+        SEVEN_DAYS: {
+            "installs": 0, 
+            "spend": 0.0, 
+            "purchases": 0, 
+            "revenue": 0.0
+        },
+        THIRTY_DAYS: {
+            "installs": 0, 
+            "spend": 0.0, 
+            "purchases": 0, 
+            "revenue": 0.0
+        }
+    }
+    
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
         summary[someTime] = {"installs": 0, "spend": 0.0}
 
@@ -279,7 +297,6 @@ def sendEmailReport(client, dataForVariousTimes):
             summary[someTime]["spend"] += float(totals["localSpend"]["amount"])
 
         # Add branch events 
-        # TODO get total BranchEvents, not limited to campaign
         end_date_delta = datetime.timedelta(days=1)
         start_date_delta = datetime.timedelta(days=someTime)
         start_date = today - start_date_delta
@@ -287,7 +304,11 @@ def sendEmailReport(client, dataForVariousTimes):
         print("branch end_date:::" + str(end_date))
         print("branch start_date:::" + str(start_date))
         summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
+        print("found purchase data for " + str(someTime))
+        print(" " + str(summary[someTime]["purchases"]))
         summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
+        print("found revenue data for " + str(someTime))
+        print(" " + str(summary[someTime]["revenue"]))
 
     now = time.time()
     client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb, end_date)
@@ -302,18 +323,19 @@ def process():
         dataForVariousTimes = {}
 
         for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
-            campaignData = getCampaignData(client.orgId,
-                                           client.pemFilename,
-                                           client.keyFilename,
-                                           daysToGoBack)
+            campaignData = getCampaignData(
+                client.orgId,
+                client.pemFilename,
+                client.keyFilename,
+                daysToGoBack
+            )
 
             if(campaignData != False):
                 dataArray = campaignData["data"]["reportingDataResponse"]["row"]
                 dprint("For %d (%s), there are %d campaigns in the campaign data." % \
                     (client.orgId, client.clientName, len(dataArray)))
                 dataForVariousTimes[daysToGoBack] = dataArray
-
-        sendEmailReport(client, dataForVariousTimes)
+                sendEmailReport(client, dataForVariousTimes)
 
 @debug
 def terminate():

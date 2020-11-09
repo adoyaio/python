@@ -30,34 +30,76 @@ def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, tim
     )
     return response
 
-def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
-        table = dynamoResource.Table('branch_commerce_events')
-        response = table.query(
-            KeyConditionExpression=Key('campaign_id').eq(str(campaign_id)) & Key('timestamp').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
-            IndexName='campaign_id-timestamp-index'
-        )
-        total_branch_events = 0
-        if len(response['Items']) >= 0:
-            for i in response[u'Items']:
-                total_branch_events += int(i['count'])
-
-        return total_branch_events
-
-# TODO add global getBranch methods
-def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
+# updated to use org id
+def getBranchPurchasesForTimeperiod(dynamoResource, org_id, start_date, end_date):
     table = dynamoResource.Table('branch_commerce_events')
-    response = table.query(
-        KeyConditionExpression=Key('campaign_id').eq(str(campaign_id)) & Key('timestamp').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
-        IndexName='campaign_id-timestamp-index'
-    )
-    total_branch_revenue = 0
-    if len(response['Items']) >= 0:
-        for i in response[u'Items']:
-            total_branch_revenue += float(i['revenue'])
+    keyExp = "Key('org_id').eq('" + str(org_id) + "') & Key('timestamp').between('" + start_date.strftime('%Y-%m-%d') + "','"  + end_date.strftime('%Y-%m-%d') + "')"
+    done = False
+    start_key = None
+    query_kwargs = {} 
+    query_kwargs['KeyConditionExpression'] = eval(keyExp)
+    query_kwargs['IndexName'] = 'org_id-timestamp-index'
+    total_branch_events = 0
+    while not done:
+        if start_key:
+            query_kwargs['ExclusiveStartKey'] = start_key
+        response = table.query(**query_kwargs)
+        for i in response.get('Items'):
+            print(str(i))
+            total_branch_events += int(i['count'])
+        start_key = response.get('LastEvaluatedKey', None)
+        done = start_key is None 
+     
+    return total_branch_events
 
+def getBranchRevenueForTimeperiod(dynamoResource, org_id, start_date, end_date):
+    table = dynamoResource.Table('branch_commerce_events')
+    keyExp = "Key('org_id').eq('" + str(org_id) + "') & Key('timestamp').between('" + start_date.strftime('%Y-%m-%d') + "','"  + end_date.strftime('%Y-%m-%d') + "')"
+    done = False
+    start_key = None
+    query_kwargs = {} 
+    query_kwargs['KeyConditionExpression'] = eval(keyExp)
+    query_kwargs['IndexName'] = 'org_id-timestamp-index'
+    total_branch_revenue = 0
+    while not done:
+        if start_key:
+            query_kwargs['ExclusiveStartKey'] = start_key
+        response = table.query(**query_kwargs)
+        for i in response.get('Items'):
+            total_branch_revenue += float(i['revenue'])
+        start_key = response.get('LastEvaluatedKey', None)
+        done = start_key is None 
+     
     return total_branch_revenue
+
+# def getBranchPurchasesForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
+#         table = dynamoResource.Table('branch_commerce_events')
+#         response = table.query(
+#             KeyConditionExpression=Key('campaign_id').eq(str(campaign_id)) & Key('timestamp').between(start_date.strftime(
+#             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
+#             IndexName='campaign_id-timestamp-index'
+#         )
+#         total_branch_events = 0
+#         if len(response['Items']) >= 0:
+#             for i in response[u'Items']:
+#                 total_branch_events += int(i['count'])
+
+#         return total_branch_events
+
+
+# def getBranchRevenueForTimeperiod(dynamoResource, campaign_id, start_date, end_date):
+#     table = dynamoResource.Table('branch_commerce_events')
+#     response = table.query(
+#         KeyConditionExpression=Key('campaign_id').eq(str(campaign_id)) & Key('timestamp').between(start_date.strftime(
+#             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d')),
+#         IndexName='campaign_id-timestamp-index'
+#     )
+#     total_branch_revenue = 0
+#     if len(response['Items']) >= 0:
+#         for i in response[u'Items']:
+#             total_branch_revenue += float(i['revenue'])
+
+#     return total_branch_revenue
           
 
 def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
