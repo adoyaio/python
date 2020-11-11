@@ -335,7 +335,14 @@ def process():
                 dprint("For %d (%s), there are %d campaigns in the campaign data." % \
                     (client.orgId, client.clientName, len(dataArray)))
                 dataForVariousTimes[daysToGoBack] = dataArray
-                sendEmailReport(client, dataForVariousTimes)
+
+        dataForOneDay = dataForVariousTimes.get(ONE_DAY, None)
+        dataForSevenDay = dataForVariousTimes.get(SEVEN_DAYS, None)
+        dataForThirtyDay = dataForVariousTimes.get(THIRTY_DAYS, None)
+        if not dataForOneDay or not dataForSevenDay or not dataForThirtyDay:
+            continue
+
+        sendEmailReport(client, dataForVariousTimes)
 
 @debug
 def terminate():
