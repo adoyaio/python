@@ -255,19 +255,23 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
     subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
 
     if emailClientsG:
-        EmailUtils.sendEmailForACampaign(emailBody, 
-        htmlBody, 
-        subjectString, 
-        client.emailAddresses, 
-        EMAIL_TO,
-        config.EMAIL_FROM)
+        EmailUtils.sendEmailForACampaign(
+            emailBody, 
+            htmlBody, 
+            subjectString, 
+            client.emailAddresses, 
+            EMAIL_TO,
+            config.EMAIL_FROM
+        )
     else:
-        EmailUtils.sendEmailForACampaign(emailBody, 
-        htmlBody, 
-        subjectString, 
-        ['test@adoya.io'], 
-        EMAIL_TO, 
-        config.EMAIL_FROM)
+        EmailUtils.sendEmailForACampaign(
+            emailBody, 
+            htmlBody, 
+            subjectString, 
+            ['test@adoya.io'], 
+            EMAIL_TO, 
+            config.EMAIL_FROM
+        )
 
 
 def sendEmailReport(client, dataForVariousTimes):
@@ -345,6 +349,7 @@ def process():
         dataForOneDay = dataForVariousTimes.get(ONE_DAY, None)
         dataForSevenDay = dataForVariousTimes.get(SEVEN_DAYS, None)
         dataForThirtyDay = dataForVariousTimes.get(THIRTY_DAYS, None)
+        
         if not dataForOneDay or not dataForSevenDay or not dataForThirtyDay:
             continue
 

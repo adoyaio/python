@@ -245,64 +245,59 @@ class Client:
 
     # v0 opimization summary tables candidates for removal
     def writeUpdatedBids(self, dynamoResource, newValue):
-        print('Client.updatedBids: set value ' + str(newValue))
-        print('Client.updatedBids: is stale ' + str(self._updatedBidsIsStale))
+        # print('Client.updatedBids: set value ' + str(newValue))
+        # print('Client.updatedBids: is stale ' + str(self._updatedBidsIsStale))
         if not self._updatedBidsIsStale:
             self._updatedBidsIsStale = True
-            print('Client.updatedBids: set updatedBidsIsStale ' + str(self._updatedBidsIsStale))
+            # print('Client.updatedBids: set updatedBidsIsStale ' + str(self._updatedBidsIsStale))
         else:
-            print('Client.updatedBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedBidsCount(dynamoResource))
+            # print('Client.updatedBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedBidsCount(dynamoResource))
             newValue = int(newValue) + int(self.readUpdatedBidsCount(dynamoResource))
         
         i = {
             "org_id": str(self.orgId),
             "bids": str(newValue)
         }
-        print("Client.updatedBids: adding bids entry:", i)
+        # print("Client.updatedBids: adding bids entry:", i)
         table = dynamoResource.Table('bids')
         table.put_item(
             Item=i
         )
 
     def writeUpdatedAdgroupBids(self, dynamoResource, newValue):
-        print('Client.writeUpdatedAdgroupBids: set value ' + str(newValue))
-        print('Client.updatedAdgroupBidsIsStale: is stale ' + str(self._updatedAdgroupBidsIsStale))
+        # print('Client.writeUpdatedAdgroupBids: set value ' + str(newValue))
+        # print('Client.updatedAdgroupBidsIsStale: is stale ' + str(self._updatedAdgroupBidsIsStale))
         if not self._updatedAdgroupBidsIsStale:
             self._updatedAdgroupBidsIsStale = True
-            print('Client.updatedAdgroupBids: set updatedBidsIsStale ' + str(self._updatedAdgroupBidsIsStale))
+            # print('Client.updatedAdgroupBids: set updatedBidsIsStale ' + str(self._updatedAdgroupBidsIsStale))
         else:
-            print('Client.updatedAdgroupBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedAdgroupBidsCount(dynamoResource))
+            # print('Client.updatedAdgroupBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedAdgroupBidsCount(dynamoResource))
             newValue = int(newValue) + int(self.readUpdatedAdgroupBidsCount(dynamoResource))
 
         i = {
             "org_id": str(self.orgId),
             "bids": str(newValue)
         }
-        print("Client.updatedAdgroupBids: adding bids entry:", i)
         table = dynamoResource.Table('adgroup_bids')
         table.put_item(
             Item=i
         )
 
     def writePositiveKeywordsAdded(self, dynamoResource, newValue):
-        print('Client.writePositiveKeywordsAdded: set value ' + str(newValue));
         item = {
             "org_id": str(self.orgId),
             "keywords": newValue
         }
-        print("Client.writePositiveKeywordsAdded: adding bids entry:", item)
         table = dynamoResource.Table('positive_keywords')
         table.put_item(
             Item=item
         )
 
     def writeNegativeKeywordsAdded(self, dynamoResource, newValue):
-        print('Client.positiveKeywordsAdded: set value ' + str(newValue));
         item = {
             "org_id": str(self.orgId),
             "keywords": str(newValue)
         }
-        print("Client.negativeKeywordsAdded: adding bids entry:", item)
         table = dynamoResource.Table('negative_keywords')
         table.put_item(
             Item=item

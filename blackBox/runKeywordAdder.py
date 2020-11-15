@@ -270,15 +270,15 @@ def analyzeKeywords(
   keywordAdderParameters, 
   currency
 ):
-  KAP = keywordAdderParameters;
+  KAP = keywordAdderParameters
   
-  #nested dictionary containing search term data
+  # nested dictionary containing search term data
   search_match_extract_first_step = search_match_data["data"]["reportingDataResponse"]
   
-  #second part of dictionary extraction
+  # second part of dictionary extraction
   search_match_extract_second_step = search_match_extract_first_step['row']
   
-  #compile data from json library and put into dataframe
+  # compile data from json library and put into dataframe
   search_match_extract_third_step = defaultdict(list)
   
   for r in search_match_extract_second_step:
@@ -296,18 +296,18 @@ def analyzeKeywords(
       search_match_extract_third_step['localSpend'].append(r['total']['localSpend']['amount'])	
       search_match_extract_third_step['avgCPT'].append(r['total']['avgCPT']['amount'])
   
-  #convert to dataframe    
+  # convert to dataframe    
   search_match_extract_df = pd.DataFrame(search_match_extract_third_step)
   
   ####### broad match broad queries#######
   
-  #nested dictionary containing broad term data
+  # nested dictionary containing broad term data
   broad_match_extract_first_step = broad_match_data["data"]["reportingDataResponse"]
   
-  #second part of dictionary extraction
+  # second part of dictionary extraction
   broad_match_extract_second_step = broad_match_extract_first_step['row']
   
-  #compile data from json library and put into dataframe
+  # compile data from json library and put into dataframe
   broad_match_extract_third_step = defaultdict(list)
   
   for r in broad_match_extract_second_step:
@@ -325,27 +325,27 @@ def analyzeKeywords(
     broad_match_extract_third_step['localSpend'].append(r['total']['localSpend']['amount'])	
     broad_match_extract_third_step['avgCPT'].append(r['total']['avgCPT']['amount'])
   
-  #convert to dataframe    
+  # convert to dataframe    
   broad_match_extract_df = pd.DataFrame(broad_match_extract_third_step)
   
-  #combine each data frame into one
+  # combine each data frame into one
   all_match_type_combine_first_step_df = [search_match_extract_df, broad_match_extract_df]
   all_match_type_combine_second_step_df = pd.concat(all_match_type_combine_first_step_df)
   
-  #aggregate search query data
+  # aggregate search query data
   all_search_queries = all_match_type_combine_second_step_df.groupby('searchTermText')['installs','taps'].sum().reset_index()
   
-  #subset negative keywords
+  # subset negative keywords
   negative_kws_pre_de_dupe = all_search_queries[(all_search_queries['taps'] >= KAP["NEGATIVE_KEYWORD_TAP_THRESHOLD"]) & (all_search_queries['installs'] <= KAP["NEGATIVE_KEYWORD_CONVERSION_THRESHOLD"])]
   
-  #subset targeted keywords
+  # subset targeted keywords
   targeted_kws_pre_de_dupe = all_search_queries[(all_search_queries['taps'] >= KAP["TARGETED_KEYWORD_TAP_THRESHOLD"]) & (all_search_queries['installs'] >= KAP["TARGETED_KEYWORD_CONVERSION_THRESHOLD"])]
   
-  #get negative keyword text only before de-duping
+  # get negative keyword text only before de-duping
   negative_kws_pre_de_dupe_text_only_first_step = negative_kws_pre_de_dupe['searchTermText']
   negative_kws_pre_de_dupe_text_only_second_step = negative_kws_pre_de_dupe_text_only_first_step[negative_kws_pre_de_dupe_text_only_first_step != 'none']
   
-  #get targeted keyword text only before de-duping
+  # get targeted keyword text only before de-duping
   targeted_kws_pre_de_dupe_text_only_first_step = targeted_kws_pre_de_dupe['searchTermText']
   targeted_kws_pre_de_dupe_text_only_second_step = targeted_kws_pre_de_dupe_text_only_first_step[targeted_kws_pre_de_dupe_text_only_first_step != 'none']
   
@@ -631,6 +631,13 @@ def process():
       CSRI["-b"] = {}
       continue
 
+    if not (searchMatchData.get("data").get("reportingDataResponse").get("row")):
+      CSRI["+e"] = {}
+      CSRI["+b"] = {}
+      CSRI["-e"] = {}
+      CSRI["-b"] = {}
+      continue
+
     exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
       analyzeKeywords(searchMatchData, broadMatchData, kAI, client.keywordAdderParameters, client.currency)
 
@@ -646,10 +653,9 @@ def process():
       broadNegative,
       broadNegativeUrl
     )
-    
+  
   emailSummaryReport(summaryReportInfo, sent)
 
-# @debug
 def terminate():
   pass
 
