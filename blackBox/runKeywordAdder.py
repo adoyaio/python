@@ -93,22 +93,27 @@ def getSearchTermsReportFromApple(client, campaignId):
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % payload)
   dprint ("Headers are %s." % headers)
+
   response = getSearchTermsReportFromAppleHelper(
     url,
     cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
     json=payload,
     headers=headers
   )
-  if response.status_code != 200:
-        email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
-        date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
-        logger.warn(email)
-        logger.error(subject)
-        if sendG:
-            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
-
   dprint ("Response is %s." % response)
+
+  # TODO extract to utils
+  if response.status_code != 200:
+    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+    date = time.strftime("%m/%d/%Y")
+    subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
+    logger.warn(email)
+    logger.error(subject)
+    if sendG:
+      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+        
+    return False
+  
   return json.loads(response.text) 
 
 def analyzeKeywordsSharedCode(
@@ -554,7 +559,6 @@ def createEmailBody(data, sent):
       ("-b", "Broad Negative Matches Added")
     ):
       content.append(item[1])
-
       content.append("""\n""".join([keyword["text"] for keyword in clientData[item[0]]]))
 
   return "\n".join(content)
@@ -609,6 +613,7 @@ def convertAnalysisIntoApplePayloadAndSend(
 # @debug
 def process():
   summaryReportInfo = { }
+  sent = False
 
   for client in clientsG:
     summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = CSRI = { }
@@ -618,6 +623,13 @@ def process():
 
     searchMatchData = getSearchTermsReportFromApple(client, searchCampaignId)
     broadMatchData  = getSearchTermsReportFromApple(client, broadCampaignId)
+
+    if not searchMatchData or not broadMatchData:
+      CSRI["+e"] = {}
+      CSRI["+b"] = {}
+      CSRI["-e"] = {}
+      CSRI["-b"] = {}
+      continue
 
     exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
       analyzeKeywords(searchMatchData, broadMatchData, kAI, client.keywordAdderParameters, client.currency)
@@ -636,7 +648,6 @@ def process():
     )
     
   emailSummaryReport(summaryReportInfo, sent)
-
 
 # @debug
 def terminate():

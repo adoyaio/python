@@ -161,16 +161,32 @@ def getAdgroupReportFromApple(client):
     json=payload,
     headers=headers
   )
+
+  dprint ("\nResponse is %s." % response)
+
   if response.status_code != 200:
-    email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
     date = time.strftime("%m/%d/%Y")
-    subject ="%s - %d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, client.clientName)
+    subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
     logger.warn(email)
     logger.error(subject)
     if sendG:
       EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
-  dprint ("\nResponse is %s." % response)
-  return json.loads(response.text) 
+        
+    return False
+
+  return json.loads(response.text)
+
+  # if response.status_code != 200:
+  #   email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+  #   date = time.strftime("%m/%d/%Y")
+  #   subject ="%s - %d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, client.clientName)
+  #   logger.warn(email)
+  #   logger.error(subject)
+  #   if sendG:
+  #     EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+  
+  # return json.loads(response.text) 
 
 
 def createUpdatedAdGroupBids(data, client):
@@ -409,6 +425,11 @@ def process():
 
     for campaignId in campaignIds:
       data = getAdgroupReportFromApple(client)
+
+      if not data:
+        logger.info("runAdgroupBidAdjuster:process:::no results from api:::")
+        continue
+
       stuff = createUpdatedAdGroupBids(data, client)
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
@@ -429,7 +450,7 @@ def terminate():
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 

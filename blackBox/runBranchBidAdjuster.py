@@ -247,6 +247,7 @@ def process():
                 branch_commerce_event_count = 0
 
                 # get branch data
+                # TODO this looks wrong, need to increment each loop?
                 branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, campaign_id, adgroup_id, keyword, date)
                 for j in branch_response[u'Items']:
                     print("found branch result!")
@@ -254,6 +255,7 @@ def process():
                     if len(branch_response['Items']) > 0:
                         branch_revenue = int(branch_response['Items'][0]["revenue"])
                         branch_commerce_event_count = int(branch_response['Items'][0]["count"])
+
 
                 # initialize data frame
                 keyword_info["keyword"].append(kw_data["keyword"])
@@ -290,10 +292,9 @@ def process():
             BBP = client.branchBidParameters
             min_apple_installs = BBP["min_apple_installs"]
 
-            #fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
+            # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
             # raw_data_df.to_csv(adgroup_id + ".csv")
-            
             # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
                
             if raw_data_df.empty:

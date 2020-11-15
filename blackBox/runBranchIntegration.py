@@ -7,7 +7,7 @@ import requests
 import time
 from Client import Client
 from configuration import config
-from utils import DynamoUtils, LambdaUtils
+from utils import DynamoUtils, LambdaUtils, EmailUtils
 from utils.debug import debug, dprint
 from utils.retry import retry
 from botocore.exceptions import ClientError # eliminate inexact and rounding errors
@@ -103,10 +103,11 @@ def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, ag
     response = getKeywordReportFromBranchHelper(url, payload, headers)
     logger.info("Response is %s." % response)
     
+    # TODO extract to utils
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
+        subject ="%s - %d ERROR in runBranchIntegration for %s" % (date, response.status_code, client.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:

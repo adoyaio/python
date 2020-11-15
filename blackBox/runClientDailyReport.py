@@ -42,7 +42,7 @@ def getCampaignDataHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-def getCampaignData(orgId, pemFilename, keyFilename, daysToGoBack):
+def getCampaignData(client, daysToGoBack):
     today = datetime.date.today() - datetime.timedelta(1)
     cutoffDay = today - datetime.timedelta(days=daysToGoBack - 1)  # TODO revisit "- 1" to avoid fencepost error.
     payload = {
@@ -59,24 +59,33 @@ def getCampaignData(orgId, pemFilename, keyFilename, daysToGoBack):
         # "granularity"                : 2, # 1 is hourly, 2 is daily, 3 is monthly etc
     }
 
-    headers = {"Authorization": "orgId=%s" % orgId}
-
+    url: str = config.APPLE_KEYWORDS_REPORT_URL
+    headers = {"Authorization": "orgId=%s" % client.orgId}
     dprint("\n\nHeaders: %s" % headers)
     dprint("\n\nPayload: %s" % payload)
-    dprint("\n\nApple URL: %s" % config.APPLE_KEYWORDS_REPORT_URL)
+    dprint("\n\nApple URL: %s" % url)
 
     response = getCampaignDataHelper(
-        config.APPLE_KEYWORDS_REPORT_URL,
-        cert=(S3Utils.getCert(pemFilename), S3Utils.getCert(keyFilename)),
+        url,
+        cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
         json=payload,
         headers=headers
     )
-
     dprint("\n\nResponse: '%s'" % response)
-    if response.status_code == 200:
-        return json.loads(response.text)
-    else:
+
+    # TODO extract to utils
+    if response.status_code != 200:
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+        date = time.strftime("%m/%d/%Y")
+        subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status_code, client.clientName)
+        logger.warn(email)
+        logger.error(subject)
+        if sendG:
+            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+        
         return False
+
+    return json.loads(response.text)
 
 
 @debug
@@ -324,12 +333,9 @@ def process():
 
         for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
             campaignData = getCampaignData(
-                client.orgId,
-                client.pemFilename,
-                client.keyFilename,
+                client,
                 daysToGoBack
             )
-
             if(campaignData != False):
                 dataArray = campaignData["data"]["reportingDataResponse"]["row"]
                 dprint("For %d (%s), there are %d campaigns in the campaign data." % \

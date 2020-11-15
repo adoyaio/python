@@ -6,6 +6,7 @@ import datetime
 import json
 import pandas as pd
 import requests
+import time
 import boto3
 from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and rounding errors
@@ -15,7 +16,7 @@ DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
 from utils.debug import debug, dprint
 from utils.retry import retry
 from Client import Client
-from utils import DynamoUtils, S3Utils, LambdaUtils
+from utils import DynamoUtils, S3Utils, LambdaUtils, EmailUtils
 from configuration import config
 
 LOOKBACK = 14 # TODO reduce for nightly
@@ -83,13 +84,21 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
         json=payload,
         headers=headers
     )
+    logger.info("Response is %s." % response)
 
-    print("runAppleIntegrationKeyword:::Response:::" + str(response))
-    if response.status_code == 200:
-        return json.loads(response.text, parse_float=decimal.Decimal)
-    else:
-        # TODO email
+    # TODO extract to utils
+    if response.status_code != 200:
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+        date = time.strftime("%m/%d/%Y")
+        subject ="%s - %d ERROR in runAppleIntegrationKeyword for %s" % (date, response.status_code, client.clientName)
+        logger.warn(email)
+        logger.error(subject)
+        if sendG:
+            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+        
         return False
+
+    return json.loads(response.text, parse_float=decimal.Decimal)
 
 def loadAppleKeywordToDynamo(data, orgId, campaignId):
     table = dynamodb.Table('apple_keyword')

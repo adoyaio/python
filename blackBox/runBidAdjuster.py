@@ -98,17 +98,18 @@ def getKeywordReportFromApple(client, campaignId):
     )
     dprint("Response is %s" % response)
 
-    if response.status_code == 200:
-        return json.loads(response.text)
-    else:
-        email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+    if response.status_code != 200:
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
         subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
             EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+        
         return False
+
+    return json.loads(response.text)
    
 
 def createUpdatedKeywordBids(data, campaignId, client):
@@ -414,7 +415,7 @@ def process():
             sent = False
             data = getKeywordReportFromApple(client, campaignId)
             if not data:
-                logger.info("runBidAjuster:process:::no results from api:::")
+                logger.info("runBidAdjuster:process:::no results from api:::")
                 continue
 
             stuff = createUpdatedKeywordBids(data, campaignId, client)
@@ -431,7 +432,7 @@ def terminate():
 
 
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
     terminate()
 
