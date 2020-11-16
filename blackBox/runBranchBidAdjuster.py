@@ -253,8 +253,8 @@ def process():
                     print("found branch result!")
                     print(json.dumps(j, cls=DecimalEncoder))
                     if len(branch_response['Items']) > 0:
-                        branch_revenue = int(branch_response['Items'][0]["revenue"])
-                        branch_commerce_event_count = int(branch_response['Items'][0]["count"])
+                        branch_revenue = branch_revenue + int(j.get("revenue",0))
+                        branch_commerce_event_count = branch_commerce_event_count + int(j.get("count",0))
 
 
                 # initialize data frame
