@@ -432,7 +432,7 @@ def terminate():
 
 
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 
