@@ -287,8 +287,12 @@ def createUpdatedAdGroupBids(data, client):
                                     adGroup_info.bid * 1]
 
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
-  total_cost_per_install = client.getTotalCostPerInstall(dynamodb, start_date, end_date,
-                                                         config.TOTAL_COST_PER_INSTALL_LOOKBACK)
+  total_cost_per_install = client.getTotalCostPerInstall(
+    dynamodb, 
+    start_date, 
+    end_date,                                                   
+    config.TOTAL_COST_PER_INSTALL_LOOKBACK
+  )
   dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
@@ -450,7 +454,7 @@ def terminate():
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
     terminate()
 

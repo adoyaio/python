@@ -541,7 +541,7 @@ def sendToApple(client, payloads):
 
         dprint("The result of sending the keywords to Apple: %s" % response)
 
-    return sendG
+    return True
 
 
 def createEmailBody(data, sent):
@@ -601,13 +601,19 @@ def convertAnalysisIntoApplePayloadAndSend(
 #    if len(set(exactNegativeText + broadNegativeText)) != len(exactNegativeText) + len(broadNegativeText):
 #      print("ERROR: There are identical text strings in the exact and broad negative matches.  They are %s and %s." % (exactNegativeText, broadNegativeText))
 
-    sent = sendToApple(client, ((exactPositive, exactPositiveUrl), (broadPositive, broadPositiveUrl)))
-    sendToApple(client, ((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
+    print("runKeywordAdder exactPositive" + str(exactPositive))
+    print("runKeywordAdder exactNegative" + str(exactNegative))
+
+    if json.loads(exactPositive):  
+      sendToApple(client, ((exactPositive, exactPositiveUrl), (broadPositive, broadPositiveUrl)))
+    
+    if json.loads(exactNegative):
+      sendToApple(client, ((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
 
     # JF release-1 airlift bid counts and keywords to dynamo
     client.writePositiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
     client.writeNegativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
-    return sent
+    return sendG
 
 
 # @debug

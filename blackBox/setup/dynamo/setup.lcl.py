@@ -17,7 +17,7 @@ if 'branch_commerce_events' not in existing_tables:
         KeySchema=[
             {
             'AttributeName': 'branch_commerce_event_key',
-            'KeyType': 'HASH'  #Partition key defined by concatenating campaign_id, ad_set_id and keyword
+            'KeyType': 'HASH'  #Partition key TODO should use org_id and # seperator defined by concatenating campaign_id, ad_set_id and keyword
             },
             {
             'AttributeName': 'timestamp',
@@ -72,7 +72,7 @@ if 'branch_commerce_events' not in existing_tables:
                 'KeySchema': [
                     {
                         'AttributeName': 'keyword',
-                        'KeyType': 'HASH'  # Partition key
+                        'KeyType': 'HASH'  # Partition key TODO should use org_id#keyword
                     },
                     {
                         'AttributeName': 'timestamp',
@@ -100,7 +100,7 @@ if 'branch_commerce_events' not in existing_tables:
                 }
             },
             {
-                'IndexName': 'org_id-timestamp-index',
+                'IndexName': 'org_id-timestamp-index', # TODO could be removed if org_id is added to branch_commerce_event_key
                 'KeySchema': [
                     {
                         'AttributeName': 'org_id',
@@ -661,7 +661,7 @@ if 'apple_keyword' not in existing_tables:
             'KeySchema': [
                 {
                     'AttributeName': 'keyword',
-                    'KeyType': 'HASH'  # Partition key
+                    'KeyType': 'HASH'  # Partition key, TODO delete? use kw id
                 },
                 {
                     'AttributeName': 'date',
