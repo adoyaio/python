@@ -279,7 +279,7 @@ def createUpdatedAdGroupBids(data, client):
   adGroup_info_choices = [adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2),
                           adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2),
                           adGroup_info.bid * ABP["STALE_RAISE_BID_BOOST"],
-                          adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2)]
+                          adGroup_info.bid * ABP["HIGH_CPA_BID_DECREASE"]]                        
 
   adGroup_info_choices_increases = [adGroup_info.bid * adGroup_info["bid_multiplier_capped"].round(2),
                                     adGroup_info.bid * 1,

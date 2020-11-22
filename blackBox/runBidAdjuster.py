@@ -249,9 +249,9 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
     # if cpi is below threshold, only do increases
     if total_cost_per_install > BP["HIGH_CPI_BID_DECREASE_THRESH"]:
-        high_cpa_keywords["new_bid"] = (high_cpa_keywords["bid"] * high_cpa_keywords["bid_multiplier_capped"]).round(2)
-        no_install_keywords["new_bid"] = (
-                    no_install_keywords["bid"] * no_install_keywords["bid_multiplier_capped"]).round(2)
+        high_cpa_keywords["new_bid"] = (
+            high_cpa_keywords["bid"] * high_cpa_keywords["bid_multiplier_capped"]).round(2)
+        no_install_keywords["new_bid"] = (no_install_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]).round(2)
 
     # combine keywords into one data frame for bid updates
     all_kws_combined = pd.concat([stale_raise_kws, low_cpa_keywords, high_cpa_keywords, no_install_keywords])
