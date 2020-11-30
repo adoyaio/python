@@ -155,9 +155,8 @@ class Client:
 
     # bid adjusters should use Client for CRUD operations against db
     def addRowToHistory(self, rowOfHistory, dynamoResource, end_date):
-        # print("Client:::addRowToHistory:::rowOfHistory:::" + str(rowOfHistory))
         self.addRowToCpiHistory(rowOfHistory, dynamoResource, end_date)
-        # self.addRowToCpiBranchHistory(rowOfHistory, dynamoResource, end_date)
+        self.addRowToCpiBranchHistory(rowOfHistory, dynamoResource, end_date)
 
     def addRowToCpiHistory(self, rowOfHistory, dynamoResource, end_date):
         table = dynamoResource.Table('cpi_history')
@@ -166,11 +165,11 @@ class Client:
         spend = rowOfHistory[0]
         installs = rowOfHistory[1]
         cpi = rowOfHistory[2]
-       
-        # TODO add cpi_search, cpi_broad, cpi_exact
-        cpi_broad = rowOfHistory[6]
+        cpi_exact = rowOfHistory[3]
+        cpi_broad = rowOfHistory[4]
+        cpi_search = rowOfHistory[5]
 
-        print("Adding cpi_history line:", org_id, timestamp, spend, installs, cpi, cpi_broad)
+        print("Adding cpi_history line:", org_id, timestamp, spend, installs, cpi, cpi_exact, cpi_broad, cpi_search)
         table.put_item(
             Item={
                 'org_id': org_id,
@@ -178,7 +177,9 @@ class Client:
                 'spend': spend,
                 'installs': installs,
                 'cpi': cpi,
-                'cpi_broad': cpi_broad
+                'cpi_exact': cpi_exact,
+                'cpi_broad': cpi_broad,
+                'cpi_search': cpi_search
             }
         )
 
@@ -191,14 +192,18 @@ class Client:
         spend = rowOfHistory[0]
         installs = rowOfHistory[1]
         cpi = rowOfHistory[2]
-        purchases = rowOfHistory[3]
-        revenue = rowOfHistory[4]
-        cpp = rowOfHistory[5]
-        revenueOverCost = rowOfHistory[6]
+        cpi_exact = rowOfHistory[3]
+        cpi_broad = rowOfHistory[4]
+        cpi_search = rowOfHistory[5]
+        # branch fields
+        purchases = rowOfHistory[6]
+        revenue = rowOfHistory[7]
+        cpp = rowOfHistory[8]
+        revenueOverCost = rowOfHistory[9]
         
         # TODO add cpi_search, cpi_broad, cpi_exact
         cpi_broad = rowOfHistory[7]
-        print("Adding cpi_branch_history line:", timestamp, spend, installs, cpi, org_id, purchases, revenue, cpp, revenueOverCost)
+        print("Adding cpi_branch_history line:", org_id, timestamp, spend, installs, cpi, cpi_exact, cpi_broad, cpi_search, purchases, revenue, cpp, revenueOverCost)
         table.put_item(
             Item={
                 'org_id': org_id,
@@ -206,6 +211,9 @@ class Client:
                 'spend': spend,
                 'installs': installs,
                 'cpi': cpi,
+                'cpi_exact': cpi_exact,
+                'cpi_broad': cpi_broad,
+                'cpi_search': cpi_search,
                 'purchases': purchases,
                 'revenue': revenue,
                 'cpp': cpp,

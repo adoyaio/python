@@ -306,13 +306,18 @@ def sendEmailReport(client, dataForVariousTimes):
             summary[someTime]["installs"] += installs
             summary[someTime]["spend"] += spend
 
-            if campaignId == client.keywordAdderIds.get("campaignId").get("broad"):
-                print("runClientDailyReport found broad campaign add cpi" + str(campaign))
+            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("search"):
+                print("runClientDailyReport found search campaign add cpi" + str(campaignId))
+                summary[someTime]["cpi_search"] = client.calculateCPI(spend, installs)
+
+            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("broad"):
+                print("runClientDailyReport found broad campaign add cpi" + str(campaignId))
                 summary[someTime]["cpi_broad"] = client.calculateCPI(spend, installs)
             
-            # TODO more like this
-
-        print("JAMES TEST " + client.keywordAdderIds.get("campaignId").get("broad"))
+            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("exact"):
+                print("runClientDailyReport found exact campaign add cpi" + str(campaignId))
+                summary[someTime]["cpi_exact"] = client.calculateCPI(spend, installs)
+       
         
         # calculate cpi for timeperiod and put it on the summary object
         spend = summary[someTime]["spend"]
@@ -353,16 +358,18 @@ def sendEmailReport(client, dataForVariousTimes):
     htmlBody = createHtmlEmailBodyForACampaign(client, summary, now)
     sendEmailForACampaign(client, emailBody, htmlBody, now)
 
-    # TODO add cpi for each campaign
     # cast to string where needed to avoid dynamo float/decimal issues
     rowOfHistory = [
         str(round(summary[ONE_DAY].get("spend"),2)), 
         summary[ONE_DAY].get("installs"), 
         str(summary[someTime].get("cpi")), 
-        summary[ONE_DAY].get("purchases"), 
+        str(summary[ONE_DAY].get("cpi_exact", 0.00)),
+        str(summary[ONE_DAY].get("cpi_broad", 0.00)),
+        str(summary[ONE_DAY].get("cpi_search", 0.00)),
+        summary[ONE_DAY].get("purchases"),
         str(summary[ONE_DAY].get("revenue")),
-        str(summary[ONE_DAY].get("revenueOverCost")),
-        str(summary[ONE_DAY].get("cpi_broad", 0.00))
+        str(summary[ONE_DAY].get("cpp")),
+        str(summary[ONE_DAY].get("revenueOverCost"))
     ]
     client.addRowToHistory(rowOfHistory, dynamodb, end_date)
 
