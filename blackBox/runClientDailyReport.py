@@ -87,39 +87,6 @@ def getCampaignData(client, daysToGoBack):
 
     return json.loads(response.text)
 
-
-@debug
-def createOneRowOfHistory(data): # eg {'installs': 88, 'spend': 115.92, 'purchases': 9, 'revenue': 204.0}  
-    
-    # asa fields
-    timestamp = str(datetime.datetime.now().date())
-    installs = data["installs"]
-    spend = data["spend"] 
-    if int(installs) > 0:
-        spend = "%s" % round(spend, 2)
-        cpi = "%.2f" % round(float(spend) / float(installs), 2)
-    else:
-        spend = "%.2f" % 0
-        cpi = "%.2f" % 0
-
-    # branch fields
-    purchases =  data["purchases"]
-    revenue = data["revenue"]
-    if int(purchases) > 0 and float(spend) > 0:   
-        cpp = "%.2f" % round(float(spend) / float(purchases), 2)
-    else:
-        cpp = "%.2f" % 0
-
-    if float(revenue) > 0 and float(spend) > 0:
-        revenueOverCost = "%.2f" % round(float(revenue) / float(spend), 2)
-        revenue = "%.2f" % round(revenue, 2)
-    else:    
-        revenueOverCost = "%.2f" % 0
-        revenue = "%.2f" % 0
-
-    return timestamp, spend, installs, cpi, purchases, revenue, cpp, revenueOverCost
-
-
 # JF TODO non html email should be updated with branch data
 def createOneRowOfTable(data, label):
     cpi = "N/A" if data["installs"] < 1 else ("{: 6,.2f}".format((0.0 + data["spend"]) / data["installs"]))
@@ -148,53 +115,79 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     elif client.currency == 'EUR':
         currencySymbol = '€'
 
-    # gather values for the html report and replace placeholder values
-    cpiOneDay = "N/A" if summary[ONE_DAY]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["installs"]))
+    # normalize fields for float based formatting
+    summary[ONE_DAY]["cpi"] = float(summary[ONE_DAY]["cpi"])
+    summary[ONE_DAY]["cpp"] = float(summary[ONE_DAY]["cpp"])
+    summary[ONE_DAY]["revenueOverCost"] = float(summary[ONE_DAY]["revenueOverCost"])
+    summary[ONE_DAY]["revenue"] = float(summary[ONE_DAY]["revenue"])
+
+    summary[SEVEN_DAYS]["cpi"] = float(summary[SEVEN_DAYS]["cpi"])
+    summary[SEVEN_DAYS]["cpp"] = float(summary[SEVEN_DAYS]["cpp"])
+    summary[SEVEN_DAYS]["revenueOverCost"] = float(summary[SEVEN_DAYS]["revenueOverCost"])
+    summary[SEVEN_DAYS]["revenue"] = float(summary[SEVEN_DAYS]["revenue"])
+
+    summary[THIRTY_DAYS]["cpi"] = float(summary[THIRTY_DAYS]["cpi"])
+    summary[THIRTY_DAYS]["cpp"] = float(summary[THIRTY_DAYS]["cpp"])  
+    summary[THIRTY_DAYS]["revenueOverCost"] = float(summary[THIRTY_DAYS]["revenueOverCost"]) 
+    summary[THIRTY_DAYS]["revenue"] = float(summary[THIRTY_DAYS]["revenue"])
+
+    # format apple fields for the html report
+    cpiOneDay = "{: 6,.2f}".format(summary[ONE_DAY]["cpi"] )if summary[ONE_DAY]["cpi"] > .01 else "N/A"
     installsOneDay = "{: 6,.0f}".format(summary[ONE_DAY]["installs"])
     spendOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["spend"])
-
-    cpiSevenDays = "N/A" if summary[SEVEN_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["installs"]))
+    
+    cpiSevenDays =  "{: 6,.2f}".format(summary[SEVEN_DAYS]["cpi"]) if summary[SEVEN_DAYS]["installs"] > .01 else "N/A"
     installsSevenDays = "{: 6,.0f}".format(summary[SEVEN_DAYS]["installs"])
     spendSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["spend"])
-
-    cpiFourYears = "N/A" if summary[THIRTY_DAYS]["installs"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["installs"]))
+    
+    cpiFourYears ="{: 6,.2f}".format(summary[THIRTY_DAYS]["cpi"]) if summary[THIRTY_DAYS]["installs"] > .01 else "N/A"
     installsFourYears = "{: 6,.0f}".format(summary[THIRTY_DAYS]["installs"])
-
     spendFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["spend"])
 
-    # gather branch metrics for post install summary
-    cppOneDay = "N/A" if summary[ONE_DAY]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[ONE_DAY]["spend"]) / summary[ONE_DAY]["purchases"]))
-    revenueCostOneDay = "N/A" if summary[ONE_DAY]["revenue"] < 1 else (
-        "{: 6,.2f}".format((0.0 + summary[ONE_DAY]["revenue"]) / summary[ONE_DAY]["spend"]))
-    purchaseOneDay = "{: 6,.0f}".format(summary[ONE_DAY]["purchases"])
-    revenueOneDay = "{:>9,.2f}".format(summary[ONE_DAY]["revenue"])
-
-    cppSevenDays = "N/A" if summary[SEVEN_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["spend"]) / summary[SEVEN_DAYS]["purchases"]))
-    revenueCostSevenDays = "N/A" if summary[SEVEN_DAYS]["revenue"] < 1 else (
-        "{: 6,.2f}".format((0.0 + summary[SEVEN_DAYS]["revenue"]) / summary[SEVEN_DAYS]["spend"]))
+    # format branch metrics for post install summary
+    cppOneDay = "{: 6,.2f}".format(summary[ONE_DAY]["cpp"]) if summary[ONE_DAY]["cpp"] > .01 else "N/A"
+    revenueCostOneDay = "{: 6,.2f}".format(summary[ONE_DAY]["revenueOverCost"]) if summary[ONE_DAY]["revenueOverCost"] > .01 else "N/A"
+    purchaseOneDay =  "{: 6,.0f}".format(summary[ONE_DAY]["purchases"])
+    revenueOneDay = "{: 9,.2f}".format(summary[ONE_DAY]["revenue"])
+    
+    cppSevenDays = "{: 6,.2f}".format(summary[SEVEN_DAYS]["cpp"]) if summary[SEVEN_DAYS]["cpp"] > .01 else "N/A"
+    revenueCostSevenDays = "{: 6,.2f}".format(summary[SEVEN_DAYS]["revenueOverCost"]) if summary[SEVEN_DAYS]["revenueOverCost"] > .01 else "N/A"
     purchaseSevenDays = "{: 6,.0f}".format(summary[SEVEN_DAYS]["purchases"])
-    revenueSevenDays = "{:>9,.2f}".format(summary[SEVEN_DAYS]["revenue"])
-
-    cppFourYears = "N/A" if summary[THIRTY_DAYS]["purchases"] < 1 else ("{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["spend"]) / summary[THIRTY_DAYS]["purchases"]))
-    revenueCostFourYears = "N/A" if summary[THIRTY_DAYS]["revenue"] < 1 else (
-        "{: 6,.2f}".format((0.0 + summary[THIRTY_DAYS]["revenue"]) / summary[THIRTY_DAYS]["spend"]))
+    revenueSevenDays = "{: 6,.2f}".format(summary[SEVEN_DAYS]["revenue"])
+    
+    cppFourYears =  "{: 6,.2f}".format(summary[THIRTY_DAYS]["cpp"]) if summary[THIRTY_DAYS]["cpp"] > .01 else "N/A"
+    revenueCostFourYears = "{: 6,.2f}".format(summary[THIRTY_DAYS]["revenueOverCost"]) if summary[THIRTY_DAYS]["revenueOverCost"] > .01 else "N/A"
     purchaseFourYears = "{: 6,.0f}".format(summary[THIRTY_DAYS]["purchases"])
-    revenueFourYears = "{:>9,.2f}".format(summary[THIRTY_DAYS]["revenue"])
-    htmlBody = ""
+    revenueFourYears = "{: 6,.2f}".format(summary[THIRTY_DAYS]["revenue"])
 
-    # read email template and replace values
+    # normalize for string replacing
+    cpiOneDay = str(cpiOneDay)
+    cppOneDay = str(cppOneDay)
+    revenueCostOneDay = str(revenueCostOneDay)
+    revenueOneDay = str(revenueOneDay)
+
+    cpiSevenDays = str(cpiSevenDays)
+    cppSevenDays = str(cppSevenDays)
+    revenueCostSevenDays = str(revenueCostSevenDays)
+    revenueSevenDays = str(revenueSevenDays)
+    
+    cpiFourYears = str(cpiFourYears)
+    cppFourYears = str(cppFourYears)
+    revenueCostFourYears = str(revenueCostFourYears)  
+    revenueFourYears = str(revenueFourYears)
+
+    # read email template / replace values
+    htmlBody = ""
     f = open("./assets/email_template.html", "r")
-    for x in f:
+    for x in f:    
         
         # install summary
         x = x.replace("@@YESTERDAY__COST@@", str(currencySymbol+spendOneDay))
         x = x.replace("@@YESTERDAY__INSTALLS@@", str(installsOneDay))
         x = x.replace("@@YESTERDAY__CPI@@", str(currencySymbol+cpiOneDay))
-
         x = x.replace("@@SEVEN__DAYS__COST@@", str(currencySymbol+spendSevenDays))
         x = x.replace("@@SEVEN__DAYS__INSTALLS@@", str(installsSevenDays))
         x = x.replace("@@SEVEN__DAYS__CPI@@", str(currencySymbol+cpiSevenDays))
-
         x = x.replace("@@ALL__TIME__COST@@", str(currencySymbol+spendFourYears))
         x = x.replace("@@ALL__TIME__INSTALLS@@", str(installsFourYears))
         x = x.replace("@@ALL__TIME__CPI@@", str(currencySymbol+cpiFourYears))
@@ -276,6 +269,9 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
 
 def sendEmailReport(client, dataForVariousTimes):
     today = datetime.date.today()
+    now = time.time()
+    timestamp = str(datetime.datetime.now().date())
+
     summary = {
         ONE_DAY: {
             "installs": 0, 
@@ -299,36 +295,76 @@ def sendEmailReport(client, dataForVariousTimes):
     
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
         summary[someTime] = {"installs": 0, "spend": 0.0}
-
         # Iterate each campaign and get totals
         for campaign in campaignsForThatTime:
-            totals = campaign["total"]
-            installs, spend = totals["installs"], float(totals["localSpend"]["amount"])
-            dprint("For %d (%s), campaign %s over %d days has %d installs, %f spend." % \
-                   (client.orgId, client.clientName, campaign["metadata"]["campaignId"], someTime, installs, spend))
-            summary[someTime]["installs"] += totals["installs"]
-            summary[someTime]["spend"] += float(totals["localSpend"]["amount"])
+            
+            # pull install and spend from asa response
+            campaignId = campaign["metadata"]["campaignId"]
+            installs, spend = campaign["total"]["installs"], float(campaign["total"]["localSpend"]["amount"])
+            
+            # increment install and spend
+            summary[someTime]["installs"] += installs
+            summary[someTime]["spend"] += spend
 
-        # Add branch events 
+            if campaignId == client.keywordAdderIds.get("campaignId").get("broad"):
+                print("runClientDailyReport found broad campaign add cpi" + str(campaign))
+                summary[someTime]["cpi_broad"] = client.calculateCPI(spend, installs)
+            
+            # TODO more like this
+
+        print("JAMES TEST " + client.keywordAdderIds.get("campaignId").get("broad"))
+        
+        # calculate cpi for timeperiod and put it on the summary object
+        spend = summary[someTime]["spend"]
+        installs = summary[someTime]["installs"]
+        summary[someTime]["cpi"] = client.calculateCPI(spend, installs)
+
+        # calculate branch metrics for this timeperiod 
         end_date_delta = datetime.timedelta(days=1)
+        end_date = today - end_date_delta 
         start_date_delta = datetime.timedelta(days=someTime)
         start_date = today - start_date_delta
-        end_date = today - end_date_delta
-        print("branch end_date:::" + str(end_date))
-        print("branch start_date:::" + str(start_date))
-        summary[someTime]["purchases"] = client.getTotalBranchEvents(dynamodb, start_date, end_date)
-        print("found purchase data for " + str(someTime))
-        print(" " + str(summary[someTime]["purchases"]))
-        summary[someTime]["revenue"] = client.getTotalBranchRevenue(dynamodb, start_date, end_date)
-        print("found revenue data for " + str(someTime))
-        print(" " + str(summary[someTime]["revenue"]))
+       
+        purchases = client.getTotalBranchEvents(
+            dynamodb, 
+            start_date, 
+            end_date
+        )
+        revenue = client.getTotalBranchRevenue(
+            dynamodb, 
+            start_date, 
+            end_date
+        )
 
-    now = time.time()
-    client.addRowToHistory(createOneRowOfHistory(summary[ONE_DAY]), dynamodb, end_date)
+        # for this timeslice format revenue, calculate cpp and r/c
+        revenue, cpp, revenueOverCost = client.calculateBranchMetrics(
+            spend,
+            purchases,
+            revenue
+        )
+
+        # put it on the summary object
+        summary[someTime]["revenue"] = revenue
+        summary[someTime]["cpp"] = cpp
+        summary[someTime]["revenueOverCost"] = revenueOverCost
+        summary[someTime]["purchases"] = purchases
+
     emailBody = createEmailBodyForACampaign(client, summary, now)
     htmlBody = createHtmlEmailBodyForACampaign(client, summary, now)
     sendEmailForACampaign(client, emailBody, htmlBody, now)
 
+    # TODO add cpi for each campaign
+    # cast to string where needed to avoid dynamo float/decimal issues
+    rowOfHistory = [
+        str(round(summary[ONE_DAY].get("spend"),2)), 
+        summary[ONE_DAY].get("installs"), 
+        str(summary[someTime].get("cpi")), 
+        summary[ONE_DAY].get("purchases"), 
+        str(summary[ONE_DAY].get("revenue")),
+        str(summary[ONE_DAY].get("revenueOverCost")),
+        str(summary[ONE_DAY].get("cpi_broad", 0.00))
+    ]
+    client.addRowToHistory(rowOfHistory, dynamodb, end_date)
 
 @debug
 def process():
