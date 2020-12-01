@@ -362,7 +362,7 @@ def sendEmailReport(client, dataForVariousTimes):
     rowOfHistory = [
         str(round(summary[ONE_DAY].get("spend"),2)), 
         summary[ONE_DAY].get("installs"), 
-        str(summary[someTime].get("cpi")), 
+        str(summary[ONE_DAY].get("cpi")), 
         str(summary[ONE_DAY].get("cpi_exact", 0.00)),
         str(summary[ONE_DAY].get("cpi_broad", 0.00)),
         str(summary[ONE_DAY].get("cpi_search", 0.00)),
