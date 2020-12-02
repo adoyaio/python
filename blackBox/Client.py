@@ -160,64 +160,55 @@ class Client:
 
     def addRowToCpiHistory(self, rowOfHistory, dynamoResource, end_date):
         table = dynamoResource.Table('cpi_history')
+        
         org_id = str(self.orgId)  # TODO JF revisit when org_id is string
         timestamp = str(end_date) # write to history table with yesterday timestamp
-        spend = rowOfHistory[0]
-        installs = rowOfHistory[1]
-        cpi = rowOfHistory[2]
-        cpi_exact = rowOfHistory[3]
-        cpi_broad = rowOfHistory[4]
-        cpi_search = rowOfHistory[5]
-
-        print("Adding cpi_history line:", org_id, timestamp, spend, installs, cpi, cpi_exact, cpi_broad, cpi_search)
+        
         table.put_item(
             Item={
                 'org_id': org_id,
                 'timestamp': timestamp,
-                'spend': spend,
-                'installs': installs,
-                'cpi': cpi,
-                'cpi_exact': cpi_exact,
-                'cpi_broad': cpi_broad,
-                'cpi_search': cpi_search
+                'spend': rowOfHistory.get("spend"),
+                'spend_exact': rowOfHistory.get("spend_exact"),
+                'spend_search': rowOfHistory.get("spend_search"),
+                'spend_broad': rowOfHistory.get("spend_broad"),
+                'installs': rowOfHistory.get("installs"),
+                'installs_exact': rowOfHistory.get("installs_exact"),
+                'installs_search': rowOfHistory.get("installs_search"),
+                'installs_broad': rowOfHistory.get("installs_broad"),
+                'cpi': rowOfHistory.get("cpi"),
+                'cpi_exact': rowOfHistory.get("cpi_exact"),
+                'cpi_broad': rowOfHistory.get("cpi_broad"),
+                'cpi_search': rowOfHistory.get("cpi_search")
             }
         )
 
     def addRowToCpiBranchHistory(self, rowOfHistory, dynamoResource, end_date):
         table = dynamoResource.Table('cpi_branch_history')
-
-        # write to history table with yesterday timestamp
+       
         org_id = str(self.orgId) # NOTE revisit when org_id is string
-        timestamp = str(end_date)
-        spend = rowOfHistory[0]
-        installs = rowOfHistory[1]
-        cpi = rowOfHistory[2]
-        cpi_exact = rowOfHistory[3]
-        cpi_broad = rowOfHistory[4]
-        cpi_search = rowOfHistory[5]
-        # branch fields
-        purchases = rowOfHistory[6]
-        revenue = rowOfHistory[7]
-        cpp = rowOfHistory[8]
-        revenueOverCost = rowOfHistory[9]
-        
-        # TODO add cpi_search, cpi_broad, cpi_exact
-        cpi_broad = rowOfHistory[7]
-        print("Adding cpi_branch_history line:", org_id, timestamp, spend, installs, cpi, cpi_exact, cpi_broad, cpi_search, purchases, revenue, cpp, revenueOverCost)
+        timestamp = str(end_date) # write to history table with yesterday timestamp
+
         table.put_item(
             Item={
                 'org_id': org_id,
                 'timestamp': timestamp,
-                'spend': spend,
-                'installs': installs,
-                'cpi': cpi,
-                'cpi_exact': cpi_exact,
-                'cpi_broad': cpi_broad,
-                'cpi_search': cpi_search,
-                'purchases': purchases,
-                'revenue': revenue,
-                'cpp': cpp,
-                'revenueOverCost': revenueOverCost
+                'spend': rowOfHistory.get("spend"),
+                'spend_exact': rowOfHistory.get("spend_exact"),
+                'spend_search': rowOfHistory.get("spend_search"),
+                'spend_broad': rowOfHistory.get("spend_broad"),
+                'installs': rowOfHistory.get("installs"),
+                'installs_exact': rowOfHistory.get("installs_exact"),
+                'installs_search': rowOfHistory.get("installs_search"),
+                'installs_broad': rowOfHistory.get("installs_broad"),
+                'cpi': rowOfHistory.get("cpi"),
+                'cpi_exact': rowOfHistory.get("cpi_exact"),
+                'cpi_broad': rowOfHistory.get("cpi_broad"),
+                'cpi_search': rowOfHistory.get("cpi_search"),
+                'purchases': rowOfHistory.get("purchases"),
+                'revenue': rowOfHistory.get("revenue"),
+                'cpp': rowOfHistory.get("cpp"),
+                'revenueOverCost': rowOfHistory.get("revenueOverCost")
             }
         )
 

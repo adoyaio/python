@@ -295,34 +295,42 @@ def sendEmailReport(client, dataForVariousTimes):
     
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
         summary[someTime] = {"installs": 0, "spend": 0.0}
-        # Iterate each campaign and get totals
+        
+        # iterate each campaign and get totals
         for campaign in campaignsForThatTime:
             
             # pull install and spend from asa response
             campaignId = campaign["metadata"]["campaignId"]
             installs, spend = campaign["total"]["installs"], float(campaign["total"]["localSpend"]["amount"])
             
-            # increment install and spend
+            # increment install and spend for totals
             summary[someTime]["installs"] += installs
             summary[someTime]["spend"] += spend
 
+            # calculate campaign level cpi etc 
             if str(campaignId) == client.keywordAdderIds.get("campaignId").get("search"):
-                print("runClientDailyReport found search campaign add cpi" + str(campaignId))
                 summary[someTime]["cpi_search"] = client.calculateCPI(spend, installs)
+                summary[someTime]["installs_search"] = installs
+                summary[someTime]["spend_search"] = spend
 
             if str(campaignId) == client.keywordAdderIds.get("campaignId").get("broad"):
-                print("runClientDailyReport found broad campaign add cpi" + str(campaignId))
                 summary[someTime]["cpi_broad"] = client.calculateCPI(spend, installs)
+                summary[someTime]["installs_broad"] = installs
+                summary[someTime]["spend_broad"] = spend
             
             if str(campaignId) == client.keywordAdderIds.get("campaignId").get("exact"):
-                print("runClientDailyReport found exact campaign add cpi" + str(campaignId))
                 summary[someTime]["cpi_exact"] = client.calculateCPI(spend, installs)
+                summary[someTime]["installs_exact"] = installs
+                summary[someTime]["spend_exact"] = spend
        
         
-        # calculate cpi for timeperiod and put it on the summary object
-        spend = summary[someTime]["spend"]
-        installs = summary[someTime]["installs"]
-        summary[someTime]["cpi"] = client.calculateCPI(spend, installs)
+        # calculate total cpi for timeperiod and put it on the summary object
+        # spend = summary[someTime]["spend"]
+        # installs = summary[someTime]["installs"]
+        summary[someTime]["cpi"] = client.calculateCPI(
+            summary[someTime]["spend"], 
+            summary[someTime]["installs"]
+        )
 
         # calculate branch metrics for this timeperiod 
         end_date_delta = datetime.timedelta(days=1)
@@ -359,18 +367,27 @@ def sendEmailReport(client, dataForVariousTimes):
     sendEmailForACampaign(client, emailBody, htmlBody, now)
 
     # cast to string where needed to avoid dynamo float/decimal issues
-    rowOfHistory = [
-        str(round(summary[ONE_DAY].get("spend"),2)), 
-        summary[ONE_DAY].get("installs"), 
-        str(summary[ONE_DAY].get("cpi")), 
-        str(summary[ONE_DAY].get("cpi_exact", 0.00)),
-        str(summary[ONE_DAY].get("cpi_broad", 0.00)),
-        str(summary[ONE_DAY].get("cpi_search", 0.00)),
-        summary[ONE_DAY].get("purchases"),
-        str(summary[ONE_DAY].get("revenue")),
-        str(summary[ONE_DAY].get("cpp")),
-        str(summary[ONE_DAY].get("revenueOverCost"))
-    ]
+    rowOfHistory = {}
+    rowOfHistory["spend"] = str(round(summary[ONE_DAY].get("spend"),2))
+    rowOfHistory["spend_exact"] = str(round(summary[ONE_DAY].get("spend_exact"),2))
+    rowOfHistory["spend_search"] = str(round(summary[ONE_DAY].get("spend_search"),2))
+    rowOfHistory["spend_broad"] = str(round(summary[ONE_DAY].get("spend_broad"),2))
+
+    rowOfHistory["installs"] = summary[ONE_DAY].get("installs")
+    rowOfHistory["installs_exact"] = summary[ONE_DAY].get("installs_exact")
+    rowOfHistory["installs_search"] = summary[ONE_DAY].get("installs_search")
+    rowOfHistory["installs_broad"] = summary[ONE_DAY].get("installs_broad")
+
+    rowOfHistory["cpi"] = str(summary[ONE_DAY].get("cpi"))
+    rowOfHistory["cpi_exact"] = str(summary[ONE_DAY].get("cpi_exact", 0.00))
+    rowOfHistory["cpi_broad"] = str(summary[ONE_DAY].get("cpi_broad", 0.00))
+    rowOfHistory["cpi_search"] = str(summary[ONE_DAY].get("cpi_search", 0.00))
+
+    rowOfHistory["purchases"] = summary[ONE_DAY].get("purchases")
+    rowOfHistory["revenue"] = str(summary[ONE_DAY].get("revenue"))
+    rowOfHistory["cpp"] = str(summary[ONE_DAY].get("cpp"))
+    rowOfHistory["revenueOverCost"] = str(summary[ONE_DAY].get("revenueOverCost"))
+
     client.addRowToHistory(rowOfHistory, dynamodb, end_date)
 
 @debug
