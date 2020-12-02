@@ -325,8 +325,6 @@ def sendEmailReport(client, dataForVariousTimes):
        
         
         # calculate total cpi for timeperiod and put it on the summary object
-        # spend = summary[someTime]["spend"]
-        # installs = summary[someTime]["installs"]
         summary[someTime]["cpi"] = client.calculateCPI(
             summary[someTime]["spend"], 
             summary[someTime]["installs"]
@@ -351,7 +349,7 @@ def sendEmailReport(client, dataForVariousTimes):
 
         # for this timeslice format revenue, calculate cpp and r/c
         revenue, cpp, revenueOverCost = client.calculateBranchMetrics(
-            spend,
+            summary[someTime]["spend"],
             purchases,
             revenue
         )
