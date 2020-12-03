@@ -180,18 +180,6 @@ def getAdgroupReportFromApple(client):
 
   return json.loads(response.text)
 
-  # if response.status_code != 200:
-  #   email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
-  #   date = time.strftime("%m/%d/%Y")
-  #   subject ="%s - %d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, client.clientName)
-  #   logger.warn(email)
-  #   logger.error(subject)
-  #   if sendG:
-  #     EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
-  
-  # return json.loads(response.text) 
-
-
 def createUpdatedAdGroupBids(data, campaignId, client):
   rows = data["data"]["reportingDataResponse"]["row"]
   
@@ -297,6 +285,7 @@ def createUpdatedAdGroupBids(data, campaignId, client):
   #   config.TOTAL_COST_PER_INSTALL_LOOKBACK
   # )
   # dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
+  # TODO pull campaign specific values for bid adjustments
   total_cost_per_install = client.getTotalCostPerInstallForCampaign(
     dynamodb, 
     start_date, 
