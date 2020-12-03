@@ -260,7 +260,7 @@ class Client:
 
 
     # # gets total cost per install for the lookback period
-    def getTotalCostPerInstallForCampaign(self, campaign_id, dynamoResource, start_date, end_date, daysToLookBack):
+    def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
         table = dynamoResource.Table('cpi_history')
 
         # TODO query by campaign
@@ -279,13 +279,22 @@ class Client:
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
+        # grab specific campaign metrics
+        campaign_keys = list(self.keywordAdderIds["campaignId"].keys())
+        campaign_vals = list(self.keywordAdderIds["campaignId"].values())
+
+        campaign_name = campaign_keys[campaign_vals.index(campaign_id)]
+
+        installs_lookup_key = "installs_" + campaign_name 
+        spend_lookup_key = "spend_" + campaign_name
+
         # TODO uncomment when CPI is calculated on a per campaign basis
         # print("getTotalCostPerInstall:::using::" + str(total_cost_per_install))
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
             for i in response[u'Items']:
-                totalCost += float(i['spend'])
-                totalInstalls += int(i['installs'])
+                totalCost += float(i.get(spend_lookup_key,0.0))
+                totalInstalls += int(i.get(installs_lookup_key,0))
                 if totalCost > 0 and totalInstalls > 0:
                     total_cost_per_install = totalCost / totalInstalls
         return total_cost_per_install

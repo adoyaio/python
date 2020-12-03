@@ -16,13 +16,16 @@ from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 
 BIDDING_LOOKBACK = 14
-
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
 start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
+
+# cpi history kookback seperate from apple lookback
+start_date_delta_cpi_lookback = datetime.timedelta(config.TOTAL_COST_PER_INSTALL_LOOKBACK)
+start_date_cpi_lookback = today - start_date_delta_cpi_lookback
 
 # FOR QA PURPOSES set these fields explicitly
 #start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
@@ -189,7 +192,7 @@ def getAdgroupReportFromApple(client):
   # return json.loads(response.text) 
 
 
-def createUpdatedAdGroupBids(data, client):
+def createUpdatedAdGroupBids(data, campaignId, client):
   rows = data["data"]["reportingDataResponse"]["row"]
   
   if len(rows) == 0:
@@ -287,13 +290,21 @@ def createUpdatedAdGroupBids(data, client):
                                     adGroup_info.bid * 1]
 
   #check if overall CPI is within bid threshold, if it is, do not decrease bids 
-  total_cost_per_install = client.getTotalCostPerInstall(
+  # total_cost_per_install = client.getTotalCostPerInstall(
+  #   dynamodb, 
+  #   start_date, 
+  #   end_date,                                                   
+  #   config.TOTAL_COST_PER_INSTALL_LOOKBACK
+  # )
+  # dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
+  total_cost_per_install = client.getTotalCostPerInstallForCampaign(
     dynamodb, 
     start_date, 
-    end_date,                                                   
-    config.TOTAL_COST_PER_INSTALL_LOOKBACK
+    end_date,
+    config.TOTAL_COST_PER_INSTALL_LOOKBACK,
+    campaignId
   )
-  dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
+  dprint("runAdgroupBidAdjuster:::total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
                  if total_cost_per_install <= ABP["HIGH_CPI_BID_DECREASE_THRESH"] \
@@ -434,7 +445,7 @@ def process():
         logger.info("runAdgroupBidAdjuster:process:::no results from api:::")
         continue
 
-      stuff = createUpdatedAdGroupBids(data, client)
+      stuff = createUpdatedAdGroupBids(data, campaignId, client)
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
         logger.info("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
