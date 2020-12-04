@@ -228,10 +228,9 @@ class Client:
 
 
     # gets total cost per install for the lookback period
+    # NOTE currently unused, bid adjusters use getTotalCostPerInstallForCampaign
     def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
         table = dynamoResource.Table('cpi_history')
-
-        # TODO query by campaign
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
@@ -247,23 +246,20 @@ class Client:
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        # TODO uncomment when CPI is calculated on a per campaign basis
-        print("getTotalCostPerInstall:::using::" + str(total_cost_per_install))
-        # if len(response['Items']) >= daysToLookBack:
-        #     totalCost, totalInstalls = 0.0, 0
-        #     for i in response[u'Items']:
-        #         totalCost += float(i['spend'])
-        #         totalInstalls += int(i['installs'])
-        #         if totalCost > 0 and totalInstalls > 0:
-        #             total_cost_per_install = totalCost / totalInstalls
+        if len(response['Items']) >= daysToLookBack:
+            totalCost, totalInstalls = 0.0, 0
+            for i in response[u'Items']:
+                totalCost += float(i['spend'])
+                totalInstalls += int(i['installs'])
+                if totalCost > 0 and totalInstalls > 0:
+                    total_cost_per_install = totalCost / totalInstalls
         return total_cost_per_install
 
 
-    # # gets total cost per install for the lookback period
+    # gets total cost per install for the lookback period
     def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
         table = dynamoResource.Table('cpi_history')
 
-        # TODO query by campaign
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
@@ -288,8 +284,6 @@ class Client:
         installs_lookup_key = "installs_" + campaign_name 
         spend_lookup_key = "spend_" + campaign_name
 
-        # TODO uncomment when CPI is calculated on a per campaign basis
-        # print("getTotalCostPerInstall:::using::" + str(total_cost_per_install))
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
             for i in response[u'Items']:

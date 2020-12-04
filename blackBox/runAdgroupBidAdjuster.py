@@ -277,15 +277,8 @@ def createUpdatedAdGroupBids(data, campaignId, client):
                                     adGroup_info.bid * ABP["STALE_RAISE_BID_BOOST"],
                                     adGroup_info.bid * 1]
 
-  #check if overall CPI is within bid threshold, if it is, do not decrease bids 
-  # total_cost_per_install = client.getTotalCostPerInstall(
-  #   dynamodb, 
-  #   start_date, 
-  #   end_date,                                                   
-  #   config.TOTAL_COST_PER_INSTALL_LOOKBACK
-  # )
-  # dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
-  # TODO pull campaign specific values for bid adjustments
+  # check if overall CPI is within bid threshold, if it is, do not decrease bids 
+  # NOTE pull campaign specific values for bid adjustments
   total_cost_per_install = client.getTotalCostPerInstallForCampaign(
     dynamodb, 
     start_date, 
@@ -309,19 +302,25 @@ def createUpdatedAdGroupBids(data, campaignId, client):
   adGroup_info['campaignId'] = adGroup_info.shape[0]*[client.keywordAdderIds["campaignId"]["search"]];
   
   #extract only the columns you need per apple search ads requirement
-  adGroup_info = adGroup_info[['adGroupId',
-                               'campaignId',
-                               'adGroupName',
-                               'bid']]
+  adGroup_info = adGroup_info[
+    [
+      'adGroupId',
+      'campaignId',
+      'adGroupName',
+      'bid'
+      ]
+    ]
   
   #round the values by two
   adGroup_info = np.round(adGroup_info, decimals=2)
   
   #update column names per apple search ads requirement
-  adGroup_info.columns = ['id',
-                          'campaignId',
-                          'name',
-                          'defaultCPCBid']
+  adGroup_info.columns = [
+    'id',
+    'campaignId',
+    'name',
+    'defaultCPCBid'
+  ]
   
   #convert dataframe back to json file for updating
   adGroup_file_to_post = adGroup_info.to_json(orient = 'records')

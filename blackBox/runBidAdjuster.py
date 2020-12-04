@@ -239,13 +239,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
     low_cpa_keywords["new_bid"] = (low_cpa_keywords["bid"] * low_cpa_keywords["bid_multiplier_capped"]).round(2)
 
     # check if overall CPI is within bid threshold, if not, fix it. JF 05/31/2020 use CPI Lookback vs apple lookback
-    # total_cost_per_install = client.getTotalCostPerInstall(
-    #     dynamodb, 
-    #     start_date_cpi_lookback, 
-    #     end_date,
-    #     config.TOTAL_COST_PER_INSTALL_LOOKBACK
-    # )
-    # TODO pull campaign specific values for bid adjustments
+    # NOTE pull campaign specific values for bid adjustments
     total_cost_per_install = client.getTotalCostPerInstallForCampaign(
         dynamodb, 
         start_date_cpi_lookback, 
