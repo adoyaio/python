@@ -126,122 +126,102 @@ def process():
         try:
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]
-            run_branch = True
         except KeyError as error:
             logger.info("runBranchIntegration:::no branch config skipping" + str(client.orgId))
-            run_branch = False
+            continue
 
-        if run_branch:
-            for data_source in config.DATA_SOURCES.keys():
+        for data_source in config.DATA_SOURCES.keys():    
+            data_source_key = data_source[:-1] + "_key" # key field of db table, slice off the last character
+            branch_job = config.DATA_SOURCES.get(data_source)
+            table = dynamodb.Table(data_source)
+            if not table:
+                logger.info("runBranchIntegration:process:::issue connecting to:::" + data_source)
+                continue
+            
+            logger.info("runBranchIntegration:::found table!" + data_source)
+            branch_job_aggregations = config.AGGREGATIONS[branch_job]
+            for aggregation in branch_job_aggregations:
+                response = getKeywordReportFromBranch(
+                    client,
+                    branch_job, 
+                    branch_key, 
+                    branch_secret, 
+                    aggregation
+                )
                 
-                # key field of db table (slice off the last character)
-                data_source_key = data_source[:-1] + "_key"
-                branch_job = config.DATA_SOURCES.get(data_source)
-                table = dynamodb.Table(data_source)
-
-                if not table:
-                    logger.info("runBranchIntegration:process:::issue connecting to:::" + data_source)
+                if not response:
+                    logger.info("runBranchIntegration:process:::no results from:::" + branch_job)
                     continue
-                
-                logger.info("runBranchIntegration:::found table!" + data_source)
-                branch_job_aggregations = config.AGGREGATIONS[branch_job]
-
-                for aggregation in branch_job_aggregations:
-                    response = getKeywordReportFromBranch(
-                        client,
-                        branch_job, 
-                        branch_key, 
-                        branch_secret, 
-                        aggregation
-                    )
-                    
-                    if not response:
-                        logger.info("runBranchIntegration:process:::no results from:::" + branch_job)
+                data = { aggregation: response }
+                results = data[aggregation]['results']
+                for result in results:
+                    if not 'last_attributed_touch_data_tilde_campaign' in result["result"]:
+                        logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
                         continue
-
-                    data = { aggregation: response }
-                    results = data[aggregation]['results']
-                    for result in results:
-                        if not 'last_attributed_touch_data_tilde_campaign' in result["result"]:
-                            logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
-                            continue
-                        
-                        if aggregation != "revenue":
-                            logger.debug(branch_job + ":::handle unique_count")
-                            timestamp = result["timestamp"].split('T')[0]
-                            campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
-                            campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-                            ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                            # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
-                            count = str(result["result"]["unique_count"])
-
-                            # event_key === campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
-                            if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
-                                keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                                event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
-                            else:
-                                keyword = "n/a"
-                                event_key = campaign_id + dashG + ad_set_id
-
-                            try:
-                                response = table.put_item(
-                                    Item={
-                                        data_source_key: event_key,
-                                        'timestamp': timestamp,
-                                        'campaign': campaign,
-                                        'campaign_id': campaign_id,
-                                        'keyword': keyword,
-                                        'ad_set_id': ad_set_id,
-                                        # 'ad_set_name': ad_set_name,
-                                        'count': count,
-                                        'org_id': str(client.orgId)
-                                    }
-                                )
-                            except ClientError as e:
-                                logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
-                            else:
-                                logger.debug("runBranchIntegration:process:::PutItem succeeded:")
-
+                    
+                    if aggregation != "revenue":
+                        logger.debug(branch_job + ":::handle unique_count")
+                        timestamp = result["timestamp"].split('T')[0]
+                        campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+                        campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+                        ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+                        # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                        count = str(result["result"]["unique_count"])
+                        # event_key === campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
+                        if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
+                            keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+                            event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
                         else:
-                            # NOTE currently revenue must run after count
-                            logger.debug(branch_job + ":::handle revenue aggregation")
-                            timestamp = result["timestamp"].split('T')[0]
-                            campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
-                            campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-                            ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                            # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
-                            revenue = decimal.Decimal(result["result"]["revenue"])
-
-                            if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
-                                keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                                event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
-                            else:
-                                event_key = campaign_id + dashG + ad_set_id
-
-                            # enable for local debugging
-                            # dprint("timestamp=%s." % timestamp)
-                            # dprint("campaign=%s." % campaign)
-                            # dprint("keyword=%s." % keyword)
-                            # dprint("revenue=%d." % revenue)
-                            # dprint("campaign_id=%s." % campaign_id)
-                            # dprint("branch_commerce_event_key=%s." % event_key)
-
-                            try:
-                                response = table.update_item(
-                                    Key={
-                                        data_source_key: event_key,
-                                        'timestamp': timestamp,
-                                    },
-                                    UpdateExpression='SET revenue = :val',
-                                    ExpressionAttributeValues={
-                                        ':val': revenue
-                                    }
-                                )
-                            except ClientError as e:
-                                logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
-                                print(json.dumps(response, indent=4, cls=DecimalEncoder))
-                            else:
-                                logger.debug("runBranchIntegration:process:::PutItem succeeded")
+                            keyword = "n/a"
+                            event_key = campaign_id + dashG + ad_set_id
+                        try:
+                            response = table.put_item(
+                                Item={
+                                    data_source_key: event_key,
+                                    'timestamp': timestamp,
+                                    'campaign': campaign,
+                                    'campaign_id': campaign_id,
+                                    'keyword': keyword,
+                                    'ad_set_id': ad_set_id,
+                                    # 'ad_set_name': ad_set_name,
+                                    'count': count,
+                                    'org_id': str(client.orgId)
+                                }
+                            )
+                        except ClientError as e:
+                            logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                        else:
+                            logger.debug("runBranchIntegration:process:::PutItem succeeded:")
+                    else:
+                        # NOTE currently revenue must run after count
+                        logger.debug(branch_job + ":::handle revenue aggregation")
+                        timestamp = result["timestamp"].split('T')[0]
+                        campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+                        campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+                        ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+                        # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                        revenue = decimal.Decimal(result["result"]["revenue"])
+                        if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
+                            keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+                            event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
+                        else:
+                            event_key = campaign_id + dashG + ad_set_id
+                        try:
+                            response = table.update_item(
+                                Key={
+                                    data_source_key: event_key,
+                                    'timestamp': timestamp,
+                                },
+                                UpdateExpression='SET revenue = :val',
+                                ExpressionAttributeValues={
+                                    ':val': revenue
+                                }
+                            )
+                        except ClientError as e:
+                            logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                            print(json.dumps(response, indent=4, cls=DecimalEncoder))
+                        else:
+                            logger.debug("runBranchIntegration:process:::PutItem succeeded")
                     
 
 @debug

@@ -58,7 +58,7 @@ def process():
     for client in clientsG:
         print("Print CPI history for: " + str(client.clientName))
         print(client.orgId)
-        #history = client.getHistory(dynamodb);
+        #history = client.getYearOfHistory(dynamodb);
         #dprint("%s" % pprint.pformat(history))
         start_date = "2020-06-12"
         end_date = "2020-06-10"

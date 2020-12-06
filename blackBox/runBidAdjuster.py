@@ -178,8 +178,14 @@ def createUpdatedKeywordBids(data, campaignId, client):
         ]
     ]
 
-    dprint("ex_keyword_info=%s." % str(ex_keyword_info))
+    dprint("ex_keyword_info=%s." % str(ex_keyword_info))  
     BP = client.bidParameters
+
+    # check if branch integration is enabled, if so only update bids on keywords with installs < min_apple_installs
+    branch_bid_adjuster_enabled = client.branchIntegrationParameters.get("branch_bid_adjuster_enabled", False)
+
+    if branch_bid_adjuster_enabled:
+        ex_keyword_info = ex_keyword_info[ex_keyword_info["installs"] < (client.branchBidParameters["min_apple_installs"])]
 
     # first convert avg cpa to float so you can perform calculations
     ex_keyword_info["avgCPA"] = ex_keyword_info["avgCPA"].astype(float)

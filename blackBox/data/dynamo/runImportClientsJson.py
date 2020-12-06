@@ -10,7 +10,6 @@ import boto3
 # UNCOMMENT FOR LOCAL
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
 
-
 table = dynamodb.Table('clients')
 
  # LOAD SAMPLE DATA json
