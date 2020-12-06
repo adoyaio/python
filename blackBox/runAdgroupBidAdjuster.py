@@ -16,13 +16,16 @@ from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 
 BIDDING_LOOKBACK = 14
-
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
 start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
+
+# cpi history kookback seperate from apple lookback
+start_date_delta_cpi_lookback = datetime.timedelta(config.TOTAL_COST_PER_INSTALL_LOOKBACK)
+start_date_cpi_lookback = today - start_date_delta_cpi_lookback
 
 # FOR QA PURPOSES set these fields explicitly
 #start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
@@ -177,19 +180,7 @@ def getAdgroupReportFromApple(client):
 
   return json.loads(response.text)
 
-  # if response.status_code != 200:
-  #   email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
-  #   date = time.strftime("%m/%d/%Y")
-  #   subject ="%s - %d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, client.clientName)
-  #   logger.warn(email)
-  #   logger.error(subject)
-  #   if sendG:
-  #     EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
-  
-  # return json.loads(response.text) 
-
-
-def createUpdatedAdGroupBids(data, client):
+def createUpdatedAdGroupBids(data, campaignId, client):
   rows = data["data"]["reportingDataResponse"]["row"]
   
   if len(rows) == 0:
@@ -286,14 +277,16 @@ def createUpdatedAdGroupBids(data, client):
                                     adGroup_info.bid * ABP["STALE_RAISE_BID_BOOST"],
                                     adGroup_info.bid * 1]
 
-  #check if overall CPI is within bid threshold, if it is, do not decrease bids 
-  total_cost_per_install = client.getTotalCostPerInstall(
+  # check if overall CPI is within bid threshold, if it is, do not decrease bids 
+  # NOTE pull campaign specific values for bid adjustments
+  total_cost_per_install = client.getTotalCostPerInstallForCampaign(
     dynamodb, 
     start_date, 
-    end_date,                                                   
-    config.TOTAL_COST_PER_INSTALL_LOOKBACK
+    end_date,
+    config.TOTAL_COST_PER_INSTALL_LOOKBACK,
+    campaignId
   )
-  dprint("runAdgroupBidAdjuster:total cpi %s" % str(total_cost_per_install))
+  dprint("runAdgroupBidAdjuster:::total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
                  if total_cost_per_install <= ABP["HIGH_CPI_BID_DECREASE_THRESH"] \
@@ -309,19 +302,25 @@ def createUpdatedAdGroupBids(data, client):
   adGroup_info['campaignId'] = adGroup_info.shape[0]*[client.keywordAdderIds["campaignId"]["search"]];
   
   #extract only the columns you need per apple search ads requirement
-  adGroup_info = adGroup_info[['adGroupId',
-                               'campaignId',
-                               'adGroupName',
-                               'bid']]
+  adGroup_info = adGroup_info[
+    [
+      'adGroupId',
+      'campaignId',
+      'adGroupName',
+      'bid'
+      ]
+    ]
   
   #round the values by two
   adGroup_info = np.round(adGroup_info, decimals=2)
   
   #update column names per apple search ads requirement
-  adGroup_info.columns = ['id',
-                          'campaignId',
-                          'name',
-                          'defaultCPCBid']
+  adGroup_info.columns = [
+    'id',
+    'campaignId',
+    'name',
+    'defaultCPCBid'
+  ]
   
   #convert dataframe back to json file for updating
   adGroup_file_to_post = adGroup_info.to_json(orient = 'records')
@@ -434,7 +433,7 @@ def process():
         logger.info("runAdgroupBidAdjuster:process:::no results from api:::")
         continue
 
-      stuff = createUpdatedAdGroupBids(data, client)
+      stuff = createUpdatedAdGroupBids(data, campaignId, client)
       if type(stuff) != bool:
         updatedBids, numberOfBids = stuff
         logger.info("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))

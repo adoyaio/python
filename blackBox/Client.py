@@ -126,61 +126,94 @@ class Client:
     def currency(self):
         return self._currency
 
+    # bid adjusters should use this method for cpi
+    def calculateCPI(self, spend, installs):
+        if int(installs) > 0:
+            spend = "%s" % round(spend, 2)
+            cpi = "%.2f" % round(float(spend) / float(installs), 2)
+        else:
+            spend = "%.2f" % 0
+            cpi = "%.2f" % 0
+
+        return cpi
+
+    # and this for branch metrics
+    def calculateBranchMetrics(self, spend, purchases, revenue):
+        if int(purchases) > 0 and float(spend) > 0:   
+            cpp = "%.2f" % round(float(spend) / float(purchases), 2)
+        else:
+            cpp = "%.2f" % 0
+
+        if float(revenue) > 0 and float(spend) > 0:
+            revenueOverCost = "%.2f" % round(float(revenue) / float(spend), 2)
+            revenue = "%.2f" % round(revenue, 2)
+        else:    
+            revenueOverCost = "%.2f" % 0
+            revenue = "%.2f" % 0
+
+        return revenue, cpp, revenueOverCost
 
     # bid adjusters should use Client for CRUD operations against db
-    def addRowToHistory(self, stuff, dynamoResource, end_date):
-        print("Client:::addRowToHistory:::stuff:::" + str(stuff))
-        self.addRowToCpiHistory(stuff, dynamoResource, end_date)
-        self.addRowToCpiBranchHistory(stuff, dynamoResource, end_date)
+    def addRowToHistory(self, rowOfHistory, dynamoResource, end_date):
+        self.addRowToCpiHistory(rowOfHistory, dynamoResource, end_date)
+        self.addRowToCpiBranchHistory(rowOfHistory, dynamoResource, end_date)
 
-    def addRowToCpiHistory(self, stuff, dynamoResource, end_date):
+    def addRowToCpiHistory(self, rowOfHistory, dynamoResource, end_date):
         table = dynamoResource.Table('cpi_history')
-        timestamp = str(end_date) # write to history table with yesterday timestamp
-        spend = stuff[1]
-        installs = int(stuff[2])
-        cpi = stuff[3]
+        
         org_id = str(self.orgId)  # TODO JF revisit when org_id is string
-        print("Adding cpi_history line:", timestamp, spend, installs, cpi, org_id)
-        table.put_item(
-            Item={
-                'timestamp': timestamp,
-                'spend': spend,
-                'installs': installs,
-                'cpi': cpi,
-                'org_id': org_id
-            }
-        )
-
-    def addRowToCpiBranchHistory(self, stuff, dynamoResource, end_date):
-        table = dynamoResource.Table('cpi_branch_history')
-
-        # write to history table with yesterday timestamp
-        timestamp = str(end_date)
-        spend = stuff[1]
-        installs = int(stuff[2])
-        cpi = stuff[3]
-        org_id = str(self.orgId) # TODO JF revisit when org_id is string
-        purchases = int(stuff[4])
-        revenue = stuff[5]
-        cpp = stuff[6]
-        revenueOverCost = stuff[7]
-        print("Adding cpi_branch_history line:", timestamp, spend, installs, cpi, org_id, purchases, revenue, cpp, revenueOverCost)
+        timestamp = str(end_date) # write to history table with yesterday timestamp
+        
         table.put_item(
             Item={
                 'org_id': org_id,
                 'timestamp': timestamp,
-                'spend': spend,
-                'installs': installs,
-                'cpi': cpi,
-                'purchases': purchases,
-                'revenue': revenue,
-                'cpp': cpp,
-                'revenueOverCost': revenueOverCost
+                'spend': rowOfHistory.get("spend"),
+                'spend_exact': rowOfHistory.get("spend_exact"),
+                'spend_search': rowOfHistory.get("spend_search"),
+                'spend_broad': rowOfHistory.get("spend_broad"),
+                'installs': rowOfHistory.get("installs"),
+                'installs_exact': rowOfHistory.get("installs_exact"),
+                'installs_search': rowOfHistory.get("installs_search"),
+                'installs_broad': rowOfHistory.get("installs_broad"),
+                'cpi': rowOfHistory.get("cpi"),
+                'cpi_exact': rowOfHistory.get("cpi_exact"),
+                'cpi_broad': rowOfHistory.get("cpi_broad"),
+                'cpi_search': rowOfHistory.get("cpi_search")
+            }
+        )
+
+    def addRowToCpiBranchHistory(self, rowOfHistory, dynamoResource, end_date):
+        table = dynamoResource.Table('cpi_branch_history')
+       
+        org_id = str(self.orgId) # NOTE revisit when org_id is string
+        timestamp = str(end_date) # write to history table with yesterday timestamp
+
+        table.put_item(
+            Item={
+                'org_id': org_id,
+                'timestamp': timestamp,
+                'spend': rowOfHistory.get("spend"),
+                'spend_exact': rowOfHistory.get("spend_exact"),
+                'spend_search': rowOfHistory.get("spend_search"),
+                'spend_broad': rowOfHistory.get("spend_broad"),
+                'installs': rowOfHistory.get("installs"),
+                'installs_exact': rowOfHistory.get("installs_exact"),
+                'installs_search': rowOfHistory.get("installs_search"),
+                'installs_broad': rowOfHistory.get("installs_broad"),
+                'cpi': rowOfHistory.get("cpi"),
+                'cpi_exact': rowOfHistory.get("cpi_exact"),
+                'cpi_broad': rowOfHistory.get("cpi_broad"),
+                'cpi_search': rowOfHistory.get("cpi_search"),
+                'purchases': rowOfHistory.get("purchases"),
+                'revenue': rowOfHistory.get("revenue"),
+                'cpp': rowOfHistory.get("cpp"),
+                'revenueOverCost': rowOfHistory.get("revenueOverCost")
             }
         )
 
     # gets all cpi history lines for a year
-    def getHistory(self, dynamoResource):
+    def getYearOfHistory(self, dynamoResource):
         today = datetime.date.today()
         end_date_delta = datetime.timedelta(days=1)
         start_date_delta = datetime.timedelta(ONE_YEAR_IN_DAYS)
@@ -195,10 +228,9 @@ class Client:
 
 
     # gets total cost per install for the lookback period
+    # NOTE currently unused, bid adjusters use getTotalCostPerInstallForCampaign
     def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
         table = dynamoResource.Table('cpi_history')
-
-        # TODO query by campaign
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
@@ -214,15 +246,51 @@ class Client:
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        # TODO uncomment when CPI is calculated on a per campaign basis
-        print("getTotalCostPerInstall:::using::" + str(total_cost_per_install))
-        # if len(response['Items']) >= daysToLookBack:
-        #     totalCost, totalInstalls = 0.0, 0
-        #     for i in response[u'Items']:
-        #         totalCost += float(i['spend'])
-        #         totalInstalls += int(i['installs'])
-        #         if totalCost > 0 and totalInstalls > 0:
-        #             total_cost_per_install = totalCost / totalInstalls
+        if len(response['Items']) >= daysToLookBack:
+            totalCost, totalInstalls = 0.0, 0
+            for i in response[u'Items']:
+                totalCost += float(i['spend'])
+                totalInstalls += int(i['installs'])
+                if totalCost > 0 and totalInstalls > 0:
+                    total_cost_per_install = totalCost / totalInstalls
+        return total_cost_per_install
+
+
+    # gets total cost per install for the lookback period
+    def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
+        table = dynamoResource.Table('cpi_history')
+
+        response = table.query(
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
+            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+        )
+        # default high so bid decreases arent done, until average is being computed from a long enough lookback period
+        total_cost_per_install = 999999
+
+        print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
+        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime(
+            '%Y-%m-%d'))
+        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime(
+            '%Y-%m-%d'))
+        print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
+        print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
+        
+        # grab specific campaign metrics
+        campaign_keys = list(self.keywordAdderIds["campaignId"].keys())
+        campaign_vals = list(self.keywordAdderIds["campaignId"].values())
+
+        campaign_name = campaign_keys[campaign_vals.index(campaign_id)]
+
+        installs_lookup_key = "installs_" + campaign_name 
+        spend_lookup_key = "spend_" + campaign_name
+
+        if len(response['Items']) >= daysToLookBack:
+            totalCost, totalInstalls = 0.0, 0
+            for i in response[u'Items']:
+                totalCost += float(i.get(spend_lookup_key,0.0))
+                totalInstalls += int(i.get(installs_lookup_key,0))
+                if totalCost > 0 and totalInstalls > 0:
+                    total_cost_per_install = totalCost / totalInstalls
         return total_cost_per_install
 
     # gets total number of branch commerce events for lookback period
