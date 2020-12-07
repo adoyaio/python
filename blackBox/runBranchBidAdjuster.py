@@ -212,6 +212,7 @@ def process():
         keyword_status = "ACTIVE"
         adgroup_deleted = "False"
 
+        # TODO update to use branch_bid_adjuster_enabled
         try:
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]
