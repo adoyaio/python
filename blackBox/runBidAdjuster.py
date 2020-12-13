@@ -244,7 +244,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
     # raise bids for low cpi keywords using new bid multiplier cap
     low_cpa_keywords["new_bid"] = (low_cpa_keywords["bid"] * low_cpa_keywords["bid_multiplier_capped"]).round(2)
 
-    # check if overall CPI is within bid threshold, if not, fix it. JF 05/31/2020 use CPI Lookback vs apple lookback
+    # check if overall CPI is within bid threshold, if not, fix it. 
     # NOTE pull campaign specific values for bid adjustments
     total_cost_per_install = client.getTotalCostPerInstallForCampaign(
         dynamodb, 
@@ -359,12 +359,11 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
             subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
             logger.warn(email)
             logger.error(subject)
-            if sendG:
-                EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
         
         print("The result of sending the update to Apple: %s" % response)   
                    
-    return sendG
+    return True
 
 def createEmailBody(data, sent):
     # Take data like this and pretty print
