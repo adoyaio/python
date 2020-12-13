@@ -239,10 +239,8 @@ class Client:
         total_cost_per_install = 999999
 
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
-        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime(
-            '%Y-%m-%d'))
-        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime(
-            '%Y-%m-%d'))
+        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
+        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
@@ -268,10 +266,8 @@ class Client:
         total_cost_per_install = 999999
 
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
-        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime(
-            '%Y-%m-%d'))
-        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime(
-            '%Y-%m-%d'))
+        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
+        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
