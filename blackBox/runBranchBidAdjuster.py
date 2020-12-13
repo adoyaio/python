@@ -73,7 +73,8 @@ def return_active_keywords_dataFrame(
 
 def return_cost_per_purchase_optimized_bid(
     active_keywords_dataFrame, 
-    branch_min_bid, 
+    branch_min_bid,
+    branch_max_bid, 
     branch_bid_adjustment,
     cost_per_purchase_threshold, 
     cost_per_purchase_threshold_buffer
@@ -103,14 +104,17 @@ def return_cost_per_purchase_optimized_bid(
             active_keywords_dataFrame["cost_per_purchase"] >= upper_cost_per_purchase_threshold), "adjusted_bid"] = \
         active_keywords_dataFrame["bid"] * (1 - branch_bid_adjustment)
 
-    active_keywords_dataFrame.loc[
-        active_keywords_dataFrame["adjusted_bid"] < branch_min_bid, "adjusted_bid"] = branch_min_bid
+    active_keywords_dataFrame.loc[active_keywords_dataFrame["adjusted_bid"] < branch_min_bid, "adjusted_bid"] = branch_min_bid
+    active_keywords_dataFrame.loc[active_keywords_dataFrame["adjusted_bid"] > branch_max_bid, "adjusted_bid"] = branch_max_bid
+
+    
     return active_keywords_dataFrame[(active_keywords_dataFrame["adjusted_bid"] != active_keywords_dataFrame["bid"])]
 
 
 def return_revenue_over_ad_spend_optimized_bid(
     active_keywords_dataFrame, 
-    branch_min_bid, 
+    branch_min_bid,
+    branch_max_bid, 
     branch_bid_adjustment,
     revenue_over_ad_spend_threshold, 
     revenue_over_ad_spend_threshold_buffer
@@ -133,15 +137,17 @@ def return_revenue_over_ad_spend_optimized_bid(
         active_keywords_dataFrame["revenue_over_ad_spend"] >= upper_revenue_over_ad_spend_threshold, "adjusted_bid"] = \
         active_keywords_dataFrame["bid"] * (1 + branch_bid_adjustment)
 
-    active_keywords_dataFrame.loc[
-        active_keywords_dataFrame["adjusted_bid"] < branch_min_bid, "adjusted_bid"] = branch_min_bid
+    active_keywords_dataFrame.loc[active_keywords_dataFrame["adjusted_bid"] < branch_min_bid, "adjusted_bid"] = branch_min_bid
+    active_keywords_dataFrame.loc[active_keywords_dataFrame["adjusted_bid"] > branch_max_bid, "adjusted_bid"] = branch_max_bid
+
     return active_keywords_dataFrame[(active_keywords_dataFrame["adjusted_bid"] != active_keywords_dataFrame["bid"])]
 
 
 def return_adjusted_bids(
     branch_optimization_goal, 
     active_keywords_dataFrame, 
-    branch_min_bid, 
+    branch_min_bid,
+    branch_max_bid, 
     branch_bid_adjustment,
     cost_per_purchase_threshold, 
     cost_per_purchase_threshold_buffer,
@@ -152,7 +158,8 @@ def return_adjusted_bids(
         print("Optimizing Cost Per Purchase")
         return return_cost_per_purchase_optimized_bid(
             active_keywords_dataFrame, 
-            branch_min_bid, 
+            branch_min_bid,
+            branch_max_bid, 
             branch_bid_adjustment,
             cost_per_purchase_threshold, 
             cost_per_purchase_threshold_buffer
@@ -162,6 +169,7 @@ def return_adjusted_bids(
         return return_revenue_over_ad_spend_optimized_bid(
             active_keywords_dataFrame, 
             branch_min_bid,
+            branch_max_bid,
             branch_bid_adjustment, 
             revenue_over_ad_spend_threshold,
             revenue_over_ad_spend_threshold_buffer
@@ -212,16 +220,7 @@ def process():
         keyword_status = "ACTIVE"
         adgroup_deleted = "False"
 
-        # TODO update to use branch_bid_adjuster_enabled
-        try:
-            branch_key = client.branchIntegrationParameters["branch_key"]
-            branch_secret = client.branchIntegrationParameters["branch_secret"]
-            run_branch = True
-        except KeyError as error:
-            logger.info("runBranchIntegration.process:::no branch config skipping!" + str(client.orgId))
-            run_branch = False
-
-        if not run_branch:
+        if not client.branchIntegrationParameters.get("branch_bid_adjuster_enabled",False):
             continue
 
         adgroup_keys = client.keywordAdderIds["adGroupId"].keys()
@@ -316,6 +315,7 @@ def process():
             print("There were keywords that met the initial filtering criteria")
             branch_optimization_goal = BBP["branch_optimization_goal"]
             branch_min_bid = BBP["branch_min_bid"]
+            branch_max_bid = BBP["branch_max_bid"]
             branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
             cost_per_purchase_threshold = BBP["cost_per_purchase_threshold"]
             cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
@@ -326,6 +326,7 @@ def process():
                 branch_optimization_goal,
                 active_keywords,
                 branch_min_bid,
+                branch_max_bid,
                 branch_bid_adjustment,
                 cost_per_purchase_threshold,
                 cost_per_purchase_threshold_buffer,

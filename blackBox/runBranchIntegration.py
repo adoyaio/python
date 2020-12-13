@@ -121,8 +121,6 @@ def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, ag
 @debug
 def process():
     for client in clientsG:
-        branch_key = {}
-        branch_secret = {}
         try:
             branch_key = client.branchIntegrationParameters["branch_key"]
             branch_secret = client.branchIntegrationParameters["branch_secret"]
