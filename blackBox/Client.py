@@ -172,14 +172,17 @@ class Client:
                 'spend_exact': rowOfHistory.get("spend_exact"),
                 'spend_search': rowOfHistory.get("spend_search"),
                 'spend_broad': rowOfHistory.get("spend_broad"),
+                'spend_brand': rowOfHistory.get("spend_brand"),
                 'installs': rowOfHistory.get("installs"),
                 'installs_exact': rowOfHistory.get("installs_exact"),
                 'installs_search': rowOfHistory.get("installs_search"),
                 'installs_broad': rowOfHistory.get("installs_broad"),
+                'installs_brand': rowOfHistory.get("installs_brand"),
                 'cpi': rowOfHistory.get("cpi"),
                 'cpi_exact': rowOfHistory.get("cpi_exact"),
                 'cpi_broad': rowOfHistory.get("cpi_broad"),
-                'cpi_search': rowOfHistory.get("cpi_search")
+                'cpi_search': rowOfHistory.get("cpi_search"),
+                'cpi_brand': rowOfHistory.get("cpi_brand")
             }
         )
 
@@ -197,14 +200,17 @@ class Client:
                 'spend_exact': rowOfHistory.get("spend_exact"),
                 'spend_search': rowOfHistory.get("spend_search"),
                 'spend_broad': rowOfHistory.get("spend_broad"),
+                'spend_brand': rowOfHistory.get("spend_brand"),
                 'installs': rowOfHistory.get("installs"),
                 'installs_exact': rowOfHistory.get("installs_exact"),
                 'installs_search': rowOfHistory.get("installs_search"),
                 'installs_broad': rowOfHistory.get("installs_broad"),
+                'installs_brand': rowOfHistory.get("installs_brand"),
                 'cpi': rowOfHistory.get("cpi"),
                 'cpi_exact': rowOfHistory.get("cpi_exact"),
                 'cpi_broad': rowOfHistory.get("cpi_broad"),
                 'cpi_search': rowOfHistory.get("cpi_search"),
+                'cpi_brand': rowOfHistory.get("cpi_brand"),
                 'purchases': rowOfHistory.get("purchases"),
                 'revenue': rowOfHistory.get("revenue"),
                 'cpp': rowOfHistory.get("cpp"),
