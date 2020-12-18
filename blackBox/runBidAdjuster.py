@@ -111,15 +111,20 @@ def getKeywordReportFromApple(client, campaignId):
 
     return json.loads(response.text)
    
-
-def createUpdatedKeywordBids(data, campaignId, client):
-    rows = data["data"]["reportingDataResponse"]["row"]
-    
+def createUpdatedKeywordBids(data, campaignId, campaignName, client):
+    rows = data["data"]["reportingDataResponse"]["row"] 
     if len(rows) == 0:
         return False
 
+    # handle campaign specific params
+    # TODO export this logic to a utility
+    BP = client.bidParameters
+    HIGH_CPI_BID_DECREASE_THRESH_KEY = "HIGH_CPI_BID_DECREASE_THRESH_" + campaignName.upper()
+    HIGH_CPI_BID_DECREASE_THRESH = BP.get(HIGH_CPI_BID_DECREASE_THRESH_KEY)
+
     keyword_info = defaultdict(list)
     summaryReportInfo = {}
+
     for row in rows:
         metadata = row["metadata"]
         summaryReportInfo[metadata["keywordId"]] = {
@@ -179,7 +184,6 @@ def createUpdatedKeywordBids(data, campaignId, client):
     ]
 
     dprint("ex_keyword_info=%s." % str(ex_keyword_info))  
-    BP = client.bidParameters
 
     # check if branch integration is enabled, if so only update bids on keywords with installs < min_apple_installs
     branch_bid_adjuster_enabled = client.branchIntegrationParameters.get("branch_bid_adjuster_enabled", False)
@@ -192,7 +196,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
     ex_keyword_info["bid"] = ex_keyword_info["bid"].astype(float)
 
     # calculate bid multiplier and create a new column
-    ex_keyword_info["bid_multiplier"] = BP["HIGH_CPI_BID_DECREASE_THRESH"] / ex_keyword_info["avgCPA"]
+    ex_keyword_info["bid_multiplier"] = HIGH_CPI_BID_DECREASE_THRESH / ex_keyword_info["avgCPA"]
 
     # cap bid multiplier
     if BP["OBJECTIVE"] == "aggressive":
@@ -207,14 +211,14 @@ def createUpdatedKeywordBids(data, campaignId, client):
 
     # create upper bid cap tied to target cost per install.
     if BP["OBJECTIVE"] == "aggressive":
-        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 1.20
+        bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 1.20
     elif BP["OBJECTIVE"] == "standard":
-        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 1
+        bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 1
     elif BP["OBJECTIVE"] == "conservative":
-        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 0.80
+        bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 0.80
     else:
         print("no objective selected default to standard")
-        bidCap_targetCPI = BP["HIGH_CPI_BID_DECREASE_THRESH"] * 1
+        bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 1
 
     # subset keywords for stale raises
     stale_raise_kws = ex_keyword_info[ex_keyword_info["taps"] < BP["TAP_THRESHOLD"]]
@@ -222,14 +226,14 @@ def createUpdatedKeywordBids(data, campaignId, client):
     # subset keywords for bid increase
     low_cpa_keywords = ex_keyword_info[
         (ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-        (ex_keyword_info["avgCPA"] <= BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+        (ex_keyword_info["avgCPA"] <= HIGH_CPI_BID_DECREASE_THRESH) & \
         (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])
     ]
 
     # subset keywords for bid decrease
     high_cpa_keywords = ex_keyword_info[
         (ex_keyword_info["taps"] >= BP["TAP_THRESHOLD"]) & \
-        (ex_keyword_info["avgCPA"] > BP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+        (ex_keyword_info["avgCPA"] > HIGH_CPI_BID_DECREASE_THRESH) & \
         (ex_keyword_info["installs"] > BP["NO_INSTALL_BID_DECREASE_THRESH"])
     ]
 
@@ -256,7 +260,7 @@ def createUpdatedKeywordBids(data, campaignId, client):
     dprint("runBidAdjuster;::total cpi %s" % str(total_cost_per_install))
 
     # if cpi is below threshold, only do increases
-    if total_cost_per_install > BP["HIGH_CPI_BID_DECREASE_THRESH"]:
+    if total_cost_per_install > HIGH_CPI_BID_DECREASE_THRESH:
         high_cpa_keywords["new_bid"] = (
             high_cpa_keywords["bid"] * high_cpa_keywords["bid_multiplier_capped"]).round(2)
         no_install_keywords["new_bid"] = (no_install_keywords["bid"] * BP["HIGH_CPA_BID_DECREASE"]).round(2)
@@ -418,6 +422,7 @@ def process():
     for client in clientsG:
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
         campaignIds = client.campaignIds
+
         for campaignId in campaignIds:
             sent = False
             data = getKeywordReportFromApple(client, campaignId)
@@ -425,7 +430,12 @@ def process():
                 logger.info("runBidAdjuster:process:::no results from api:::")
                 continue
 
-            stuff = createUpdatedKeywordBids(data, campaignId, client)
+            # pass in campaign name so campaign specific params can be used
+            campaignKeys = list(client.keywordAdderIds["campaignId"].keys())
+            campaignVals = list(client.keywordAdderIds["campaignId"].values())
+            campaignName = campaignKeys[campaignVals.index(campaignId)]
+            
+            stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName), client)
             if type(stuff) != bool:
                 keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
                 sent = sendUpdatedBidsToApple(client, keywordFileToPost)
