@@ -278,6 +278,22 @@ def process():
             campaignVals = list(client.keywordAdderIds["campaignId"].values())
             campaignName = campaignKeys[campaignVals.index(campaignId)]
 
+            # common params
+            BBP = client.branchBidParameters
+            min_apple_installs = BBP["min_apple_installs"]
+            branch_optimization_goal = BBP["branch_optimization_goal"]
+            branch_min_bid = BBP["branch_min_bid"]
+            branch_max_bid = BBP["branch_max_bid"]
+            branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
+            cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
+            revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
+
+            # campaign specific params
+            cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaignName
+            cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key, None)
+            revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaignName
+            revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
+
             # get apple data
             kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, adgroupId, start_date, end_date)
             print("querying with:::" + str(start_date) + " - " + str(end_date))
@@ -289,19 +305,9 @@ def process():
 
             # build dataframe
             rawDataDf = createDataFrame(kwResponse.get('Items'), campaignId, adgroupId)
-
-            # handle campaign specific params
-            # TODO export this logic to a utility
-            # BP = client.bidParameters
-            # HIGH_CPI_BID_DECREASE_THRESH_KEY = "HIGH_CPI_BID_DECREASE_THRESH_" + campaignName.upper()
-            # HIGH_CPI_BID_DECREASE_THRESH = BP.get(HIGH_CPI_BID_DECREASE_THRESH_KEY)
-            
-            BBP = client.branchBidParameters
-            min_apple_installs = BBP["min_apple_installs"]
-
             # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
-            # raw_data_df.to_csv(adgroup_id + ".csv")
+            # rawDataDf.to_csv(adgroup_id + ".csv")
             # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
                
             if rawDataDf.empty:
@@ -320,20 +326,6 @@ def process():
                 continue
 
             print("There were keywords that met the initial filtering criteria")
-
-            # params that are common across campaigns
-            branch_optimization_goal = BBP["branch_optimization_goal"]
-            branch_min_bid = BBP["branch_min_bid"]
-            branch_max_bid = BBP["branch_max_bid"]
-            branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
-            cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
-            revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
-
-            # handle campaign specific params
-            cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaignName
-            cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key)
-            revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaignName
-            revenue_over_ad_spend_threshold = BBP[revenue_over_ad_spend_threshold_key]
 
             adjustedBids = returnAdjustedBids(
                 branch_optimization_goal,
