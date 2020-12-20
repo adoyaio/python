@@ -430,7 +430,7 @@ def process():
                 logger.info("runBidAdjuster:process:::no results from api:::")
                 continue
 
-            # pass in campaign name so campaign specific params can be used
+            # grab campaign name for campaign specific params
             campaignKeys = list(client.keywordAdderIds["campaignId"].keys())
             campaignVals = list(client.keywordAdderIds["campaignId"].values())
             campaignName = campaignKeys[campaignVals.index(campaignId)]

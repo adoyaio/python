@@ -186,8 +186,8 @@ def createUpdatedAdGroupBids(data, campaignId, client):
   if len(rows) == 0:
     return False
 
-  # NOTE using bidParams vs adgroupBidParameters e.g ABP = client.adgroupBidParameters
-  ABP = client.bidParameters
+  # NOTE using adgroupBidParameters vs bidParameters e.g ABP = client.adgroupBidParameters
+  ABP = client.adgroupBidParameters
   dprint("Using adgroup bid parameters %s." % ABP)
 
   # compile data from json library and put into dataframe
@@ -439,8 +439,6 @@ def process():
         logger.info("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
         logger.info("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
         sent = sendUpdatedBidsToApple(client, updatedBids)
-        #if sent:
-          # TODO: Pull just the relevant field (defaultCPCBid?) from updatedBids, not the whole thing. --DS, 31-Dec-2018
         clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
         client.writeUpdatedAdgroupBids(dynamodb, numberOfBids)
 

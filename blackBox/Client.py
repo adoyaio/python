@@ -100,11 +100,19 @@ class Client:
 
     @property
     def adgroupBidParameters(self):
-        return dict(self._adgroupBidParameters)
+        return self._adgroupBidParameters
+
+    @adgroupBidParameters.setter
+    def adgroupBidParameters(self, adgroupBidParameters):
+        self._adgroupBidParameters = adgroupBidParameters
 
     @property
     def branchBidParameters(self):
         return dict(self._branchBidParameters)
+
+    @branchBidParameters.setter
+    def branchBidParameters(self, branchBidParameters):
+        self._branchBidParameters = branchBidParameters   
 
     @property
     def keywordAdderIds(self):
@@ -446,19 +454,19 @@ class Client:
         for client in CLIENTS:
             for bidParam in client.bidParameters:
                 if type(client.bidParameters[bidParam]) == str:
-                    client.bidParameters[bidParam] = client.bidParameters.get(bidParam)
+                    continue
                 else:
                     client.bidParameters[bidParam] = float(client.bidParameters.get(bidParam))
 
             for bidParam in client.adgroupBidParameters:
                 if type(client.adgroupBidParameters[bidParam]) == str:
-                    client.adgroupBidParameters[bidParam] = client.adgroupBidParameters.get(bidParam)
+                    continue
                 else:
                     client.adgroupBidParameters[bidParam] = float(client.adgroupBidParameters.get(bidParam))
 
             for bidParam in client.branchBidParameters:
                 if type(client.branchBidParameters[bidParam]) == str:
-                    client.branchBidParameters[bidParam] = client.branchBidParameters.get(bidParam)
+                    continue
                 else:
                     client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
 
