@@ -322,6 +322,11 @@ def sendEmailReport(client, dataForVariousTimes):
                 summary[someTime]["cpi_exact"] = client.calculateCPI(spend, installs)
                 summary[someTime]["installs_exact"] = installs
                 summary[someTime]["spend_exact"] = spend
+
+            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("brand"):
+                summary[someTime]["cpi_brand"] = client.calculateCPI(spend, installs)
+                summary[someTime]["installs_brand"] = installs
+                summary[someTime]["spend_brand"] = spend
        
         
         # calculate total cpi for timeperiod and put it on the summary object
@@ -367,19 +372,22 @@ def sendEmailReport(client, dataForVariousTimes):
     # cast to string where needed to avoid dynamo float/decimal issues
     rowOfHistory = {}
     rowOfHistory["spend"] = str(round(summary[ONE_DAY].get("spend"),2))
-    rowOfHistory["spend_exact"] = str(round(summary[ONE_DAY].get("spend_exact"),2))
-    rowOfHistory["spend_search"] = str(round(summary[ONE_DAY].get("spend_search"),2))
-    rowOfHistory["spend_broad"] = str(round(summary[ONE_DAY].get("spend_broad"),2))
+    rowOfHistory["spend_exact"] = str(round(summary[ONE_DAY].get("spend_exact",0),2))
+    rowOfHistory["spend_search"] = str(round(summary[ONE_DAY].get("spend_search",0),2))
+    rowOfHistory["spend_broad"] = str(round(summary[ONE_DAY].get("spend_broad",0),2))
+    rowOfHistory["spend_brand"] = str(round(summary[ONE_DAY].get("spend_brand",0),2))
 
     rowOfHistory["installs"] = summary[ONE_DAY].get("installs")
-    rowOfHistory["installs_exact"] = summary[ONE_DAY].get("installs_exact")
-    rowOfHistory["installs_search"] = summary[ONE_DAY].get("installs_search")
-    rowOfHistory["installs_broad"] = summary[ONE_DAY].get("installs_broad")
+    rowOfHistory["installs_exact"] = summary[ONE_DAY].get("installs_exact",0)
+    rowOfHistory["installs_search"] = summary[ONE_DAY].get("installs_search",0)
+    rowOfHistory["installs_broad"] = summary[ONE_DAY].get("installs_broad",0)
+    rowOfHistory["installs_brand"] = summary[ONE_DAY].get("installs_brand",0)
 
     rowOfHistory["cpi"] = str(summary[ONE_DAY].get("cpi"))
     rowOfHistory["cpi_exact"] = str(summary[ONE_DAY].get("cpi_exact", 0.00))
     rowOfHistory["cpi_broad"] = str(summary[ONE_DAY].get("cpi_broad", 0.00))
     rowOfHistory["cpi_search"] = str(summary[ONE_DAY].get("cpi_search", 0.00))
+    rowOfHistory["cpi_brand"] = str(summary[ONE_DAY].get("cpi_brand", 0.00))
 
     rowOfHistory["purchases"] = summary[ONE_DAY].get("purchases")
     rowOfHistory["revenue"] = str(summary[ONE_DAY].get("revenue"))

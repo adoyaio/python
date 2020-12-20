@@ -100,11 +100,19 @@ class Client:
 
     @property
     def adgroupBidParameters(self):
-        return dict(self._adgroupBidParameters)
+        return self._adgroupBidParameters
+
+    @adgroupBidParameters.setter
+    def adgroupBidParameters(self, adgroupBidParameters):
+        self._adgroupBidParameters = adgroupBidParameters
 
     @property
     def branchBidParameters(self):
         return dict(self._branchBidParameters)
+
+    @branchBidParameters.setter
+    def branchBidParameters(self, branchBidParameters):
+        self._branchBidParameters = branchBidParameters   
 
     @property
     def keywordAdderIds(self):
@@ -172,14 +180,17 @@ class Client:
                 'spend_exact': rowOfHistory.get("spend_exact"),
                 'spend_search': rowOfHistory.get("spend_search"),
                 'spend_broad': rowOfHistory.get("spend_broad"),
+                'spend_brand': rowOfHistory.get("spend_brand"),
                 'installs': rowOfHistory.get("installs"),
                 'installs_exact': rowOfHistory.get("installs_exact"),
                 'installs_search': rowOfHistory.get("installs_search"),
                 'installs_broad': rowOfHistory.get("installs_broad"),
+                'installs_brand': rowOfHistory.get("installs_brand"),
                 'cpi': rowOfHistory.get("cpi"),
                 'cpi_exact': rowOfHistory.get("cpi_exact"),
                 'cpi_broad': rowOfHistory.get("cpi_broad"),
-                'cpi_search': rowOfHistory.get("cpi_search")
+                'cpi_search': rowOfHistory.get("cpi_search"),
+                'cpi_brand': rowOfHistory.get("cpi_brand")
             }
         )
 
@@ -197,14 +208,17 @@ class Client:
                 'spend_exact': rowOfHistory.get("spend_exact"),
                 'spend_search': rowOfHistory.get("spend_search"),
                 'spend_broad': rowOfHistory.get("spend_broad"),
+                'spend_brand': rowOfHistory.get("spend_brand"),
                 'installs': rowOfHistory.get("installs"),
                 'installs_exact': rowOfHistory.get("installs_exact"),
                 'installs_search': rowOfHistory.get("installs_search"),
                 'installs_broad': rowOfHistory.get("installs_broad"),
+                'installs_brand': rowOfHistory.get("installs_brand"),
                 'cpi': rowOfHistory.get("cpi"),
                 'cpi_exact': rowOfHistory.get("cpi_exact"),
                 'cpi_broad': rowOfHistory.get("cpi_broad"),
                 'cpi_search': rowOfHistory.get("cpi_search"),
+                'cpi_brand': rowOfHistory.get("cpi_brand"),
                 'purchases': rowOfHistory.get("purchases"),
                 'revenue': rowOfHistory.get("revenue"),
                 'cpp': rowOfHistory.get("cpp"),
@@ -440,19 +454,19 @@ class Client:
         for client in CLIENTS:
             for bidParam in client.bidParameters:
                 if type(client.bidParameters[bidParam]) == str:
-                    client.bidParameters[bidParam] = client.bidParameters.get(bidParam)
+                    continue
                 else:
                     client.bidParameters[bidParam] = float(client.bidParameters.get(bidParam))
 
             for bidParam in client.adgroupBidParameters:
                 if type(client.adgroupBidParameters[bidParam]) == str:
-                    client.adgroupBidParameters[bidParam] = client.adgroupBidParameters.get(bidParam)
+                    continue
                 else:
                     client.adgroupBidParameters[bidParam] = float(client.adgroupBidParameters.get(bidParam))
 
             for bidParam in client.branchBidParameters:
                 if type(client.branchBidParameters[bidParam]) == str:
-                    client.branchBidParameters[bidParam] = client.branchBidParameters.get(bidParam)
+                    continue
                 else:
                     client.branchBidParameters[bidParam] = float(client.branchBidParameters.get(bidParam))
 

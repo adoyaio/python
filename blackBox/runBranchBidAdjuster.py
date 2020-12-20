@@ -52,7 +52,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     logger.info("In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
 
 
-def return_active_keywords_dataFrame(
+def returnActiveKeywordsDataFrame(
     ads_data, 
     min_apple_installs, 
     keyword_status, 
@@ -71,7 +71,7 @@ def return_active_keywords_dataFrame(
     return second_filter[
         ["adGroupId", "keywordId", "bid", "installs", "branch_commerce_event_count", "branch_revenue", "localSpend"]]
 
-def return_cost_per_purchase_optimized_bid(
+def returnCostPerPurchaseOptimizedBid(
     active_keywords_dataFrame, 
     branch_min_bid,
     branch_max_bid, 
@@ -111,7 +111,7 @@ def return_cost_per_purchase_optimized_bid(
     return active_keywords_dataFrame[(active_keywords_dataFrame["adjusted_bid"] != active_keywords_dataFrame["bid"])]
 
 
-def return_revenue_over_ad_spend_optimized_bid(
+def returnRevenueOverAdSpendOptimized(
     active_keywords_dataFrame, 
     branch_min_bid,
     branch_max_bid, 
@@ -143,7 +143,7 @@ def return_revenue_over_ad_spend_optimized_bid(
     return active_keywords_dataFrame[(active_keywords_dataFrame["adjusted_bid"] != active_keywords_dataFrame["bid"])]
 
 
-def return_adjusted_bids(
+def returnAdjustedBids(
     branch_optimization_goal, 
     active_keywords_dataFrame, 
     branch_min_bid,
@@ -156,7 +156,7 @@ def return_adjusted_bids(
 ):
     if branch_optimization_goal == "cost_per_purchase":
         print("Optimizing Cost Per Purchase")
-        return return_cost_per_purchase_optimized_bid(
+        return returnCostPerPurchaseOptimizedBid(
             active_keywords_dataFrame, 
             branch_min_bid,
             branch_max_bid, 
@@ -166,7 +166,7 @@ def return_adjusted_bids(
         )
     elif branch_optimization_goal == "revenue_over_ad_spend":
         print("Optimizing Revenue Over Ad Spend")
-        return return_revenue_over_ad_spend_optimized_bid(
+        return returnRevenueOverAdSpendOptimized(
             active_keywords_dataFrame, 
             branch_min_bid,
             branch_max_bid,
@@ -176,11 +176,10 @@ def return_adjusted_bids(
         )
     else:
         print("Unknown Optimization Goal")
-        # TODO JF why are we returning here
-        return pd.DataFrame(columns=['id'])
+        return False
 
 
-def create_json_from_dataFrame(filtered_dataframe):
+def createJsonFromDataFrame(filtered_dataframe):
     output_adGroupId_dict = {}
     unique_adGroupId_array = filtered_dataframe.adGroupId.unique()
 
@@ -197,134 +196,140 @@ def create_json_from_dataFrame(filtered_dataframe):
     return output_adGroupId_dict
 
 # TODO rework this to use config
-def create_put_request_string(campaign_id, adgroup_id):
+def createPutRequestString(campaignId, adgroupId):
     return "https://api.searchads.apple.com/api/v3/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
-        campaign_id, adgroup_id)
+        campaignId, adgroupId)
 
-def write_request_file(put_request_string, request_json, request_output_filename):
-    try:
-        out_file_object = open(request_output_filename, "w")
-    except:
-        print("Error: Issues opening the output file")
-    out_file_object.write(put_request_string)
-    out_file_object.write("\n\n")
-    out_file_object.write(str(request_json))
-    out_file_object.close()
+# def writeRequestFile(put_request_string, request_json, request_output_filename):
+#     try:
+#         out_file_object = open(request_output_filename, "w")
+#     except:
+#         print("Error: Issues opening the output file")
+#     out_file_object.write(put_request_string)
+#     out_file_object.write("\n\n")
+#     out_file_object.write(str(request_json))
+#     out_file_object.close()
 
-# @debug
+def createDataFrame(items, campaign_id, adgroup_id):
+    keyword_info = defaultdict(list)
+    for kw_data in items:
+        keyword = kw_data['keyword']
+        date = kw_data['date']
+        branch_revenue = 0
+        branch_commerce_event_count = 0
+       
+        # NOTE incrementing on each loop thru items is unneeded as we query with timestamp, and branch data is by day at its lowest level
+        branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, campaign_id, adgroup_id, keyword, date)
+        for j in branch_response.get("Items"):
+            print("found branch result!")
+            # print(json.dumps(j, cls=DecimalEncoder))
+            branch_revenue = branch_revenue + int(j.get("revenue",0))
+            branch_commerce_event_count = branch_commerce_event_count + int(j.get("count",0))
+        
+        keyword_info["keyword"].append(kw_data["keyword"])
+        keyword_info["keywordId"].append(kw_data["keyword_id"])
+        keyword_info["keywordStatus"].append(kw_data["keywordStatus"])
+        keyword_info["matchType"].append(kw_data["matchType"])
+        keyword_info["adGroupName"].append(kw_data["adgroup_name"])
+        keyword_info["adGroupId"].append(kw_data["adgroup_id"])
+        keyword_info["adGroupDeleted"].append(kw_data["adgroup_deleted"])
+        keyword_info["bid"].append(kw_data["bid"])
+        keyword_info["deleted"].append(kw_data["deleted"])
+        keyword_info["keywordDisplayStatus"].append(kw_data["keywordDisplayStatus"])
+        keyword_info["modificationTime"].append(kw_data["modification_time"])
+        keyword_info["date"].append(kw_data["date"])
+        keyword_info["impressions"].append(kw_data["impressions"])
+        keyword_info["taps"].append(kw_data["taps"])
+        keyword_info["ttr"].append(kw_data["ttr"])
+        keyword_info["installs"].append(kw_data["installs"])
+        keyword_info["newDownloads"].append(kw_data["new_downloads"])
+        keyword_info["redownloads"].append(kw_data["re_downloads"])
+        keyword_info["latOnInstalls"].append(kw_data["lat_on_installs"])
+        keyword_info["latOffInstalls"].append(kw_data["lat_off_installs"])
+        keyword_info["avgCPA"].append(kw_data["avg_cpa"])
+        keyword_info["conversionRate"].append(kw_data["conversion_rate"])
+        keyword_info["localSpend"].append(kw_data["local_spend"])
+        keyword_info["avgCPT"].append(kw_data["avg_cpt"])
+        keyword_info["branch_commerce_event_count"].append(branch_commerce_event_count) #branch field
+        keyword_info["branch_revenue"].append(branch_revenue) #branch field
+
+    return pd.DataFrame(keyword_info)
+
 def process():
     summaryReportInfo = {}
 
     for client in clientsG:
         summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
-        keyword_status = "ACTIVE"
-        adgroup_deleted = "False"
+        keywordStatus = "ACTIVE"
+        adgroupDeleted = "False"
 
         if not client.branchIntegrationParameters.get("branch_bid_adjuster_enabled",False):
             continue
-
-        adgroup_keys = client.keywordAdderIds["adGroupId"].keys()
-        for adgroup_key in adgroup_keys:
-            adgroup_id = client.keywordAdderIds["adGroupId"][adgroup_key]
-            campaign_id = str(client.keywordAdderIds["campaignId"][adgroup_key])
-            print("pulling adgroup_id " + str(adgroup_id))
-            print("campaign id " + str(campaign_id))
+  
+        adgroupKeys = client.keywordAdderIds["adGroupId"].keys()
+        for adgroupKey in adgroupKeys:
+            adgroupId = client.keywordAdderIds["adGroupId"][adgroupKey]
+            campaignId = str(client.keywordAdderIds["campaignId"][adgroupKey])
+            print("pulling adgroup_id " + str(adgroupId))
+            print("campaign id " + str(campaignId))
                 
-            # get apple data
-            kw_response = DynamoUtils.getAppleKeywordData(dynamodb, adgroup_id, start_date, end_date)
-            print("querying with:::" + str(start_date) + " - " + str(end_date))
-            print("got back:::" + str(kw_response["Count"]))
+            # grab campaign name for campaign specific params
+            campaignKeys = list(client.keywordAdderIds["campaignId"].keys())
+            campaignVals = list(client.keywordAdderIds["campaignId"].values())
+            campaignName = campaignKeys[campaignVals.index(campaignId)]
 
-            if (kw_response["Count"] == 0):
-                print("skipping")
-                continue
-
-            keyword_info = defaultdict(list)
-            for kw_data in kw_response[u'Items']:
-                keyword = kw_data['keyword']
-                date = kw_data['date']
-                branch_revenue = 0
-                branch_commerce_event_count = 0
-
-                # get branch data
-                # TODO this looks wrong, need to increment each loop?
-                branch_response = DynamoUtils.getBranchCommerceEvents(dynamodb, campaign_id, adgroup_id, keyword, date)
-                for j in branch_response[u'Items']:
-                    print("found branch result!")
-                    print(json.dumps(j, cls=DecimalEncoder))
-                    if len(branch_response['Items']) > 0:
-                        branch_revenue = branch_revenue + int(j.get("revenue",0))
-                        branch_commerce_event_count = branch_commerce_event_count + int(j.get("count",0))
-
-
-                # initialize data frame
-                keyword_info["keyword"].append(kw_data["keyword"])
-                keyword_info["keywordId"].append(kw_data["keyword_id"])
-                keyword_info["keywordStatus"].append(kw_data["keywordStatus"])
-                keyword_info["matchType"].append(kw_data["matchType"])
-                keyword_info["adGroupName"].append(kw_data["adgroup_name"])
-                keyword_info["adGroupId"].append(kw_data["adgroup_id"])
-                keyword_info["adGroupDeleted"].append(kw_data["adgroup_deleted"])
-                keyword_info["bid"].append(kw_data["bid"])
-                keyword_info["deleted"].append(kw_data["deleted"])
-                keyword_info["keywordDisplayStatus"].append(kw_data["keywordDisplayStatus"])
-                keyword_info["modificationTime"].append(kw_data["modification_time"])
-                keyword_info["date"].append(kw_data["date"])
-                keyword_info["impressions"].append(kw_data["impressions"])
-                keyword_info["taps"].append(kw_data["taps"])
-                keyword_info["ttr"].append(kw_data["ttr"])
-                keyword_info["installs"].append(kw_data["installs"])
-                keyword_info["newDownloads"].append(kw_data["new_downloads"])
-                keyword_info["redownloads"].append(kw_data["re_downloads"])
-                keyword_info["latOnInstalls"].append(kw_data["lat_on_installs"])
-                keyword_info["latOffInstalls"].append(kw_data["lat_off_installs"])
-                keyword_info["avgCPA"].append(kw_data["avg_cpa"])
-                keyword_info["conversionRate"].append(kw_data["conversion_rate"])
-                keyword_info["localSpend"].append(kw_data["local_spend"])
-                keyword_info["avgCPT"].append(kw_data["avg_cpt"])
-
-                # branch fields
-                keyword_info["branch_commerce_event_count"].append(branch_commerce_event_count)
-                keyword_info["branch_revenue"].append(branch_revenue)
-
-
-            raw_data_df = pd.DataFrame(keyword_info)
+            # common params
             BBP = client.branchBidParameters
             min_apple_installs = BBP["min_apple_installs"]
-
-            # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
-            # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
-            # raw_data_df.to_csv(adgroup_id + ".csv")
-            # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
-               
-            if raw_data_df.empty:
-                print("Error: There was an issue reading the data to a dataFrame")
-                continue
-
-            active_keywords = return_active_keywords_dataFrame(
-                raw_data_df, 
-                min_apple_installs,
-                keyword_status,
-                adgroup_deleted
-            )
-                    
-            if active_keywords.empty:
-                print("There weren't any keywords that met the initial filtering criteria")
-                continue
-
-            print("There were keywords that met the initial filtering criteria")
             branch_optimization_goal = BBP["branch_optimization_goal"]
             branch_min_bid = BBP["branch_min_bid"]
             branch_max_bid = BBP["branch_max_bid"]
             branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
-            cost_per_purchase_threshold = BBP["cost_per_purchase_threshold"]
             cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
-            revenue_over_ad_spend_threshold = BBP["revenue_over_ad_spend_threshold"]
             revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
 
-            adjusted_bids = return_adjusted_bids(
+            # campaign specific params
+            cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaignName
+            cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key, None)
+            revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaignName
+            revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
+
+            # get apple data
+            kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, adgroupId, start_date, end_date)
+            print("querying with:::" + str(start_date) + " - " + str(end_date))
+            print("got back:::" + str(kwResponse["Count"]))
+
+            if (kwResponse["Count"] == 0):
+                print("skipping")
+                continue
+
+            # build dataframe
+            rawDataDf = createDataFrame(kwResponse.get('Items'), campaignId, adgroupId)
+            # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
+            # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
+            # rawDataDf.to_csv(adgroup_id + ".csv")
+            # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
+               
+            if rawDataDf.empty:
+                print("Error: There was an issue reading the data to a dataFrame")
+                continue
+
+            activeKeywords = returnActiveKeywordsDataFrame(
+                rawDataDf, 
+                min_apple_installs,
+                keywordStatus,
+                adgroupDeleted
+            )
+                    
+            if activeKeywords.empty:
+                print("There weren't any keywords that met the initial filtering criteria")
+                continue
+
+            print("There were keywords that met the initial filtering criteria")
+
+            adjustedBids = returnAdjustedBids(
                 branch_optimization_goal,
-                active_keywords,
+                activeKeywords,
                 branch_min_bid,
                 branch_max_bid,
                 branch_bid_adjustment,
@@ -334,19 +339,19 @@ def process():
                 revenue_over_ad_spend_threshold_buffer
             )
 
-            if adjusted_bids.empty:
+            if adjustedBids.empty:
                 print("There weren't any bids to adjust")
                 continue
                     
-            json_data = create_json_from_dataFrame(adjusted_bids)
-            clientSummaryReportInfo[campaign_id] = json.dumps(json_data)
-            for adGroupId in json_data.keys():
-                put_request_string = create_put_request_string(campaign_id, str(adGroupId))
-                request_json = json_data[adGroupId]
+            jsonData = createJsonFromDataFrame(adjustedBids)
+            clientSummaryReportInfo[campaignId] = json.dumps(jsonData)
+            for adGroupId in jsonData.keys():
+                putRequestString = createPutRequestString(campaignId, str(adGroupId))
+                requestJson = jsonData[adGroupId]
                 sendUpdatedBidsToApple(
                     client, 
-                    put_request_string, 
-                    request_json
+                    putRequestString, 
+                    requestJson
                 )
 
     emailSummaryReport(summaryReportInfo, sendG)
