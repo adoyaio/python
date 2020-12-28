@@ -21,15 +21,25 @@ def getEmailClientsG(env):
     else:
         return False
 
-def getDynamoHost(env, dynamoEndpoint):
+def getDynamoResource(env, endpoint):
     if env == "lcl":
-        return boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        return boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=endpoint)
     elif env == "stage":
-        return boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=dynamoEndpoint)
+        return boto3.resource('dynamodb', region_name='us-east-1', endpoint_url=endpoint)
     elif env == "prod":
         return boto3.resource('dynamodb', region_name='us-east-1')
     else:
-        return boto3.resource('dynamodb', region_name='us-east-1')  
+        return boto3.resource('dynamodb', region_name='us-east-1')
+
+def getLambdaClient(env, endpoint):
+    if env == "lcl":
+        return boto3.client('lambda', region_name='us-east-1', endpoint_url=endpoint)
+    elif env == "stage":
+        return boto3.client('lambda', region_name='us-east-1', endpoint_url=endpoint)
+    elif env == "prod":
+        return boto3.client('lambda', region_name='us-east-1')
+    else:
+        return boto3.client('lambda', region_name='us-east-1')
     
 def getLogger(env):
     logger = logging.getLogger()

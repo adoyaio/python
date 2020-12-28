@@ -21,20 +21,63 @@ from configuration import config
 
 LOOKBACK = 14 # TODO reduce for nightly
 
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global sendG
-    global clientsG
+    global clientG
     global dynamodb
     global EMAIL_TO
     global logger
     
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
+    # initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
+    EMAIL_TO = clientEvent['rootEvent']['emailToInternal']
+    sendG = LambdaUtils.getSendG(
+        clientEvent['rootEvent']['env']
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    )
 
-    logger = LambdaUtils.getLogger(env)
-    logger.info("runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    orgDetails = json.loads(clientEvent['orgDetails'])
+    clientG = Client(
+        orgDetails['_orgId'],
+        orgDetails['_clientName'],
+        orgDetails['_emailAddresses'],
+        orgDetails['_keyFilename'],
+        orgDetails['_pemFilename'],
+        orgDetails['_bidParameters'],
+        orgDetails['_adgroupBidParameters'],
+        orgDetails['_branchBidParameters'],
+        orgDetails['_campaignIds'],
+        orgDetails['_keywordAdderIds'],
+        orgDetails['_keywordAdderParameters'],
+        orgDetails['_branchIntegrationParameters'],
+        orgDetails['_currency'],
+        orgDetails['_appName'],
+        orgDetails['_appID'],
+        orgDetails['_campaignName']
+    )
+    # clientG = Client(
+    #                 client["orgDetails"]["orgId"],
+    #                 client["orgDetails"]["clientName"],
+    #                 client["orgDetails"]["emailAddresses"],
+    #                 client["orgDetails"]["keyFilename"],
+    #                 client["orgDetails"]["pemFilename"],
+    #                 client["orgDetails"]["bidParameters"],
+    #                 client["orgDetails"]["adgroupBidParameters"],
+    #                 client["orgDetails"]["branchBidParameters"],
+    #                 client["orgDetails"]["campaignIds"],
+    #                 client["orgDetails"]["keywordAdderIds"],
+    #                 client["orgDetails"]["keywordAdderParameters"],
+    #                 client["orgDetails"]["branchIntegrationParameters"],
+    #                 client["orgDetails"]["currency"],
+    #                 client["orgDetails"]["appName"],
+    #                 client["orgDetails"]["appID"],
+    #                 client["orgDetails"]["campaignName"]
+    #             )
+
+    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])
+    # logger.info("runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, getDynamoResource))
 
 @retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
@@ -206,23 +249,23 @@ def export_dict_to_csv(raw_dict, filename):
     df.to_csv(filename, index=None)
 
 def process():
-    for client in clientsG:
-        print("runAppleIntegrationKeyword:::" + client.clientName + ":::" + str(client.orgId))
-        orgId = str(client.orgId)
-        campaignIds = client.campaignIds
-        for campaignId in campaignIds:
-                # TODO JF implement max date call pull ONE value sorted & read max date
-                # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
-                startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
-                endDate = datetime.date.today()
-                # print("start_date:::" + str(start_date))
-                # print("end_date::: " + str(end_date))
-                data = getKeywordReportFromApple(client, campaignId, startDate, endDate)
-                if not data:
-                    logger.info("runAppleIntegrationKeyword:::no data returned")
-                    continue
+    # for client in clientsG:
+    print("runAppleIntegrationKeyword:::" + clientG.clientName + ":::" + str(clientG.orgId))
+    orgId = str(clientG.orgId)
+    campaignIds = clientG.campaignIds
+    for campaignId in campaignIds:
+            # TODO JF implement max date call pull ONE value sorted & read max date
+            # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
+            startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
+            endDate = datetime.date.today()
+            # print("start_date:::" + str(start_date))
+            # print("end_date::: " + str(end_date))
+            data = getKeywordReportFromApple(clientG, campaignId, startDate, endDate)
+            if not data:
+                logger.info("runAppleIntegrationKeyword:::no data returned")
+                continue
 
-                loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
+            loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
 
 def terminate():
     pass
@@ -233,8 +276,9 @@ if __name__ == "__main__":
     process()
     terminate()
 
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
+def lambda_handler(clientEvent, context):
+    # initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
+    initialize(clientEvent)
     process()
     terminate()
     return {
