@@ -19,17 +19,16 @@ from Client import Client
 from utils import DynamoUtils, S3Utils, LambdaUtils, EmailUtils
 from configuration import config
 
-LOOKBACK = 14 # TODO reduce for nightly
+LOOKBACK = 7 # TODO reduce for nightly
 
 def initialize(clientEvent):
     global sendG
     global clientG
+    global emailToG
     global dynamodb
-    global EMAIL_TO
     global logger
-    
-    # initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
-    EMAIL_TO = clientEvent['rootEvent']['emailToInternal']
+
+    emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
         clientEvent['rootEvent']['env']
     )
@@ -37,7 +36,6 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-
     orgDetails = json.loads(clientEvent['orgDetails'])
     clientG = Client(
         orgDetails['_orgId'],
@@ -57,27 +55,8 @@ def initialize(clientEvent):
         orgDetails['_appID'],
         orgDetails['_campaignName']
     )
-    # clientG = Client(
-    #                 client["orgDetails"]["orgId"],
-    #                 client["orgDetails"]["clientName"],
-    #                 client["orgDetails"]["emailAddresses"],
-    #                 client["orgDetails"]["keyFilename"],
-    #                 client["orgDetails"]["pemFilename"],
-    #                 client["orgDetails"]["bidParameters"],
-    #                 client["orgDetails"]["adgroupBidParameters"],
-    #                 client["orgDetails"]["branchBidParameters"],
-    #                 client["orgDetails"]["campaignIds"],
-    #                 client["orgDetails"]["keywordAdderIds"],
-    #                 client["orgDetails"]["keywordAdderParameters"],
-    #                 client["orgDetails"]["branchIntegrationParameters"],
-    #                 client["orgDetails"]["currency"],
-    #                 client["orgDetails"]["appName"],
-    #                 client["orgDetails"]["appID"],
-    #                 client["orgDetails"]["campaignName"]
-    #             )
-
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])
-    # logger.info("runAppleIntegrationKeyword:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, getDynamoResource))
+    logger.info("runAppleIntegrationKeyword:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
@@ -137,7 +116,7 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
         logger.warn(email)
         logger.error(subject)
         if sendG:
-            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+            EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
         return False
 
@@ -249,7 +228,6 @@ def export_dict_to_csv(raw_dict, filename):
     df.to_csv(filename, index=None)
 
 def process():
-    # for client in clientsG:
     print("runAppleIntegrationKeyword:::" + clientG.clientName + ":::" + str(clientG.orgId))
     orgId = str(clientG.orgId)
     campaignIds = clientG.campaignIds
@@ -277,7 +255,6 @@ if __name__ == "__main__":
     terminate()
 
 def lambda_handler(clientEvent, context):
-    # initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
     initialize(clientEvent)
     process()
     terminate()

@@ -33,6 +33,9 @@ def process(clientEvent, context):
     appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent, context)
     print(json.dumps(appleIntegrationKeywordResponse))
 
+    runBranchIntegrationResponse = runBranchIntegration.lambda_handler(clientEvent, context)
+    print(json.dumps(runBranchIntegrationResponse))
+
     # invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
     # print(json.dumps(invoke_response_branch))
 
