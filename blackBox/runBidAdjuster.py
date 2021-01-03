@@ -33,21 +33,42 @@ start_date_cpi_lookback = today - start_date_delta_cpi_lookback
 # start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 # end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
-@debug
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global sendG
-    global clientsG
+    global clientG
+    global emailToG
     global dynamodb
-    global EMAIL_TO
     global logger
-    
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
-    logger = LambdaUtils.getLogger(env)
-    logger.info("runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
-        sendG, dynamoEndpoint, str(EMAIL_TO)))
+
+    emailToG = clientEvent['rootEvent']['emailToInternal']
+    sendG = LambdaUtils.getSendG(
+        clientEvent['rootEvent']['env']
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    )
+    orgDetails = json.loads(clientEvent['orgDetails'])
+    clientG = Client(
+        orgDetails['_orgId'],
+        orgDetails['_clientName'],
+        orgDetails['_emailAddresses'],
+        orgDetails['_keyFilename'],
+        orgDetails['_pemFilename'],
+        orgDetails['_bidParameters'],
+        orgDetails['_adgroupBidParameters'],
+        orgDetails['_branchBidParameters'],
+        orgDetails['_campaignIds'],
+        orgDetails['_keywordAdderIds'],
+        orgDetails['_keywordAdderParameters'],
+        orgDetails['_branchIntegrationParameters'],
+        orgDetails['_currency'],
+        orgDetails['_appName'],
+        orgDetails['_appID'],
+        orgDetails['_campaignName']
+    )
+    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
+    logger.info("runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 
 @retry
@@ -105,7 +126,7 @@ def getKeywordReportFromApple(client, campaignId):
         logger.warn(email)
         logger.error(subject)
         if sendG:
-            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+            EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
         return False
 
@@ -363,7 +384,7 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
             subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
             logger.warn(email)
             logger.error(subject)
-            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+            EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
         print("The result of sending the update to Apple: %s" % response)   
                    
@@ -414,50 +435,42 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Bid Adjuster summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
 def process():
     summaryReportInfo = {}
-    for client in clientsG:
-        summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
-        campaignIds = client.campaignIds
-
-        for campaignId in campaignIds:
-            sent = False
-            data = getKeywordReportFromApple(client, campaignId)
-            if not data:
-                logger.info("runBidAdjuster:process:::no results from api:::")
-                continue
-
-            # grab campaign name for campaign specific params
-            campaignKeys = list(client.keywordAdderIds["campaignId"].keys())
-            campaignVals = list(client.keywordAdderIds["campaignId"].values())
-            campaignName = campaignKeys[campaignVals.index(campaignId)]
-            
-            stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName), client)
-            if type(stuff) != bool:
-                keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
-                sent = sendUpdatedBidsToApple(client, keywordFileToPost)
-                client.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
+    summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {}
+    campaignIds = clientG.campaignIds
+    for campaignId in campaignIds:
+        sent = False
+        data = getKeywordReportFromApple(clientG, campaignId)
+        if not data:
+            logger.info("runBidAdjuster:process:::no results from api:::")
+            continue
+        # grab campaign name for campaign specific params
+        campaignKeys = list(clientG.keywordAdderIds["campaignId"].keys())
+        campaignVals = list(clientG.keywordAdderIds["campaignId"].values())
+        campaignName = campaignKeys[campaignVals.index(campaignId)]
+        
+        stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName), clientG)
+        if type(stuff) != bool:
+            keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
+            sent = sendUpdatedBidsToApple(clientG, keywordFileToPost)
+            clientG.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
     emailSummaryReport(summaryReportInfo, sent)
 
 
-@debug
-def terminate():
-    pass
-
-
-if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
-    process()
-    terminate()
-
-
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
-    process()
-    terminate()
+def lambda_handler(clientEvent, context):
+    initialize(clientEvent)
+    
+    try: 
+        process()
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Bid Adjuster Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Bid Adjuster Complete')

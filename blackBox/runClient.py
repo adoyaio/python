@@ -19,7 +19,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     
     EMAIL_TO = emailToInternal
     sendG = LambdaUtils.getSendG(env)
-    # clientsG = Client.getClients(dynamodb)
     dynamoClient = LambdaUtils.getDynamoResource(env,dynamoEndpoint)
     # lambdaClient = LambdaUtils.getLambdaClient(env,awsEndpoint)
     # logger = LambdaUtils.getLogger(env)
@@ -36,28 +35,30 @@ def process(clientEvent, context):
     runBranchIntegrationResponse = runBranchIntegration.lambda_handler(clientEvent, context)
     print(json.dumps(runBranchIntegrationResponse))
 
-    # invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_branch))
+    runClientDailyResponse = runClientDailyReport.lambda_handler(clientEvent, context)
+    print(json.dumps(runClientDailyResponse))
 
-    # invoke_response_dr = runClientDailyReport.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_dr))
+    runBidAdjusterResponse = runBidAdjuster.lambda_handler(clientEvent, context)
+    print(json.dumps(runBidAdjusterResponse))
 
-    # invoke_response_rba = runBidAdjuster.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_rba))
+    runAdgroupBidAdjusterResponse = runAdgroupBidAdjuster.lambda_handler(clientEvent, context)
+    print(json.dumps(runAdgroupBidAdjusterResponse))
 
-    # invoke_response_raba = runAdgroupBidAdjuster.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_raba))
+    runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent, context)
+    print(json.dumps(runKeywordAdderResponse))
 
-    # invoke_response_ka = runKeywordAdder.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_ka))
-
-    # return True
+    return True
 
 def lambda_handler(clientEvent, context):
     initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
-    process(clientEvent, context)
-    # terminate()
-    print("JAMES TEST")
+    
+    try: 
+        process(clientEvent, context)
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Client Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Client Complete')

@@ -195,7 +195,7 @@ def process():
                                 'ad_set_id': ad_set_id,
                                 # 'ad_set_name': ad_set_name,
                                 'count': count,
-                                'org_id': str(client.orgId)
+                                'org_id': str(clientG.orgId)
                             }
                         )
                     except ClientError as e:
@@ -247,8 +247,14 @@ if __name__ == "__main__":
 
 def lambda_handler(clientEvent, context):
     initialize(clientEvent)
-    process()
-    terminate()
+    
+    try: 
+        process()
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Branch Integration Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Branch Integration Complete')

@@ -29,22 +29,42 @@ end_date = today - end_date_delta
 #start_date = dt.strptime('2019-12-15', '%Y-%m-%d').date()
 #end_date = dt.strptime('2019-12-22', '%Y-%m-%d').date()
 
-@debug
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global sendG
-    global clientsG
+    global clientG
+    global emailToG
     global dynamodb
-    global EMAIL_TO
     global logger
-    
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
 
-    logger = LambdaUtils.getLogger(env)
-    logger.info("In runKeywordAdder:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
-
+    emailToG = clientEvent['rootEvent']['emailToInternal']
+    sendG = LambdaUtils.getSendG(
+        clientEvent['rootEvent']['env']
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    )
+    orgDetails = json.loads(clientEvent['orgDetails'])
+    clientG = Client(
+        orgDetails['_orgId'],
+        orgDetails['_clientName'],
+        orgDetails['_emailAddresses'],
+        orgDetails['_keyFilename'],
+        orgDetails['_pemFilename'],
+        orgDetails['_bidParameters'],
+        orgDetails['_adgroupBidParameters'],
+        orgDetails['_branchBidParameters'],
+        orgDetails['_campaignIds'],
+        orgDetails['_keywordAdderIds'],
+        orgDetails['_keywordAdderParameters'],
+        orgDetails['_branchIntegrationParameters'],
+        orgDetails['_currency'],
+        orgDetails['_appName'],
+        orgDetails['_appID'],
+        orgDetails['_campaignName']
+    )
+    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
+    logger.info("runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
 def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
@@ -110,7 +130,7 @@ def getSearchTermsReportFromApple(client, campaignId):
     logger.warn(email)
     logger.error(subject)
     if sendG:
-      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+      EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
     return False
   
@@ -398,7 +418,7 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
     logger.warn(email)
     logger.error(subject)
     if sendG:
-      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+      EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
        
   return response
 
@@ -570,7 +590,7 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString ="Keyword Adder summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
 def convertAnalysisIntoApplePayloadAndSend(
@@ -616,54 +636,42 @@ def convertAnalysisIntoApplePayloadAndSend(
     return sendG
 
 
-# @debug
 def process():
   summaryReportInfo = { }
   sent = False
-
-  for client in clientsG:
-    summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = CSRI = { }
-
-    kAI = client.keywordAdderIds
-    searchCampaignId, broadCampaignId = kAI["campaignId"]["search"], kAI["campaignId"]["broad"]
-
-    searchMatchData = getSearchTermsReportFromApple(client, searchCampaignId)
-    broadMatchData  = getSearchTermsReportFromApple(client, broadCampaignId)
-
-    if not searchMatchData or not broadMatchData:
-      CSRI["+e"] = {}
-      CSRI["+b"] = {}
-      CSRI["-e"] = {}
-      CSRI["-b"] = {}
-      continue
-
-    if not (searchMatchData.get("data").get("reportingDataResponse").get("row")):
-      CSRI["+e"] = {}
-      CSRI["+b"] = {}
-      CSRI["-e"] = {}
-      CSRI["-b"] = {}
-      continue
-
-    exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
-      analyzeKeywords(searchMatchData, broadMatchData, kAI, client.keywordAdderParameters, client.currency)
-
-    sent = convertAnalysisIntoApplePayloadAndSend(
-      client,
-      CSRI,
-      exactPositive,
-      exactPositiveUrl,
-      broadPositive,
-      broadPositiveUrl,
-      exactNegative,
-      exactNegativeUrl,
-      broadNegative,
-      broadNegativeUrl
-    )
+  summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = CSRI = { }
+  kAI = clientG.keywordAdderIds
+  searchCampaignId, broadCampaignId = kAI["campaignId"]["search"], kAI["campaignId"]["broad"]
+  searchMatchData = getSearchTermsReportFromApple(clientG, searchCampaignId)
+  broadMatchData  = getSearchTermsReportFromApple(clientG, broadCampaignId)
+  if not searchMatchData or not broadMatchData:
+    CSRI["+e"] = {}
+    CSRI["+b"] = {}
+    CSRI["-e"] = {}
+    CSRI["-b"] = {}
+    return
+  if not (searchMatchData.get("data").get("reportingDataResponse").get("row")):
+    CSRI["+e"] = {}
+    CSRI["+b"] = {}
+    CSRI["-e"] = {}
+    CSRI["-b"] = {}
+    return
+  exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
+    analyzeKeywords(searchMatchData, broadMatchData, kAI, clientG.keywordAdderParameters, clientG.currency)
+  sent = convertAnalysisIntoApplePayloadAndSend(
+    clientG,
+    CSRI,
+    exactPositive,
+    exactPositiveUrl,
+    broadPositive,
+    broadPositiveUrl,
+    exactNegative,
+    exactNegativeUrl,
+    broadNegative,
+    broadNegativeUrl
+  )
   
   emailSummaryReport(summaryReportInfo, sent)
-
-def terminate():
-  pass
 
 
 if __name__ == "__main__":
@@ -672,10 +680,16 @@ if __name__ == "__main__":
     terminate()
 
 
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
-    process()
-    terminate()
+def lambda_handler(clientEvent, context):
+    initialize(clientEvent)
+    
+    try: 
+        process()
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Keyword Adder Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Keyword Adder Complete')

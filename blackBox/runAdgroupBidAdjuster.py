@@ -31,21 +31,42 @@ start_date_cpi_lookback = today - start_date_delta_cpi_lookback
 #start_date = dt.strptime('2019-12-01', '%Y-%m-%d').date()
 #end_date = dt.strptime('2019-12-08', '%Y-%m-%d').date()
 
-@debug
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global sendG
-    global clientsG
+    global clientG
+    global emailToG
     global dynamodb
-    global EMAIL_TO
     global logger
-    
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
 
-    logger = LambdaUtils.getLogger(env)
-    logger.info("In runAdgroupBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    emailToG = clientEvent['rootEvent']['emailToInternal']
+    sendG = LambdaUtils.getSendG(
+        clientEvent['rootEvent']['env']
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    )
+    orgDetails = json.loads(clientEvent['orgDetails'])
+    clientG = Client(
+        orgDetails['_orgId'],
+        orgDetails['_clientName'],
+        orgDetails['_emailAddresses'],
+        orgDetails['_keyFilename'],
+        orgDetails['_pemFilename'],
+        orgDetails['_bidParameters'],
+        orgDetails['_adgroupBidParameters'],
+        orgDetails['_branchBidParameters'],
+        orgDetails['_campaignIds'],
+        orgDetails['_keywordAdderIds'],
+        orgDetails['_keywordAdderParameters'],
+        orgDetails['_branchIntegrationParameters'],
+        orgDetails['_currency'],
+        orgDetails['_appName'],
+        orgDetails['_appID'],
+        orgDetails['_campaignName']
+    )
+    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
+    logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 
 @retry
@@ -174,7 +195,7 @@ def getAdgroupReportFromApple(client):
     logger.warn(email)
     logger.error(subject)
     if sendG:
-      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+      EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
     return False
 
@@ -365,7 +386,7 @@ def sendOneUpdatedBidToApple(client, adGroup, headers, currency):
       logger.warn(email)
       logger.error(subject)
       if sendG:
-        EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+        EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
     print("The result of sending the update to Apple: %s" % response)   
   return sendG
@@ -414,52 +435,47 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Ad Group Bid Adjuster summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
-@debug
 def process():
   summaryReportInfo = { }
   sent = False
-
-  for client in clientsG:
-    summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = { }
-    campaignIds = client.campaignIds
-
-    for campaignId in campaignIds:
-      data = getAdgroupReportFromApple(client)
-
-      if not data:
-        logger.info("runAdgroupBidAdjuster:process:::no results from api:::")
-        continue
-
-      stuff = createUpdatedAdGroupBids(data, campaignId, client)
-      if type(stuff) != bool:
-        updatedBids, numberOfBids = stuff
-        logger.info("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
-        logger.info("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
-        sent = sendUpdatedBidsToApple(client, updatedBids)
-        clientSummaryReportInfo[client.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
-        client.writeUpdatedAdgroupBids(dynamodb, numberOfBids)
+  summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = { }
+  campaignIds = clientG.campaignIds
+  for campaignId in campaignIds:
+    data = getAdgroupReportFromApple(clientG)
+    if not data:
+      logger.info("runAdgroupBidAdjuster:process:::no results from api:::")
+      continue
+    stuff = createUpdatedAdGroupBids(data, campaignId, clientG)
+    if type(stuff) != bool:
+      updatedBids, numberOfBids = stuff
+      logger.info("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
+      logger.info("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
+      sent = sendUpdatedBidsToApple(clientG, updatedBids)
+      clientSummaryReportInfo[clientG.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
+      clientG.writeUpdatedAdgroupBids(dynamodb, numberOfBids)
 
   emailSummaryReport(summaryReportInfo, sent)
-
-@debug
-def terminate():
-  pass
 
 
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
-    terminate()
 
 
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
-    process()
-    terminate()
+def lambda_handler(clientEvent, context):
+    initialize(clientEvent)
+    
+    try: 
+        process()
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Adgroup Bid Adjuster Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Adgroup Bid Adjuster Complete')

@@ -17,25 +17,47 @@ FOUR_YEARS = 365 * 4  # Ignoring leap years.
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
 
-@debug
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global emailClientsG
-    emailClientsG = LambdaUtils.getEmailClientsG(env)
+    emailClientsG = LambdaUtils.getEmailClientsG(
+        clientEvent['rootEvent']['env']
+    )
 
     global sendG
-    global clientsG
+    global clientG
+    global emailToG
     global dynamodb
-    global EMAIL_TO
     global logger
-    
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
 
-    logger = LambdaUtils.getLogger(env)
-    logger.info("runClientDailyReport:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
-
+    emailToG = clientEvent['rootEvent']['emailToInternal']
+    sendG = LambdaUtils.getSendG(
+        clientEvent['rootEvent']['env']
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    )
+    orgDetails = json.loads(clientEvent['orgDetails'])
+    clientG = Client(
+        orgDetails['_orgId'],
+        orgDetails['_clientName'],
+        orgDetails['_emailAddresses'],
+        orgDetails['_keyFilename'],
+        orgDetails['_pemFilename'],
+        orgDetails['_bidParameters'],
+        orgDetails['_adgroupBidParameters'],
+        orgDetails['_branchBidParameters'],
+        orgDetails['_campaignIds'],
+        orgDetails['_keywordAdderIds'],
+        orgDetails['_keywordAdderParameters'],
+        orgDetails['_branchIntegrationParameters'],
+        orgDetails['_currency'],
+        orgDetails['_appName'],
+        orgDetails['_appID'],
+        orgDetails['_campaignName']
+    )
+    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
+    logger.info("runClientDailyReport:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
 def getCampaignDataHelper(url, cert, json, headers):
@@ -81,7 +103,7 @@ def getCampaignData(client, daysToGoBack):
         logger.warn(email)
         logger.error(subject)
         if sendG:
-            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+            EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
         return False
 
@@ -253,7 +275,7 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
             htmlBody, 
             subjectString, 
             client.emailAddresses, 
-            EMAIL_TO,
+            emailToG,
             config.EMAIL_FROM
         )
     else:
@@ -262,7 +284,7 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
             htmlBody, 
             subjectString, 
             ['test@adoya.io'], 
-            EMAIL_TO, 
+            emailToG, 
             config.EMAIL_FROM
         )
 
@@ -398,44 +420,42 @@ def sendEmailReport(client, dataForVariousTimes):
 
 @debug
 def process():
-    for client in clientsG:
-        dataForVariousTimes = {}
-
-        for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
-            campaignData = getCampaignData(
-                client,
-                daysToGoBack
-            )
-            if(campaignData != False):
-                dataArray = campaignData["data"]["reportingDataResponse"]["row"]
-                dprint("For %d (%s), there are %d campaigns in the campaign data." % \
-                    (client.orgId, client.clientName, len(dataArray)))
-                dataForVariousTimes[daysToGoBack] = dataArray
-
-        dataForOneDay = dataForVariousTimes.get(ONE_DAY, None)
-        dataForSevenDay = dataForVariousTimes.get(SEVEN_DAYS, None)
-        dataForThirtyDay = dataForVariousTimes.get(THIRTY_DAYS, None)
-        
-        if not dataForOneDay or not dataForSevenDay or not dataForThirtyDay:
-            continue
-
-        sendEmailReport(client, dataForVariousTimes)
-
-@debug
-def terminate():
-    pass
+    # for client in clientsG:
+    dataForVariousTimes = {}
+    for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
+        campaignData = getCampaignData(
+            clientG,
+            daysToGoBack
+        )
+        if(campaignData != False):
+            dataArray = campaignData["data"]["reportingDataResponse"]["row"]
+            dprint("For %d (%s), there are %d campaigns in the campaign data." % \
+                (clientG.orgId, clientG.clientName, len(dataArray)))
+            dataForVariousTimes[daysToGoBack] = dataArray
+    dataForOneDay = dataForVariousTimes.get(ONE_DAY, None)
+    dataForSevenDay = dataForVariousTimes.get(SEVEN_DAYS, None)
+    dataForThirtyDay = dataForVariousTimes.get(THIRTY_DAYS, None)
+    
+    if not dataForOneDay or not dataForSevenDay or not dataForThirtyDay:
+        return
+    sendEmailReport(clientG, dataForVariousTimes)
 
 
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
-    terminate()
 
 
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
-    process()
-    terminate()
+def lambda_handler(clientEvent, context):
+    initialize(clientEvent)
+    
+    try: 
+        process()
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Client Daily Report Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Client Daily Report Complete')
