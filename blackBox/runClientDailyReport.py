@@ -418,9 +418,7 @@ def sendEmailReport(client, dataForVariousTimes):
 
     client.addRowToHistory(rowOfHistory, dynamodb, end_date)
 
-@debug
 def process():
-    # for client in clientsG:
     dataForVariousTimes = {}
     for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
         campaignData = getCampaignData(
@@ -446,17 +444,11 @@ if __name__ == "__main__":
     process()
 
 
-def lambda_handler(clientEvent, context):
+def lambda_handler(clientEvent):
     initialize(clientEvent)
-    
-    try: 
-        process()
-    except:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('Run Client Daily Report Failed')
-        }
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Run Client Daily Report Complete')
-    }
+    process()
+    return True
+    # return {
+    #     'statusCode': 200,
+    #     'body': json.dumps('Run Client Daily Report Complete')
+    # }

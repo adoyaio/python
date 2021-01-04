@@ -71,7 +71,7 @@ def initialize(clientEvent):
     logger.info("runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 
-@retry
+# @retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
@@ -339,7 +339,7 @@ def getAppleKeywordsEndpoint(keyword_file_to_post):
     print("getAppleKeywordsEndpoint:::found url" + url)
     return url
 
-@retry
+# @retry
 def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
     return requests.put(
         url, 
@@ -461,17 +461,11 @@ def process():
     emailSummaryReport(summaryReportInfo, sent)
 
 
-def lambda_handler(clientEvent, context):
+def lambda_handler(clientEvent):
     initialize(clientEvent)
-    
-    try: 
-        process()
-    except:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('Run Bid Adjuster Failed')
-        }
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Run Bid Adjuster Complete')
-    }
+    process()
+    return True
+    # return {
+    #     'statusCode': 200,
+    #     'body': json.dumps('Run Bid Adjuster Complete')
+    # }

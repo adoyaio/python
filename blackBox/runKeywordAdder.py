@@ -64,7 +64,7 @@ def initialize(clientEvent):
         orgDetails['_campaignName']
     )
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
-    logger.info("runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
+    logger.info("runKeywordAdder:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
 def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
@@ -677,20 +677,13 @@ def process():
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
-    terminate()
 
 
-def lambda_handler(clientEvent, context):
+def lambda_handler(clientEvent):
     initialize(clientEvent)
-    
-    try: 
-        process()
-    except:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('Run Keyword Adder Failed')
-        }
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Run Keyword Adder Complete')
-    }
+    process()
+    return True
+    # return {
+    #     'statusCode': 200,
+    #     'body': json.dumps('Run Keyword Adder Complete')
+    # }

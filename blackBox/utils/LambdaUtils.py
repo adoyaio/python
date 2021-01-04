@@ -1,4 +1,5 @@
 import boto3
+import botocore.config
 import logging
 
 def getSendG(env):
@@ -32,14 +33,15 @@ def getDynamoResource(env, endpoint):
         return boto3.resource('dynamodb', region_name='us-east-1')
 
 def getLambdaClient(env, endpoint):
+    cfg = botocore.config.Config(retries={'max_attempts': 0},read_timeout=900, connect_timeout=900, region_name="us-east-1")
     if env == "lcl":
-        return boto3.client('lambda', region_name='us-east-1', endpoint_url=endpoint)
+        return boto3.client('lambda', region_name='us-east-1', endpoint_url=endpoint, config=cfg)
     elif env == "stage":
-        return boto3.client('lambda', region_name='us-east-1', endpoint_url=endpoint)
+        return boto3.client('lambda', region_name='us-east-1', endpoint_url=endpoint, config=cfg)
     elif env == "prod":
-        return boto3.client('lambda', region_name='us-east-1')
+        return boto3.client('lambda', region_name='us-east-1', config=cfg)
     else:
-        return boto3.client('lambda', region_name='us-east-1')
+        return boto3.client('lambda', region_name='us-east-1', config=cfg)
     
 def getLogger(env):
     logger = logging.getLogger()

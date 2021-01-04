@@ -14,10 +14,8 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global clientsG
     global dynamoResource
     global lambdaClient
-    global EMAIL_TO
     global logger
     
-    EMAIL_TO = emailToInternal
     sendG = LambdaUtils.getSendG(env)
     dynamoClient = LambdaUtils.getDynamoResource(env,dynamoEndpoint)
     # lambdaClient = LambdaUtils.getLambdaClient(env,awsEndpoint)
@@ -26,40 +24,38 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     #     sendG, dynamoEndpoint, str(EMAIL_TO)))
 
 def process(clientEvent, context):
+    print("Run client:::clientEvent")
     print(str(clientEvent))
+    print("Lambda Request ID:", context.aws_request_id)
+    print("Lambda function ARN:", context.invoked_function_arn)
+    
     
     # TODO check the jobdetails for which jobs will run
-    appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent, context)
-    print(json.dumps(appleIntegrationKeywordResponse))
+    appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent)
+    # print(json.dumps(appleIntegrationKeywordResponse))
 
-    runBranchIntegrationResponse = runBranchIntegration.lambda_handler(clientEvent, context)
-    print(json.dumps(runBranchIntegrationResponse))
+    runBranchIntegrationResponse = runBranchIntegration.lambda_handler(clientEvent)
+    # print(json.dumps(runBranchIntegrationResponse))
 
-    runClientDailyResponse = runClientDailyReport.lambda_handler(clientEvent, context)
-    print(json.dumps(runClientDailyResponse))
+    runClientDailyResponse = runClientDailyReport.lambda_handler(clientEvent)
+    # print(json.dumps(runClientDailyResponse))
 
-    runBidAdjusterResponse = runBidAdjuster.lambda_handler(clientEvent, context)
-    print(json.dumps(runBidAdjusterResponse))
+    runBidAdjusterResponse = runBidAdjuster.lambda_handler(clientEvent)
+    # print(json.dumps(runBidAdjusterResponse))
 
-    runAdgroupBidAdjusterResponse = runAdgroupBidAdjuster.lambda_handler(clientEvent, context)
-    print(json.dumps(runAdgroupBidAdjusterResponse))
+    runAdgroupBidAdjusterResponse = runAdgroupBidAdjuster.lambda_handler(clientEvent)
+    # print(json.dumps(runAdgroupBidAdjusterResponse))
 
-    runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent, context)
-    print(json.dumps(runKeywordAdderResponse))
+    runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent)
+    # print(json.dumps(runKeywordAdderResponse))
 
     return True
 
 def lambda_handler(clientEvent, context):
     initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
-    
-    try: 
-        process(clientEvent, context)
-    except:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('Run Client Failed')
-        }
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Run Client Complete')
-    }
+    process(clientEvent, context)
+    return True
+    # return {
+    #     'statusCode': 200,
+    #     'body': json.dumps('Run Client Complete')
+    # }

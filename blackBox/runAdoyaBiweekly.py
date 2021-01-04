@@ -30,6 +30,8 @@ def initialize(env, dynamoEndpoint, lambdaEndpoint, emailToInternal):
 
 def process(event):
     for client in clientsG:
+        print("JAMES TEST CLIENT ORG ID" + str(client.orgId))
+        print("JAMES TEST CLIENT ORG NAME" + client.clientName)
         clientEvent = {}
         clientEvent['rootEvent'] = event
         clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
@@ -53,20 +55,25 @@ def process(event):
 
     return True
 
-def terminate():
-    pass
 
 def lambda_handler(event, context):
     initialize(event['env'], event['dynamoEndpoint'], event['lambdaEndpoint'], event['emailToInternal'])
+    print("Lambda Request ID:", context.aws_request_id)
+    print("Lambda function ARN:", context.invoked_function_arn)
     
-    try: 
-        process(event)
-    except:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('Run Adoya Failed')
-        }
+    process(event)
     return {
         'statusCode': 200,
         'body': json.dumps('Run Adoya Complete')
     }
+    # try: 
+    #     process(event)
+    # except:
+    #     return {
+    #         'statusCode': 400,
+    #         'body': json.dumps('Run Adoya Failed')
+    #     }
+    # return {
+    #     'statusCode': 200,
+    #     'body': json.dumps('Run Adoya Complete')
+    # }

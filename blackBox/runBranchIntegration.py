@@ -131,7 +131,6 @@ def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, ag
     return json.loads(response.text)
 
 
-@debug
 def process():
     try:
         branch_key = clientG.branchIntegrationParameters["branch_key"]
@@ -234,28 +233,17 @@ def process():
                         logger.debug("runBranchIntegration:process:::PutItem succeeded")
                 
 
-@debug
-def terminate():
-    pass
-
 
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
     process()
-    terminate()
 
 
-def lambda_handler(clientEvent, context):
+def lambda_handler(clientEvent):
     initialize(clientEvent)
-    
-    try: 
-        process()
-    except:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('Run Branch Integration Failed')
-        }
-    return {
-        'statusCode': 200,
-        'body': json.dumps('Run Branch Integration Complete')
-    }
+    process()
+    return True
+    # return {
+    #     'statusCode': 200,
+    #     'body': json.dumps('Run Branch Integration Complete')
+    # }

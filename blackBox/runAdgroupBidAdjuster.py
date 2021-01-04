@@ -69,7 +69,7 @@ def initialize(clientEvent):
     logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 
-@retry
+# @retry
 def getAdgroupReportFromAppleHelper(url, cert, json, headers):
   return requests.post(
     url, 
@@ -348,7 +348,7 @@ def createUpdatedAdGroupBids(data, campaignId, client):
   result = json.loads(adGroup_file_to_post)
   return result, len(result)
 
-@retry
+# @retry
 def sendOneUpdatedBidToAppleHelper(url, cert, json, headers):
   return requests.put(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
@@ -466,16 +466,9 @@ if __name__ == "__main__":
     process()
 
 
-def lambda_handler(clientEvent, context):
+def lambda_handler(clientEvent):
     initialize(clientEvent)
-    
-    try: 
-        process()
-    except:
-        return {
-            'statusCode': 400,
-            'body': json.dumps('Run Adgroup Bid Adjuster Failed')
-        }
+    process()
     return {
         'statusCode': 200,
         'body': json.dumps('Run Adgroup Bid Adjuster Complete')
