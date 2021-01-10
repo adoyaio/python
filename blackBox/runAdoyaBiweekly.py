@@ -30,13 +30,10 @@ def initialize(env, dynamoEndpoint, lambdaEndpoint, emailToInternal):
 
 def process(event):
     for client in clientsG:
-        print("JAMES TEST CLIENT ORG ID" + str(client.orgId))
-        print("JAMES TEST CLIENT ORG NAME" + client.clientName)
         clientEvent = {}
         clientEvent['rootEvent'] = event
         clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
-        # TODO need to define list of jobs that will run with biweekly
-        # clientEvent['jobDetails'] = []
+        clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport', 'runBidAdjuster', 'runAdgroupBidAdjuster','runKeywordAdder']
 
         # invoke_response = lambdaClient.invoke(
         #     FunctionName='runClient',
@@ -58,8 +55,8 @@ def process(event):
 
 def lambda_handler(event, context):
     initialize(event['env'], event['dynamoEndpoint'], event['lambdaEndpoint'], event['emailToInternal'])
-    print("Lambda Request ID:", context.aws_request_id)
-    print("Lambda function ARN:", context.invoked_function_arn)
+    # print("Lambda Request ID:", context.aws_request_id)
+    # print("Lambda function ARN:", context.invoked_function_arn)
     
     process(event)
     return {

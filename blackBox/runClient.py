@@ -24,30 +24,33 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     #     sendG, dynamoEndpoint, str(EMAIL_TO)))
 
 def process(clientEvent, context):
-    print("Run client:::clientEvent")
-    print(str(clientEvent))
     print("Lambda Request ID:", context.aws_request_id)
     print("Lambda function ARN:", context.invoked_function_arn)
-    
-    
-    # TODO check the jobdetails for which jobs will run
-    appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent)
-    # print(json.dumps(appleIntegrationKeywordResponse))
+    jobDetails = clientEvent['jobDetails']
 
-    runBranchIntegrationResponse = runBranchIntegration.lambda_handler(clientEvent)
-    # print(json.dumps(runBranchIntegrationResponse))
+    if 'runAppleIntegrationKeyword' in jobDetails:
+        appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent)
+        print(json.dumps(appleIntegrationKeywordResponse))
 
-    runClientDailyResponse = runClientDailyReport.lambda_handler(clientEvent)
-    # print(json.dumps(runClientDailyResponse))
+    if 'runBranchIntegration' in jobDetails:
+        runBranchIntegrationResponse = runBranchIntegration.lambda_handler(clientEvent)
+        print(json.dumps(runBranchIntegrationResponse))
 
-    runBidAdjusterResponse = runBidAdjuster.lambda_handler(clientEvent)
-    # print(json.dumps(runBidAdjusterResponse))
+    if 'runClientDailyReport' in jobDetails:
+        runClientDailyResponse = runClientDailyReport.lambda_handler(clientEvent)
+        print(json.dumps(runClientDailyResponse))
 
-    runAdgroupBidAdjusterResponse = runAdgroupBidAdjuster.lambda_handler(clientEvent)
-    # print(json.dumps(runAdgroupBidAdjusterResponse))
+    if 'runBidAdjuster' in jobDetails:
+        runBidAdjusterResponse = runBidAdjuster.lambda_handler(clientEvent)
+        print(json.dumps(runBidAdjusterResponse))
 
-    runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent)
-    # print(json.dumps(runKeywordAdderResponse))
+    if 'runAdgroupBidAdjuster' in jobDetails:
+        runAdgroupBidAdjusterResponse = runAdgroupBidAdjuster.lambda_handler(clientEvent)
+        print(json.dumps(runAdgroupBidAdjusterResponse))
+
+    if 'runKeywordAdder' in jobDetails:
+        runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent)
+        print(json.dumps(runKeywordAdderResponse))
 
     return True
 
