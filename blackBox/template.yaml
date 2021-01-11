@@ -167,24 +167,24 @@ Resources:
             Auth:
               ApiKeyRequired: true
   postSupportItem:
-  Type: "AWS::Serverless::Function"
-  Properties:
-    Handler: supportApi.postSupportItemHandler
-    Runtime: python3.7
-    CodeUri: .
-    Description: ""
-    MemorySize: 448
-    Timeout: 60
-    FunctionName: "postSupportItem"
-    Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-    Environment:
-      Variables:
-        env: "prod"
-    Events:
-      Api:
-        Type: Api
-        Properties:
-          Path: /api/support/post
-          Method: ANY
-          Auth:
-            ApiKeyRequired: true
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: supportApi.postSupportItemHandler
+      Runtime: python3.7
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "postSupportItem"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/support/post
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true

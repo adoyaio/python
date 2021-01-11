@@ -1,3 +1,4 @@
+import logging
 import json
 import boto3
 import runAppleIntegrationKeyword
@@ -48,19 +49,18 @@ def process(event):
         clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
         clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport','runKeywordAdder']
 
-        # invoke_response = lambdaClient.invoke(
-        #     FunctionName='runClient',
-        #     InvocationType='Event',
-        #     LogType='None',
-        #     Payload=json.dumps(clientEvent)
-        # )
-
-        # TODO need Event InvocationType for production
-        invoke_response = lambdaClient.invoke(
-            FunctionName='runClient',
-            InvocationType='RequestResponse',
-            Payload=json.dumps(clientEvent)
-        )
+        if event['env'] == 'prod':
+            invoke_response = lambdaClient.invoke(
+                FunctionName='runClient',
+                InvocationType='Event',
+                Payload=json.dumps(clientEvent)
+            )
+        else:
+            invoke_response = lambdaClient.invoke(
+                FunctionName='runClient',
+                InvocationType='RequestResponse',
+                Payload=json.dumps(clientEvent)
+            )
         print(str(invoke_response))
 
     return True
