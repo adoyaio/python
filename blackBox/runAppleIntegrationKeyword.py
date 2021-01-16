@@ -18,6 +18,7 @@ from utils.retry import retry
 from Client import Client
 from utils import DynamoUtils, S3Utils, LambdaUtils, EmailUtils
 from configuration import config
+from utils.DecimalEncoder import DecimalEncoder
 
 LOOKBACK = 7 # TODO reduce for nightly
 
@@ -63,7 +64,7 @@ def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
+def getKeywordReportFromApple(campaign_id, start_date, end_date):
     payload = {
         "startTime": str(start_date),
         "endTime": str(end_date),
@@ -96,13 +97,13 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
     }
 
     url = config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
-    headers = {"Authorization": "orgId=%s" % client.orgId}
+    headers = {"Authorization": "orgId=%s" % clientG.orgId}
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
     response = getKeywordReportFromAppleHelper(
         url,
-        cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+        cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
         json=payload,
         headers=headers
     )
@@ -110,9 +111,9 @@ def getKeywordReportFromApple(client, campaign_id, start_date, end_date):
 
     # TODO extract to utils
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runAppleIntegrationKeyword for %s" % (date, response.status_code, client.clientName)
+        subject ="%s - %d ERROR in runAppleIntegrationKeyword for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
@@ -238,7 +239,7 @@ def process():
         endDate = datetime.date.today()
         # print("start_date:::" + str(start_date))
         # print("end_date::: " + str(end_date))
-        data = getKeywordReportFromApple(clientG, campaignId, startDate, endDate)
+        data = getKeywordReportFromApple(campaignId, startDate, endDate)
         if not data:
             logger.info("runAppleIntegrationKeyword:::no data returned")
             continue
@@ -254,8 +255,7 @@ def process():
 def lambda_handler(clientEvent):
     initialize(clientEvent)
     process()
-    return True
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps('Run Apple Integration Keyword Complete')
-    # }
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Apple Integration Keyword Complete for ' + clientG.clientName)
+    }

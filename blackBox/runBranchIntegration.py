@@ -75,7 +75,7 @@ def getKeywordReportFromBranchHelper(url, payload, headers):
     return requests.post(url, json=payload, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 @retry
-def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, aggregation):
+def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation):
     payload = {
         "branch_key": branch_key,
         "branch_secret": branch_secret,
@@ -118,9 +118,9 @@ def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, ag
     
     # TODO extract to utils
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runBranchIntegration for %s" % (date, response.status_code, client.clientName)
+        subject ="%s - %d ERROR in runBranchIntegration for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
@@ -139,6 +139,7 @@ def process():
         logger.info("runBranchIntegration:::no branch config skipping" + str(clientG.orgId))
         return
     
+    print("runBranchIntegration:::" + clientG.clientName + ":::" + str(clientG.orgId))
     for data_source in config.DATA_SOURCES.keys():    
         data_source_key = data_source[:-1] + "_key" # key field of db table, slice off the last character
         branch_job = config.DATA_SOURCES.get(data_source)
@@ -151,7 +152,6 @@ def process():
         branch_job_aggregations = config.AGGREGATIONS[branch_job]
         for aggregation in branch_job_aggregations:
             response = getKeywordReportFromBranch(
-                clientG,
                 branch_job, 
                 branch_key, 
                 branch_secret, 
@@ -242,8 +242,8 @@ if __name__ == "__main__":
 def lambda_handler(clientEvent):
     initialize(clientEvent)
     process()
-    return True
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps('Run Branch Integration Complete')
-    # }
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Branch Integration Complete for ' + clientG.clientName)
+    }

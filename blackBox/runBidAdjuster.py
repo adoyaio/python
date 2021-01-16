@@ -16,6 +16,7 @@ from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 from configuration import config
+from utils.DecimalEncoder import DecimalEncoder
 
 BIDDING_LOOKBACK = 14
 date = datetime.date
@@ -75,7 +76,7 @@ def initialize(clientEvent):
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
-def getKeywordReportFromApple(client, campaignId):
+def getKeywordReportFromApple(campaignId):
     payload = {
         "startTime": str(start_date),
         "endTime": str(end_date),
@@ -107,22 +108,22 @@ def getKeywordReportFromApple(client, campaignId):
         "returnRecordsWithNoMetrics": True
     }
     url = config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
-    headers = {"Authorization": "orgId=%s" % client.orgId}
+    headers = {"Authorization": "orgId=%s" % clientG.orgId}
     dprint("\nURL is %s" % url)
     dprint("\nPayload is %s" % payload)
     dprint("\nHeaders are %s" % headers)
     response = getKeywordReportFromAppleHelper(
         url,
-        cert=(S3Utils.getCert(client.pemFilename),S3Utils.getCert(client.keyFilename)),
+        cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
         json=payload,
         headers=headers
     )
     dprint("Response is %s" % response)
 
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
+        subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
@@ -132,14 +133,14 @@ def getKeywordReportFromApple(client, campaignId):
 
     return json.loads(response.text)
    
-def createUpdatedKeywordBids(data, campaignId, campaignName, client):
+def createUpdatedKeywordBids(data, campaignId, campaignName):
     rows = data["data"]["reportingDataResponse"]["row"] 
     if len(rows) == 0:
         return False
 
     # handle campaign specific params
     # TODO export this logic to a utility
-    BP = client.bidParameters
+    BP = clientG.bidParameters
     HIGH_CPI_BID_DECREASE_THRESH_KEY = "HIGH_CPI_BID_DECREASE_THRESH_" + campaignName.upper()
     HIGH_CPI_BID_DECREASE_THRESH = BP.get(HIGH_CPI_BID_DECREASE_THRESH_KEY)
 
@@ -207,10 +208,10 @@ def createUpdatedKeywordBids(data, campaignId, campaignName, client):
     dprint("ex_keyword_info=%s." % str(ex_keyword_info))  
 
     # check if branch integration is enabled, if so only update bids on keywords with installs < min_apple_installs
-    branch_bid_adjuster_enabled = client.branchIntegrationParameters.get("branch_bid_adjuster_enabled", False)
+    branch_bid_adjuster_enabled = clientG.branchIntegrationParameters.get("branch_bid_adjuster_enabled", False)
 
     if branch_bid_adjuster_enabled:
-        ex_keyword_info = ex_keyword_info[ex_keyword_info["installs"] < (client.branchBidParameters["min_apple_installs"])]
+        ex_keyword_info = ex_keyword_info[ex_keyword_info["installs"] < (clientG.branchBidParameters["min_apple_installs"])]
 
     # first convert avg cpa to float so you can perform calculations
     ex_keyword_info["avgCPA"] = ex_keyword_info["avgCPA"].astype(float)
@@ -271,7 +272,7 @@ def createUpdatedKeywordBids(data, campaignId, campaignName, client):
 
     # check if overall CPI is within bid threshold, if not, fix it. 
     # NOTE pull campaign specific values for bid adjustments
-    total_cost_per_install = client.getTotalCostPerInstallForCampaign(
+    total_cost_per_install = clientG.getTotalCostPerInstallForCampaign(
         dynamodb, 
         start_date_cpi_lookback, 
         end_date,
@@ -349,19 +350,19 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
         timeout=config.HTTP_REQUEST_TIMEOUT
     )
 
-def sendUpdatedBidsToApple(client, keywordFileToPost):
+def sendUpdatedBidsToApple(keywordFileToPost):
     url = getAppleKeywordsEndpoint(keywordFileToPost)
-    payload = convertKeywordFileToApplePayload(keywordFileToPost, client.currency)
+    payload = convertKeywordFileToApplePayload(keywordFileToPost, clientG.currency)
     headers = {
-        "Authorization": "orgId=%s" % client.orgId,
+        "Authorization": "orgId=%s" % clientG.orgId,
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
-    dprint("PEM='%s'." % client.pemFilename)
-    dprint("KEY='%s'." % client.keyFilename)
+    dprint("PEM='%s'." % clientG.pemFilename)
+    dprint("KEY='%s'." % clientG.keyFilename)
      
     if (len(payload) == 0):
         print("No payload from convertKeywordFileToApplePayload. NOT actually sending anything to apple.")
@@ -374,14 +375,14 @@ def sendUpdatedBidsToApple(client, keywordFileToPost):
     if sendG:
         response = sendUpdatedBidsToAppleHelper(
             url,
-            cert=(S3Utils.getCert(client.pemFilename),S3Utils.getCert(client.keyFilename)),
+            cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
             json=payload,
             headers=headers
         )
         if response.status_code != 200:
-            email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+            email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
             date = time.strftime("%m/%d/%Y")
-            subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, client.clientName)
+            subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
             logger.warn(email)
             logger.error(subject)
             EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
@@ -439,12 +440,13 @@ def emailSummaryReport(data, sent):
 
 
 def process():
+    print("runBidAdjuster:::" + clientG.clientName + ":::" + str(clientG.orgId))
     summaryReportInfo = {}
     summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {}
     campaignIds = clientG.campaignIds
     for campaignId in campaignIds:
         sent = False
-        data = getKeywordReportFromApple(clientG, campaignId)
+        data = getKeywordReportFromApple(campaignId)
         if not data:
             logger.info("runBidAdjuster:process:::no results from api:::")
             continue
@@ -453,10 +455,10 @@ def process():
         campaignVals = list(clientG.keywordAdderIds["campaignId"].values())
         campaignName = campaignKeys[campaignVals.index(campaignId)]
         
-        stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName), clientG)
+        stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName))
         if type(stuff) != bool:
             keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
-            sent = sendUpdatedBidsToApple(clientG, keywordFileToPost)
+            sent = sendUpdatedBidsToApple(keywordFileToPost)
             clientG.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
     emailSummaryReport(summaryReportInfo, sent)
 
@@ -464,8 +466,8 @@ def process():
 def lambda_handler(clientEvent):
     initialize(clientEvent)
     process()
-    return True
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps('Run Bid Adjuster Complete')
-    # }
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Bid Adjuster Complete for ' + clientG.clientName)
+    }

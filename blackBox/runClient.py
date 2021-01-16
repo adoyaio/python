@@ -18,10 +18,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     
     sendG = LambdaUtils.getSendG(env)
     dynamoClient = LambdaUtils.getDynamoResource(env,dynamoEndpoint)
-    # lambdaClient = LambdaUtils.getLambdaClient(env,awsEndpoint)
-    # logger = LambdaUtils.getLogger(env)
-    # logger.info("runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
-    #     sendG, dynamoEndpoint, str(EMAIL_TO)))
+
 
 def process(clientEvent, context):
     print("Lambda Request ID:", context.aws_request_id)
@@ -57,8 +54,8 @@ def process(clientEvent, context):
 def lambda_handler(clientEvent, context):
     initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
     process(clientEvent, context)
-    return True
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps('Run Client Complete')
-    # }
+    # return True
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Client Complete')
+    }

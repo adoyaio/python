@@ -64,7 +64,7 @@ def getCampaignDataHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
-def getCampaignData(client, daysToGoBack):
+def getCampaignData(daysToGoBack):
     today = datetime.date.today() - datetime.timedelta(1)
     cutoffDay = today - datetime.timedelta(days=daysToGoBack - 1)  # TODO revisit "- 1" to avoid fencepost error.
     payload = {
@@ -82,14 +82,14 @@ def getCampaignData(client, daysToGoBack):
     }
 
     url: str = config.APPLE_KEYWORDS_REPORT_URL
-    headers = {"Authorization": "orgId=%s" % client.orgId}
+    headers = {"Authorization": "orgId=%s" % clientG.orgId}
     dprint("\n\nHeaders: %s" % headers)
     dprint("\n\nPayload: %s" % payload)
     dprint("\n\nApple URL: %s" % url)
 
     response = getCampaignDataHelper(
         url,
-        cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+        cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
         json=payload,
         headers=headers
     )
@@ -97,9 +97,9 @@ def getCampaignData(client, daysToGoBack):
 
     # TODO extract to utils
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status_code, client.clientName)
+        subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
@@ -116,7 +116,7 @@ def createOneRowOfTable(data, label):
     return """{:s}\t{:>9,.2f}\t{:>8,d}\t{:>s}""".format(label, data["spend"], data["installs"], cpi)
 
 
-def createEmailBodyForACampaign(client, summary, now):
+def createEmailBodyForACampaign(summary, now):
     """Format:
     Timeframe        |    Cost    |  Installs  |  Cost per Install
     Yesterday        |  $     10  |        2   |   $  5
@@ -131,10 +131,10 @@ def createEmailBodyForACampaign(client, summary, now):
                           createOneRowOfTable(summary[THIRTY_DAYS], "Last Thirty Days")
                           ])
 
-def createHtmlEmailBodyForACampaign(client, summary, now):
-    if client.currency == 'USD':
+def createHtmlEmailBodyForACampaign(summary, now):
+    if clientG.currency == 'USD':
         currencySymbol = '$'
-    elif client.currency == 'EUR':
+    elif clientG.currency == 'EUR':
         currencySymbol = '€'
 
     # normalize fields for float based formatting
@@ -263,18 +263,18 @@ def createHtmlEmailBodyForACampaign(client, summary, now):
     return htmlBody
 
 
-def sendEmailForACampaign(client, emailBody, htmlBody, now):
+def sendEmailForACampaign(emailBody, htmlBody, now):
     dateString = time.strftime("%m/%d/%Y", time.localtime(now))
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString = EMAIL_SUBJECT % (client.clientName, dateString)
+    subjectString = EMAIL_SUBJECT % (clientG.clientName, dateString)
 
     if emailClientsG:
         EmailUtils.sendEmailForACampaign(
             emailBody, 
             htmlBody, 
             subjectString, 
-            client.emailAddresses, 
+            clientG.emailAddresses, 
             emailToG,
             config.EMAIL_FROM
         )
@@ -289,7 +289,7 @@ def sendEmailForACampaign(client, emailBody, htmlBody, now):
         )
 
 
-def sendEmailReport(client, dataForVariousTimes):
+def sendEmailReport(dataForVariousTimes):
     today = datetime.date.today()
     now = time.time()
     timestamp = str(datetime.datetime.now().date())
@@ -330,29 +330,29 @@ def sendEmailReport(client, dataForVariousTimes):
             summary[someTime]["spend"] += spend
 
             # calculate campaign level cpi etc 
-            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("search"):
-                summary[someTime]["cpi_search"] = client.calculateCPI(spend, installs)
+            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("search"):
+                summary[someTime]["cpi_search"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_search"] = installs
                 summary[someTime]["spend_search"] = spend
 
-            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("broad"):
-                summary[someTime]["cpi_broad"] = client.calculateCPI(spend, installs)
+            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("broad"):
+                summary[someTime]["cpi_broad"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_broad"] = installs
                 summary[someTime]["spend_broad"] = spend
             
-            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("exact"):
-                summary[someTime]["cpi_exact"] = client.calculateCPI(spend, installs)
+            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("exact"):
+                summary[someTime]["cpi_exact"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_exact"] = installs
                 summary[someTime]["spend_exact"] = spend
 
-            if str(campaignId) == client.keywordAdderIds.get("campaignId").get("brand"):
-                summary[someTime]["cpi_brand"] = client.calculateCPI(spend, installs)
+            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("brand"):
+                summary[someTime]["cpi_brand"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_brand"] = installs
                 summary[someTime]["spend_brand"] = spend
        
         
         # calculate total cpi for timeperiod and put it on the summary object
-        summary[someTime]["cpi"] = client.calculateCPI(
+        summary[someTime]["cpi"] = clientG.calculateCPI(
             summary[someTime]["spend"], 
             summary[someTime]["installs"]
         )
@@ -363,19 +363,19 @@ def sendEmailReport(client, dataForVariousTimes):
         start_date_delta = datetime.timedelta(days=someTime)
         start_date = today - start_date_delta
        
-        purchases = client.getTotalBranchEvents(
+        purchases = clientG.getTotalBranchEvents(
             dynamodb, 
             start_date, 
             end_date
         )
-        revenue = client.getTotalBranchRevenue(
+        revenue = clientG.getTotalBranchRevenue(
             dynamodb, 
             start_date, 
             end_date
         )
 
         # for this timeslice format revenue, calculate cpp and r/c
-        revenue, cpp, revenueOverCost = client.calculateBranchMetrics(
+        revenue, cpp, revenueOverCost = clientG.calculateBranchMetrics(
             summary[someTime]["spend"],
             purchases,
             revenue
@@ -387,9 +387,9 @@ def sendEmailReport(client, dataForVariousTimes):
         summary[someTime]["revenueOverCost"] = revenueOverCost
         summary[someTime]["purchases"] = purchases
 
-    emailBody = createEmailBodyForACampaign(client, summary, now)
-    htmlBody = createHtmlEmailBodyForACampaign(client, summary, now)
-    sendEmailForACampaign(client, emailBody, htmlBody, now)
+    emailBody = createEmailBodyForACampaign(summary, now)
+    htmlBody = createHtmlEmailBodyForACampaign(summary, now)
+    sendEmailForACampaign(emailBody, htmlBody, now)
 
     # cast to string where needed to avoid dynamo float/decimal issues
     rowOfHistory = {}
@@ -416,13 +416,13 @@ def sendEmailReport(client, dataForVariousTimes):
     rowOfHistory["cpp"] = str(summary[ONE_DAY].get("cpp"))
     rowOfHistory["revenueOverCost"] = str(summary[ONE_DAY].get("revenueOverCost"))
 
-    client.addRowToHistory(rowOfHistory, dynamodb, end_date)
+    clientG.addRowToHistory(rowOfHistory, dynamodb, end_date)
 
 def process():
+    print("runClientDailyReport:::" + clientG.clientName + ":::" + str(clientG.orgId))
     dataForVariousTimes = {}
     for daysToGoBack in (ONE_DAY, SEVEN_DAYS, THIRTY_DAYS):
         campaignData = getCampaignData(
-            clientG,
             daysToGoBack
         )
         if(campaignData != False):
@@ -436,7 +436,7 @@ def process():
     
     if not dataForOneDay or not dataForSevenDay or not dataForThirtyDay:
         return
-    sendEmailReport(clientG, dataForVariousTimes)
+    sendEmailReport(dataForVariousTimes)
 
 
 if __name__ == "__main__":
@@ -447,8 +447,8 @@ if __name__ == "__main__":
 def lambda_handler(clientEvent):
     initialize(clientEvent)
     process()
-    return True
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps('Run Client Daily Report Complete')
-    # }
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Client Daily Report Complete for ' + clientG.clientName)
+    }

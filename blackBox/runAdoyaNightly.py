@@ -27,20 +27,6 @@ def initialize(env, dynamoEndpoint, lambdaEndpoint, emailToInternal):
     logger.info("runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
         sendG, dynamoEndpoint, str(EMAIL_TO)))
 
-# def lambda_handler(event, context):
-#     invoke_response_branch = runAppleIntegrationKeyword.lambda_handler(event, context)
-#     print(json.dumps(invoke_response_branch))
-
-#     invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
-#     print(json.dumps(invoke_response_branch))
-
-#     invoke_response_dr = runClientDailyReport.lambda_handler(event, context)
-#     print(json.dumps(invoke_response_dr))
-
-#     invoke_response_ka = runKeywordAdder.lambda_handler(event, context)
-#     print(json.dumps(invoke_response_ka))
-
-#     return True
 
 def process(event):
     for client in clientsG:
@@ -69,7 +55,13 @@ def process(event):
 def lambda_handler(event, context):
     initialize(event['env'], event['dynamoEndpoint'], event['lambdaEndpoint'], event['emailToInternal'])
     
-    process(event)
+    try: 
+        process(event)
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Adoya Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Adoya Complete')

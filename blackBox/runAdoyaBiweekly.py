@@ -57,19 +57,14 @@ def lambda_handler(event, context):
     # print("Lambda Request ID:", context.aws_request_id)
     # print("Lambda function ARN:", context.invoked_function_arn)
     
-    process(event)
+    try: 
+        process(event)
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Adoya Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Adoya Complete')
     }
-    # try: 
-    #     process(event)
-    # except:
-    #     return {
-    #         'statusCode': 400,
-    #         'body': json.dumps('Run Adoya Failed')
-    #     }
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps('Run Adoya Complete')
-    # }

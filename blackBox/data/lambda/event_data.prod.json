@@ -1,5 +1,6 @@
 {
   "env": "prod",
-  "awsEndpoint": "",
+  "dynamoEndpoint": "",
+  "lambdaEndpoint": "",
   "emailToInternal": ["james@adoya.io", "scott.kaplan@adoya.io"]
 }

@@ -77,7 +77,7 @@ def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
   )
 
 
-def getSearchTermsReportFromApple(client, campaignId):
+def getSearchTermsReportFromApple(campaignId):
   payload = {
     "startTime": str(start_date), 
     "endTime": str(end_date),
@@ -109,14 +109,14 @@ def getSearchTermsReportFromApple(client, campaignId):
     "returnRecordsWithNoMetrics": False
   }
   url = config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
-  headers = { "Authorization": "orgId=%s" % client.orgId }
+  headers = { "Authorization": "orgId=%s" % clientG.orgId }
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % payload)
   dprint ("Headers are %s." % headers)
 
   response = getSearchTermsReportFromAppleHelper(
     url,
-    cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+    cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
     json=payload,
     headers=headers
   )
@@ -124,9 +124,9 @@ def getSearchTermsReportFromApple(client, campaignId):
 
   # TODO extract to utils
   if response.status_code != 200:
-    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
     date = time.strftime("%m/%d/%Y")
-    subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
+    subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
     logger.error(subject)
     if sendG:
@@ -394,7 +394,7 @@ def sendNonDuplicatesToAppleHelper(url, cert, data, headers):
   )
 
 # @debug
-def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndices):
+def sendNonDuplicatesToApple(url, payload, headers, duplicateKeywordIndices):
   payloadPy = json.loads(payload)
   
   newPayload = [payloadPy[index] for index in range(len(payloadPy)) \
@@ -403,7 +403,7 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
   dprint("About to send non-duplicates payload %s." % pprint.pformat(newPayload))
   response = sendNonDuplicatesToAppleHelper(
     url,
-    cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+    cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
     data=json.dumps(newPayload),
     headers=headers
   )
@@ -412,9 +412,9 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
     dprint("NonDuplicate send worked.");
 
   else:
-    email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+    email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
     date = time.strftime("%m/%d/%Y")
-    subject ="%s:%d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
+    subject ="%s:%d ERROR in runKeywordAdder for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
     logger.error(subject)
     if sendG:
@@ -433,8 +433,8 @@ def sendToAppleHelper(url, cert, data, headers):
     timeout=config.HTTP_REQUEST_TIMEOUT
   )
 
-def sendToApple(client, payloads):
-    headers = { "Authorization": "orgId=%s" % client.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
+def sendToApple(payloads):
+    headers = { "Authorization": "orgId=%s" % clientG.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
     if sendG:
         responses = []
         for payload in payloads:
@@ -445,7 +445,7 @@ def sendToApple(client, payloads):
 
             response = sendToAppleHelper(
               appleEndpointUrl,
-              cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+              cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
               data=payloadForPost,
               headers=headers
             )
@@ -549,7 +549,7 @@ def sendToApple(client, payloads):
                     responses.append(response)
 
                 else:
-                    responses.append(sendNonDuplicatesToApple(client, appleEndpointUrl, payload, headers, duplicateKeywordIndices))
+                    responses.append(sendNonDuplicatesToApple(clientG, appleEndpointUrl, payload, headers, duplicateKeywordIndices))
 
                 response = "\n".join(["%s: %s" % (response.status_code, response.text) for response in responses])
 
@@ -594,7 +594,6 @@ def emailSummaryReport(data, sent):
 
 
 def convertAnalysisIntoApplePayloadAndSend(
-  client,
   CSRI,
   exactPositive,
   exactPositiveUrl,
@@ -625,25 +624,26 @@ def convertAnalysisIntoApplePayloadAndSend(
     print("runKeywordAdder exactNegative" + str(exactNegative))
 
     if json.loads(exactPositive):  
-      sendToApple(client, ((exactPositive, exactPositiveUrl), (broadPositive, broadPositiveUrl)))
+      sendToApple(((exactPositive, exactPositiveUrl), (broadPositive, broadPositiveUrl)))
     
     if json.loads(exactNegative):
-      sendToApple(client, ((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
+      sendToApple(((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
 
     # JF release-1 airlift bid counts and keywords to dynamo
-    client.writePositiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
-    client.writeNegativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
+    clientG.writePositiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
+    clientG.writeNegativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
     return sendG
 
 
 def process():
+  print("runKeywordAdder:::" + clientG.clientName + ":::" + str(clientG.orgId))
   summaryReportInfo = { }
   sent = False
   summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = CSRI = { }
   kAI = clientG.keywordAdderIds
   searchCampaignId, broadCampaignId = kAI["campaignId"]["search"], kAI["campaignId"]["broad"]
-  searchMatchData = getSearchTermsReportFromApple(clientG, searchCampaignId)
-  broadMatchData  = getSearchTermsReportFromApple(clientG, broadCampaignId)
+  searchMatchData = getSearchTermsReportFromApple(searchCampaignId)
+  broadMatchData  = getSearchTermsReportFromApple(broadCampaignId)
   if not searchMatchData or not broadMatchData:
     CSRI["+e"] = {}
     CSRI["+b"] = {}
@@ -682,8 +682,8 @@ if __name__ == "__main__":
 def lambda_handler(clientEvent):
     initialize(clientEvent)
     process()
-    return True
-    # return {
-    #     'statusCode': 200,
-    #     'body': json.dumps('Run Keyword Adder Complete')
-    # }
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Keyword Adder Complete for ' + clientG.clientName)
+    }

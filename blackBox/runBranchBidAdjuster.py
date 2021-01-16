@@ -15,6 +15,7 @@ from utils.debug import debug, dprint
 from utils.retry import retry
 from Client import Client
 from utils import DynamoUtils, EmailUtils, S3Utils, LambdaUtils
+from utils.DecimalEncoder import DecimalEncoder
 
 BIDDING_LOOKBACK = 14  # days
 date = datetime.date
@@ -25,17 +26,6 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 
-# Helper class to convert a DynamoDB item to JSON.
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            if o % 1 > 0:
-                return float(o)
-            else:
-                return int(o)
-        return super(DecimalEncoder, self).default(o)
-
-# @debug
 def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global clientsG
@@ -391,7 +381,6 @@ def sendUpdatedBidsToApple(client, url, payload):
     return sendG
 
 
-# @debug
 def createEmailBody(data, sent):
   content = ["""Sent to Apple is %s.""" % sent,
              """\t""".join(["Client", "Campaign", "Updated Branch Bids"])]
@@ -406,7 +395,6 @@ def createEmailBody(data, sent):
   return "\n".join(content)
 
 
-# @debug
 def emailSummaryReport(data, sent):
     messageString = createEmailBody(data, sent)
     dateString = time.strftime("%m/%d/%Y")
@@ -416,7 +404,6 @@ def emailSummaryReport(data, sent):
     EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
 
 
-# @debug
 def terminate():
     pass
 
