@@ -9,39 +9,39 @@ from utils.DecimalEncoder import DecimalEncoder
 ONE_YEAR_IN_DAYS = 365
 
 class Client:
-    def __init__(self,
-                 orgId,
-                 clientName,
-                 emailAddresses,
-                 keyFilename, pemFilename,
-                 bidParameters,
-                 adgroupBidParameters,
-                 branchBidParameters,
-                 campaignIds,
-                 keywordAdderIds,
-                 keywordAdderParameters,
-                 branchIntegrationParameters,
-                 currency,
-                 appName,
-                 appID,
-                 campaignName
-                 ):
-        
+    def __init__(
+        self,
+        orgId,
+        clientName,
+        emailAddresses,
+        keyFilename, 
+        pemFilename,
+        bidParameters,
+        adgroupBidParameters,
+        branchBidParameters,
+        appleCampaigns,
+        keywordAdderParameters,
+        branchIntegrationParameters,
+        currency,
+        appName,
+        appID,
+        campaignName
+    ):  
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
         
-        if "campaignId" not in keywordAdderIds or \
-                "adGroupId" not in keywordAdderIds:
-            raise NameError("Missing campaignId or adGroupId in keywordAdderIds")
+        # if "campaignId" not in keywordAdderIds or \
+        #         "adGroupId" not in keywordAdderIds:
+        #     raise NameError("Missing campaignId or adGroupId in keywordAdderIds")
 
-        kAPCI, kAPGI = keywordAdderIds["campaignId"], keywordAdderIds["adGroupId"]
-        if "search" not in kAPCI or "broad" not in kAPCI or "exact" not in kAPCI:
-            raise NameError(
-                "Missing search, broad, or exact in keywordAdderIds[\"campaignId\"]. It was %s." % str(kAPCI))
+        # kAPCI, kAPGI = keywordAdderIds["campaignId"], keywordAdderIds["adGroupId"]
+        # if "search" not in kAPCI or "broad" not in kAPCI or "exact" not in kAPCI:
+        #     raise NameError(
+        #         "Missing search, broad, or exact in keywordAdderIds[\"campaignId\"]. It was %s." % str(kAPCI))
 
-        if "search" not in kAPGI or "broad" not in kAPGI or "exact" not in kAPGI:
-            raise NameError(
-                "Missing search, broad, or exact in keywordAdderIds[\"adGroupId\"]. It was %s." % str(kAPGI))
+        # if "search" not in kAPGI or "broad" not in kAPGI or "exact" not in kAPGI:
+        #     raise NameError(
+        #         "Missing search, broad, or exact in keywordAdderIds[\"adGroupId\"]. It was %s." % str(kAPGI))
 
         self._orgId = orgId
         self._clientName = clientName
@@ -51,8 +51,7 @@ class Client:
         self._bidParameters = bidParameters
         self._adgroupBidParameters = adgroupBidParameters
         self._branchBidParameters = branchBidParameters
-        self._campaignIds = campaignIds
-        self._keywordAdderIds = keywordAdderIds
+        self._appleCampaigns = appleCampaigns
         self._keywordAdderParameters = keywordAdderParameters
         self._branchIntegrationParameters = branchIntegrationParameters
         self._currency = currency
@@ -109,16 +108,16 @@ class Client:
         self._branchBidParameters = branchBidParameters   
 
     @property
-    def keywordAdderIds(self):
-        return dict(self._keywordAdderIds)
+    def appleCampaigns(self):
+        return list(self._appleCampaigns)
 
     @property
     def keywordAdderParameters(self):
         return dict(self._keywordAdderParameters)
 
-    @property
-    def campaignIds(self):
-        return tuple(self._campaignIds)
+    # @property
+    # def campaignIds(self):
+    #     return tuple(self._campaignIds)
 
     @property
     def branchIntegrationParameters(self):
@@ -435,8 +434,7 @@ class Client:
                     client["orgDetails"]["bidParameters"],
                     client["orgDetails"]["adgroupBidParameters"],
                     client["orgDetails"]["branchBidParameters"],
-                    client["orgDetails"]["campaignIds"],
-                    client["orgDetails"]["keywordAdderIds"],
+                    client["orgDetails"]["appleCampaigns"],
                     client["orgDetails"]["keywordAdderParameters"],
                     client["orgDetails"]["branchIntegrationParameters"],
                     client["orgDetails"]["currency"],

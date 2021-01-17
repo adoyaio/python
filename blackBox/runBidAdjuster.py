@@ -60,8 +60,7 @@ def initialize(clientEvent):
         orgDetails['_bidParameters'],
         orgDetails['_adgroupBidParameters'],
         orgDetails['_branchBidParameters'],
-        orgDetails['_campaignIds'],
-        orgDetails['_keywordAdderIds'],
+        orgDetails['_appleCampaigns'],
         orgDetails['_keywordAdderParameters'],
         orgDetails['_branchIntegrationParameters'],
         orgDetails['_currency'],
@@ -444,27 +443,60 @@ def emailSummaryReport(data, sent):
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
+  
+
 def process():
     print("runBidAdjuster:::" + clientG.clientName + ":::" + str(clientG.orgId))
     summaryReportInfo = {}
     summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {}
-    campaignIds = clientG.campaignIds
-    for campaignId in campaignIds:
+    
+    appleCampaigns = clientG.appleCampaigns
+    campaignsForBidAdjuster = list(
+        filter(
+            lambda campaign:(campaign["campaignType"] == 'exact' or campaign["campaignType"] == 'broad'), appleCampaigns
+        )
+    )
+    print(str(campaignsForBidAdjuster))
+
+    for campaign in campaignsForBidAdjuster:
         sent = False
-        data = getKeywordReportFromApple(campaignId)
+        data = getKeywordReportFromApple(campaign['campaignId'])
         if not data:
             logger.info("runBidAdjuster:process:::no results from api:::")
             continue
         # grab campaign name for campaign specific params
-        campaignKeys = list(clientG.keywordAdderIds["campaignId"].keys())
-        campaignVals = list(clientG.keywordAdderIds["campaignId"].values())
-        campaignName = campaignKeys[campaignVals.index(campaignId)]
+        # campaignKeys = list(clientG.keywordAdderIds["campaignId"].keys())
+        # campaignVals = list(clientG.keywordAdderIds["campaignId"].values())
+        # campaignName = campaignKeys[campaignVals.index(campaignId)]
         
-        stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName))
+        stuff = createUpdatedKeywordBids(
+            data, 
+            campaign['campaignId'], 
+            campaign['campaignType']
+        )
+
         if type(stuff) != bool:
-            keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
+            keywordFileToPost, clientSummaryReportInfo[campaign['campaignId']], numberOfUpdatedBids = stuff
             sent = sendUpdatedBidsToApple(keywordFileToPost)
             clientG.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
+
+    # for campaignId in campaignIds:
+    #     sent = False
+    #     data = getKeywordReportFromApple(campaignId)
+    #     if not data:
+    #         logger.info("runBidAdjuster:process:::no results from api:::")
+    #         continue
+    #     # grab campaign name for campaign specific params
+    #     campaignKeys = list(clientG.keywordAdderIds["campaignId"].keys())
+    #     campaignVals = list(clientG.keywordAdderIds["campaignId"].values())
+    #     campaignName = campaignKeys[campaignVals.index(campaignId)]
+        
+    #     stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName))
+    #     if type(stuff) != bool:
+    #         keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
+    #         sent = sendUpdatedBidsToApple(keywordFileToPost)
+    #         clientG.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
+
     emailSummaryReport(summaryReportInfo, sent)
 
 
