@@ -264,6 +264,8 @@ class Client:
 
     # gets total cost per install for the lookback period
     def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
+        # TODO if its not broad, exact, search, brand return 999999
+
         table = dynamoResource.Table('cpi_history')
 
         response = table.query(

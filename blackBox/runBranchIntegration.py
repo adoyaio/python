@@ -47,7 +47,9 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-    orgDetails = json.loads(clientEvent['orgDetails'])
+    orgDetails = json.loads(
+        clientEvent['orgDetails']
+    )
     clientG = Client(
         orgDetails['_orgId'],
         orgDetails['_clientName'],
@@ -66,7 +68,9 @@ def initialize(clientEvent):
         orgDetails['_appID'],
         orgDetails['_campaignName']
     )
-    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
+    logger = LambdaUtils.getLogger(
+        clientEvent['rootEvent']['env']
+    )  
     logger.info("runBranchIntegration:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
@@ -235,7 +239,10 @@ def process():
                 
 
 if __name__ == "__main__":
-    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    clientEvent = LambdaUtils.getClientForLocalRun(
+        int(sys.argv[1]),
+        ['james@adoya.io']
+    )
     initialize(clientEvent)
     process()
 

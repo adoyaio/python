@@ -11,22 +11,35 @@ from Client import Client
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from utils.DecimalEncoder import DecimalEncoder
 
-def initialize(env, dynamoEndpoint, lambdaEndpoint, emailToInternal):
+def initialize(event):
     global sendG
     global clientsG
     global dynamoResource
     global lambdaClient
-    global EMAIL_TO
     global logger
-    
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamoResource = LambdaUtils.getDynamoResource(env,dynamoEndpoint)
-    lambdaClient = LambdaUtils.getLambdaClient(env,lambdaEndpoint)
-    clientsG = Client.getClients(dynamoResource)
-    logger = LambdaUtils.getLogger(env)
-    logger.info("runBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s', emailTo='%s'" % (
-        sendG, dynamoEndpoint, str(EMAIL_TO)))
+
+    print(str(event))
+    sendG = LambdaUtils.getSendG(
+        event['env']
+    )
+    dynamoResource = LambdaUtils.getDynamoResource(
+        event['env'],
+        event['dynamoEndpoint']
+    )
+
+    lambdaClient = LambdaUtils.getLambdaClient(
+        event['env'],
+        event['lambdaEndpoint']
+    )
+
+    clientsG = Client.getClients(
+        dynamoResource
+    )
+
+    logger = LambdaUtils.getLogger(
+        event['env']
+    )
+
 
 def process(event):
     for client in clientsG:
@@ -53,7 +66,7 @@ def process(event):
 
 
 def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['lambdaEndpoint'], event['emailToInternal'])
+    initialize(event)
     # print("Lambda Request ID:", context.aws_request_id)
     # print("Lambda function ARN:", context.invoked_function_arn)
     

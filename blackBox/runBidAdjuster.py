@@ -141,9 +141,13 @@ def createUpdatedKeywordBids(data, campaignId, campaignName):
 
     # handle campaign specific params
     # TODO export this logic to a utility
+
+    # TODO is campaignName part of adoya way list
     BP = clientG.bidParameters
     HIGH_CPI_BID_DECREASE_THRESH_KEY = "HIGH_CPI_BID_DECREASE_THRESH_" + campaignName.upper()
     HIGH_CPI_BID_DECREASE_THRESH = BP.get(HIGH_CPI_BID_DECREASE_THRESH_KEY)
+
+    # TODO if not do lookup to miscCampaigns
 
     keyword_info = defaultdict(list)
     summaryReportInfo = {}
@@ -436,7 +440,7 @@ def emailSummaryReport(data, sent):
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString = "Bid Adjuster summary for %s" % dateString
+    subjectString = "%s - Bid Adjuster summary for %s" % (clientG.clientName, dateString)
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
@@ -465,7 +469,10 @@ def process():
 
 
 if __name__ == "__main__":
-    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    clientEvent = LambdaUtils.getClientForLocalRun(
+        int(sys.argv[1]),
+        ['james@adoya.io']
+    )
     initialize(clientEvent)
     process()
 

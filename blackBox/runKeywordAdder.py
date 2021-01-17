@@ -590,7 +590,7 @@ def emailSummaryReport(data, sent):
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString ="Keyword Adder summary for %s" % dateString
+    subjectString ="%s - Keyword Adder summary for %s" % (clientG.clientName, dateString)
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
@@ -675,7 +675,10 @@ def process():
 
 
 if __name__ == "__main__":
-    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    clientEvent = LambdaUtils.getClientForLocalRun(
+        int(sys.argv[1]),
+        ['james@adoya.io']
+    )
     initialize(clientEvent)
     process()
 

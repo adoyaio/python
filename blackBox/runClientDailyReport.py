@@ -441,7 +441,10 @@ def process():
 
 
 if __name__ == "__main__":
-    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    clientEvent = LambdaUtils.getClientForLocalRun(
+        int(sys.argv[1]),
+        ['james@adoya.io']
+    )
     initialize(clientEvent)
     process()
 

@@ -60,13 +60,13 @@ def getLogger(env):
         return logger
 
 
-def getClientForLocalRun(orgId):
+def getClientForLocalRun(orgId, emailToInternal):
     clientEvent = {}
     clientEvent['rootEvent'] = {
         "env": "lcl",
         "dynamoEndpoint": "http://localhost:8000",
         "lambdaEndpoint": "http://host.docker.internal:3001",
-        "emailToInternal": ["james@adoya.io"]
+        "emailToInternal": emailToInternal
     }
     with open("./data/dynamo/clients.json") as json_file:
         clients = json.load(json_file, parse_float=decimal.Decimal)
