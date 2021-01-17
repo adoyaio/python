@@ -54,7 +54,7 @@ def process(clientEvent, context):
 def lambda_handler(clientEvent, context):
     initialize(clientEvent['rootEvent']['env'], clientEvent['rootEvent']['dynamoEndpoint'], clientEvent['rootEvent']['emailToInternal'])
     process(clientEvent, context)
-    # return True
+
     return {
         'statusCode': 200,
         'body': json.dumps('Run Client Complete')

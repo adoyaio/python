@@ -234,10 +234,55 @@ def process():
                 
 
 
-if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
-    process()
+# if __name__ == "__main__":
+#     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+#     process()
 
+if __name__ == "__main__":
+    clientEvent = {}
+    # clientEvent['rootEvent'] = {
+    #     'env':'lcl', 
+    #     'dynamoEndpoint':'http://dynamodb:8000',
+    #     'lambdaEndpoint':'http://host.docker.internal:3001',
+
+    # }
+    clientEvent['rootEvent'] = {
+        "env": "lcl",
+        "dynamoEndpoint": "http://dynamodb:8000",
+        "lambdaEndpoint": "http://host.docker.internal:3001",
+        "emailToInternal": ["james@adoya.io"]
+    }
+    with open("./data/dynamo/clients.json") as json_file:
+        clients = json.load(json_file, parse_float=decimal.Decimal)
+        # test = filter(lambda client: client['orgId'] == 1056410, clients)
+        test = next(item for item in clients if item["orgId"] == 1056410)
+        print(str(test))
+        client = Client(
+            test['orgId'],
+            test['clientName'],
+            test['emailAddresses'],
+            test['keyFilename'],
+            test['pemFilename'],
+            test['bidParameters'],
+            test['adgroupBidParameters'],
+            test['branchBidParameters'],
+            test['campaignIds'],
+            test['keywordAdderIds'],
+            test['keywordAdderParameters'],
+            test['branchIntegrationParameters'],
+            test['currency'],
+            test['appName'],
+            test['appID'],
+            test['campaignName']
+        )
+        # for client in clients:
+        #     orgId = client['orgId']
+        #     print("Running client:", str(client))
+        
+        
+    clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+    initialize(clientEvent)
+    process()
 
 def lambda_handler(clientEvent):
     initialize(clientEvent)
