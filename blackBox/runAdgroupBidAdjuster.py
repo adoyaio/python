@@ -9,6 +9,7 @@ import boto3
 import numpy as np
 import pandas as pd
 import requests
+import sys
 from configuration import config
 from utils.debug import debug, dprint
 from utils.retry import retry
@@ -461,9 +462,9 @@ def process():
   emailSummaryReport(summaryReportInfo, sent)
 
 
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    initialize(clientEvent)
     process()
 
 

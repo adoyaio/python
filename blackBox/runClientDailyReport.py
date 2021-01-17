@@ -4,6 +4,7 @@ import logging
 import time
 import boto3
 import requests
+import sys
 from configuration import config
 from utils.debug import debug, dprint
 from utils.retry import retry
@@ -440,7 +441,8 @@ def process():
 
 
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    initialize(clientEvent)
     process()
 
 

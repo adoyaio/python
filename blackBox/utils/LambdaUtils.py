@@ -1,6 +1,10 @@
 import boto3
 import botocore.config
 import logging
+import json
+import decimal
+from Client import Client
+from utils.DecimalEncoder import DecimalEncoder
 
 def getSendG(env):
     if env == "lcl":
@@ -54,3 +58,36 @@ def getLogger(env):
     else:
         logger.setLevel(logging.INFO)
         return logger
+
+
+def getClientForLocalRun(orgId):
+    clientEvent = {}
+    clientEvent['rootEvent'] = {
+        "env": "lcl",
+        "dynamoEndpoint": "http://localhost:8000",
+        "lambdaEndpoint": "http://host.docker.internal:3001",
+        "emailToInternal": ["james@adoya.io"]
+    }
+    with open("./data/dynamo/clients.json") as json_file:
+        clients = json.load(json_file, parse_float=decimal.Decimal)
+        clientJSON = next(item for item in clients if item["orgId"] == orgId)
+        client = Client(
+            clientJSON['orgId'],
+            clientJSON['clientName'],
+            clientJSON['emailAddresses'],
+            clientJSON['keyFilename'],
+            clientJSON['pemFilename'],
+            clientJSON['bidParameters'],
+            clientJSON['adgroupBidParameters'],
+            clientJSON['branchBidParameters'],
+            clientJSON['campaignIds'],
+            clientJSON['keywordAdderIds'],
+            clientJSON['keywordAdderParameters'],
+            clientJSON['branchIntegrationParameters'],
+            clientJSON['currency'],
+            clientJSON['appName'],
+            clientJSON['appID'],
+            clientJSON['campaignName']
+        )     
+    clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+    return clientEvent

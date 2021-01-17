@@ -5,6 +5,7 @@ import logging
 import boto3
 import requests
 import time
+import sys
 from Client import Client
 from configuration import config
 from utils import DynamoUtils, LambdaUtils, EmailUtils
@@ -233,54 +234,8 @@ def process():
                         logger.debug("runBranchIntegration:process:::PutItem succeeded")
                 
 
-
-# if __name__ == "__main__":
-#     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
-#     process()
-
 if __name__ == "__main__":
-    clientEvent = {}
-    # clientEvent['rootEvent'] = {
-    #     'env':'lcl', 
-    #     'dynamoEndpoint':'http://dynamodb:8000',
-    #     'lambdaEndpoint':'http://host.docker.internal:3001',
-
-    # }
-    clientEvent['rootEvent'] = {
-        "env": "lcl",
-        "dynamoEndpoint": "http://dynamodb:8000",
-        "lambdaEndpoint": "http://host.docker.internal:3001",
-        "emailToInternal": ["james@adoya.io"]
-    }
-    with open("./data/dynamo/clients.json") as json_file:
-        clients = json.load(json_file, parse_float=decimal.Decimal)
-        # test = filter(lambda client: client['orgId'] == 1056410, clients)
-        test = next(item for item in clients if item["orgId"] == 1056410)
-        print(str(test))
-        client = Client(
-            test['orgId'],
-            test['clientName'],
-            test['emailAddresses'],
-            test['keyFilename'],
-            test['pemFilename'],
-            test['bidParameters'],
-            test['adgroupBidParameters'],
-            test['branchBidParameters'],
-            test['campaignIds'],
-            test['keywordAdderIds'],
-            test['keywordAdderParameters'],
-            test['branchIntegrationParameters'],
-            test['currency'],
-            test['appName'],
-            test['appID'],
-            test['campaignName']
-        )
-        # for client in clients:
-        #     orgId = client['orgId']
-        #     print("Running client:", str(client))
-        
-        
-    clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
     initialize(clientEvent)
     process()
 

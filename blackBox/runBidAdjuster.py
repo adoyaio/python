@@ -8,6 +8,7 @@ import requests
 import time
 import boto3
 import logging
+import sys
 from collections import defaultdict
 from datetime import datetime as dt
 from boto3.dynamodb.conditions import Key, Attr
@@ -461,6 +462,12 @@ def process():
             sent = sendUpdatedBidsToApple(keywordFileToPost)
             clientG.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
     emailSummaryReport(summaryReportInfo, sent)
+
+
+if __name__ == "__main__":
+    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    initialize(clientEvent)
+    process()
 
 
 def lambda_handler(clientEvent):

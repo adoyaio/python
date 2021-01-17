@@ -8,6 +8,7 @@ import pprint
 import re
 import requests
 import time
+import sys
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 import boto3
 from utils.debug import debug, dprint
@@ -659,7 +660,6 @@ def process():
   exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
     analyzeKeywords(searchMatchData, broadMatchData, kAI, clientG.keywordAdderParameters, clientG.currency)
   sent = convertAnalysisIntoApplePayloadAndSend(
-    clientG,
     CSRI,
     exactPositive,
     exactPositiveUrl,
@@ -675,7 +675,8 @@ def process():
 
 
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    initialize(clientEvent)
     process()
 
 

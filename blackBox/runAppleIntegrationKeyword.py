@@ -8,6 +8,7 @@ import pandas as pd
 import requests
 import time
 import boto3
+import sys
 from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and rounding errors
 from botocore.exceptions import ClientError
@@ -247,10 +248,10 @@ def process():
         loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
 
 
-
-# if __name__ == "__main__":
-#     initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
-#     process()
+if __name__ == "__main__":
+    clientEvent = LambdaUtils.getClientForLocalRun(int(sys.argv[1]))
+    initialize(clientEvent)
+    process()
 
 def lambda_handler(clientEvent):
     initialize(clientEvent)
