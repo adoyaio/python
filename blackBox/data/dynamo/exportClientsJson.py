@@ -1,17 +1,13 @@
-from __future__ import print_function  # Python 2/3 compatibility
-
 import datetime
 import decimal
 import json
 import logging
 import pprint
-
 import boto3
 
 sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
 date = datetime.date
 today = datetime.date.today()
 
@@ -26,7 +22,6 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 
-# ------------------------------------------------------------------------------
 def initialize(env, dynamoEndpoint):
     global sendG
     global dynamodb
@@ -45,7 +40,6 @@ def initialize(env, dynamoEndpoint):
         logger.setLevel(logging.INFO)
 
 
-# ------------------------------------------------------------------------------
 def process():
     data = []
     for client in (dynamodb.Table('clients').scan()["Items"]):
@@ -53,17 +47,10 @@ def process():
     with open('clients.' + str(today) + '.json', 'w') as outfile:
         json.dump(data, outfile, cls=DecimalEncoder, indent=4)
 
-# ------------------------------------------------------------------------------
-def terminate():
-    pass
 
-
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     # initialize('lcl', 'http://localhost:8000')
     # process()
-    # terminate()
 
     initialize('prod', '')
     process()
-    terminate()

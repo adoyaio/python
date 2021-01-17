@@ -21,6 +21,19 @@ Resources:
       Timeout: 900
       FunctionName: "runAdoyaNightly"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+  runClient:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: runClient.lambda_handler
+      Runtime: python3.7
+      CodeUri: .
+      Description: ""
+      MemorySize: 1000
+      Timeout: 900
+      FunctionName: "runClient"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
   runAdoyaBiweekly:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -28,10 +41,12 @@ Resources:
       Runtime: python3.7
       CodeUri: .
       Description: ""
-      MemorySize: 448
+      MemorySize: 1000
       Timeout: 900
       FunctionName: "runAdoyaBiweekly"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      EventInvokeConfig:
+        MaximumRetryAttempts: 0
   runAdoyaWeekly:
     Type: "AWS::Serverless::Function"
     Properties:

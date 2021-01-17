@@ -4,15 +4,9 @@ import json
 import os
 from boto3.dynamodb.conditions import Key
 from utils import DynamoUtils
+from utils.DecimalEncoder import DecimalEncoder
 
 ONE_YEAR_IN_DAYS = 365
-
-# Helper class to convert a DynamoDB item to JSON.
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            return str(o)
-        return super(DecimalEncoder, self).default(o)
 
 class Client:
     def __init__(self,
@@ -270,6 +264,8 @@ class Client:
 
     # gets total cost per install for the lookback period
     def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
+        # TODO if its not broad, exact, search, brand return 999999
+
         table = dynamoResource.Table('cpi_history')
 
         response = table.query(

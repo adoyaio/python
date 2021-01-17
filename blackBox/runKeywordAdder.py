@@ -8,6 +8,7 @@ import pprint
 import re
 import requests
 import time
+import sys
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 import boto3
 from utils.debug import debug, dprint
@@ -29,22 +30,42 @@ end_date = today - end_date_delta
 #start_date = dt.strptime('2019-12-15', '%Y-%m-%d').date()
 #end_date = dt.strptime('2019-12-22', '%Y-%m-%d').date()
 
-@debug
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global sendG
-    global clientsG
+    global clientG
+    global emailToG
     global dynamodb
-    global EMAIL_TO
     global logger
-    
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
 
-    logger = LambdaUtils.getLogger(env)
-    logger.info("In runKeywordAdder:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
-
+    emailToG = clientEvent['rootEvent']['emailToInternal']
+    sendG = LambdaUtils.getSendG(
+        clientEvent['rootEvent']['env']
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    )
+    orgDetails = json.loads(clientEvent['orgDetails'])
+    clientG = Client(
+        orgDetails['_orgId'],
+        orgDetails['_clientName'],
+        orgDetails['_emailAddresses'],
+        orgDetails['_keyFilename'],
+        orgDetails['_pemFilename'],
+        orgDetails['_bidParameters'],
+        orgDetails['_adgroupBidParameters'],
+        orgDetails['_branchBidParameters'],
+        orgDetails['_campaignIds'],
+        orgDetails['_keywordAdderIds'],
+        orgDetails['_keywordAdderParameters'],
+        orgDetails['_branchIntegrationParameters'],
+        orgDetails['_currency'],
+        orgDetails['_appName'],
+        orgDetails['_appID'],
+        orgDetails['_campaignName']
+    )
+    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
+    logger.info("runKeywordAdder:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
 def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
@@ -57,7 +78,7 @@ def getSearchTermsReportFromAppleHelper(url, cert, json, headers):
   )
 
 
-def getSearchTermsReportFromApple(client, campaignId):
+def getSearchTermsReportFromApple(campaignId):
   payload = {
     "startTime": str(start_date), 
     "endTime": str(end_date),
@@ -89,14 +110,14 @@ def getSearchTermsReportFromApple(client, campaignId):
     "returnRecordsWithNoMetrics": False
   }
   url = config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
-  headers = { "Authorization": "orgId=%s" % client.orgId }
+  headers = { "Authorization": "orgId=%s" % clientG.orgId }
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % payload)
   dprint ("Headers are %s." % headers)
 
   response = getSearchTermsReportFromAppleHelper(
     url,
-    cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+    cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
     json=payload,
     headers=headers
   )
@@ -104,13 +125,13 @@ def getSearchTermsReportFromApple(client, campaignId):
 
   # TODO extract to utils
   if response.status_code != 200:
-    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
     date = time.strftime("%m/%d/%Y")
-    subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
+    subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
     logger.error(subject)
     if sendG:
-      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+      EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
     return False
   
@@ -374,7 +395,7 @@ def sendNonDuplicatesToAppleHelper(url, cert, data, headers):
   )
 
 # @debug
-def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndices):
+def sendNonDuplicatesToApple(url, payload, headers, duplicateKeywordIndices):
   payloadPy = json.loads(payload)
   
   newPayload = [payloadPy[index] for index in range(len(payloadPy)) \
@@ -383,7 +404,7 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
   dprint("About to send non-duplicates payload %s." % pprint.pformat(newPayload))
   response = sendNonDuplicatesToAppleHelper(
     url,
-    cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+    cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
     data=json.dumps(newPayload),
     headers=headers
   )
@@ -392,13 +413,13 @@ def sendNonDuplicatesToApple(client, url, payload, headers, duplicateKeywordIndi
     dprint("NonDuplicate send worked.");
 
   else:
-    email = "client id:%d \n url:%s \n response:%s" % (client.orgId, url, response)
+    email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
     date = time.strftime("%m/%d/%Y")
-    subject ="%s:%d ERROR in runKeywordAdder for %s" % (date, response.status_code, client.clientName)
+    subject ="%s:%d ERROR in runKeywordAdder for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
     logger.error(subject)
     if sendG:
-      EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+      EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
        
   return response
 
@@ -413,8 +434,8 @@ def sendToAppleHelper(url, cert, data, headers):
     timeout=config.HTTP_REQUEST_TIMEOUT
   )
 
-def sendToApple(client, payloads):
-    headers = { "Authorization": "orgId=%s" % client.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
+def sendToApple(payloads):
+    headers = { "Authorization": "orgId=%s" % clientG.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
     if sendG:
         responses = []
         for payload in payloads:
@@ -425,7 +446,7 @@ def sendToApple(client, payloads):
 
             response = sendToAppleHelper(
               appleEndpointUrl,
-              cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
+              cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
               data=payloadForPost,
               headers=headers
             )
@@ -529,7 +550,7 @@ def sendToApple(client, payloads):
                     responses.append(response)
 
                 else:
-                    responses.append(sendNonDuplicatesToApple(client, appleEndpointUrl, payload, headers, duplicateKeywordIndices))
+                    responses.append(sendNonDuplicatesToApple(clientG, appleEndpointUrl, payload, headers, duplicateKeywordIndices))
 
                 response = "\n".join(["%s: %s" % (response.status_code, response.text) for response in responses])
 
@@ -569,12 +590,11 @@ def emailSummaryReport(data, sent):
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString ="Keyword Adder summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
+    subjectString ="%s - Keyword Adder summary for %s" % (clientG.clientName, dateString)
+    EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
 def convertAnalysisIntoApplePayloadAndSend(
-  client,
   CSRI,
   exactPositive,
   exactPositiveUrl,
@@ -605,78 +625,69 @@ def convertAnalysisIntoApplePayloadAndSend(
     print("runKeywordAdder exactNegative" + str(exactNegative))
 
     if json.loads(exactPositive):  
-      sendToApple(client, ((exactPositive, exactPositiveUrl), (broadPositive, broadPositiveUrl)))
+      sendToApple(((exactPositive, exactPositiveUrl), (broadPositive, broadPositiveUrl)))
     
     if json.loads(exactNegative):
-      sendToApple(client, ((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
+      sendToApple(((exactNegative, exactNegativeUrl), (broadNegative, broadNegativeUrl)))
 
     # JF release-1 airlift bid counts and keywords to dynamo
-    client.writePositiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
-    client.writeNegativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
+    clientG.writePositiveKeywordsAdded(dynamodb, exactPositiveText + broadPositiveText)
+    clientG.writeNegativeKeywordsAdded(dynamodb, exactNegativeText + broadNegativeText)
     return sendG
 
 
-# @debug
 def process():
+  print("runKeywordAdder:::" + clientG.clientName + ":::" + str(clientG.orgId))
   summaryReportInfo = { }
   sent = False
-
-  for client in clientsG:
-    summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = CSRI = { }
-
-    kAI = client.keywordAdderIds
-    searchCampaignId, broadCampaignId = kAI["campaignId"]["search"], kAI["campaignId"]["broad"]
-
-    searchMatchData = getSearchTermsReportFromApple(client, searchCampaignId)
-    broadMatchData  = getSearchTermsReportFromApple(client, broadCampaignId)
-
-    if not searchMatchData or not broadMatchData:
-      CSRI["+e"] = {}
-      CSRI["+b"] = {}
-      CSRI["-e"] = {}
-      CSRI["-b"] = {}
-      continue
-
-    if not (searchMatchData.get("data").get("reportingDataResponse").get("row")):
-      CSRI["+e"] = {}
-      CSRI["+b"] = {}
-      CSRI["-e"] = {}
-      CSRI["-b"] = {}
-      continue
-
-    exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
-      analyzeKeywords(searchMatchData, broadMatchData, kAI, client.keywordAdderParameters, client.currency)
-
-    sent = convertAnalysisIntoApplePayloadAndSend(
-      client,
-      CSRI,
-      exactPositive,
-      exactPositiveUrl,
-      broadPositive,
-      broadPositiveUrl,
-      exactNegative,
-      exactNegativeUrl,
-      broadNegative,
-      broadNegativeUrl
-    )
+  summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = CSRI = { }
+  kAI = clientG.keywordAdderIds
+  searchCampaignId, broadCampaignId = kAI["campaignId"]["search"], kAI["campaignId"]["broad"]
+  searchMatchData = getSearchTermsReportFromApple(searchCampaignId)
+  broadMatchData  = getSearchTermsReportFromApple(broadCampaignId)
+  if not searchMatchData or not broadMatchData:
+    CSRI["+e"] = {}
+    CSRI["+b"] = {}
+    CSRI["-e"] = {}
+    CSRI["-b"] = {}
+    return
+  if not (searchMatchData.get("data").get("reportingDataResponse").get("row")):
+    CSRI["+e"] = {}
+    CSRI["+b"] = {}
+    CSRI["-e"] = {}
+    CSRI["-b"] = {}
+    return
+  exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
+    analyzeKeywords(searchMatchData, broadMatchData, kAI, clientG.keywordAdderParameters, clientG.currency)
+  sent = convertAnalysisIntoApplePayloadAndSend(
+    CSRI,
+    exactPositive,
+    exactPositiveUrl,
+    broadPositive,
+    broadPositiveUrl,
+    exactNegative,
+    exactNegativeUrl,
+    broadNegative,
+    broadNegativeUrl
+  )
   
   emailSummaryReport(summaryReportInfo, sent)
 
-def terminate():
-  pass
-
 
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    clientEvent = LambdaUtils.getClientForLocalRun(
+        int(sys.argv[1]),
+        ['james@adoya.io']
+    )
+    initialize(clientEvent)
     process()
-    terminate()
 
 
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
+def lambda_handler(clientEvent):
+    initialize(clientEvent)
     process()
-    terminate()
+
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Keyword Adder Complete')
+        'body': json.dumps('Run Keyword Adder Complete for ' + clientG.clientName)
     }

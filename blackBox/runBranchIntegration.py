@@ -5,6 +5,7 @@ import logging
 import boto3
 import requests
 import time
+import sys
 from Client import Client
 from configuration import config
 from utils import DynamoUtils, LambdaUtils, EmailUtils
@@ -15,13 +16,14 @@ from boto3.dynamodb.types import DYNAMODB_CONTEXT
 from botocore.exceptions import ClientError
 DYNAMODB_CONTEXT.traps[decimal.Inexact] = 0
 DYNAMODB_CONTEXT.traps[decimal.Rounded] = 0
+from utils.DecimalEncoder import DecimalEncoder
 
 dashG = "-"
-BIDDING_LOOKBACK = 7  # days #make this 2
+LOOKBACK = 7  # TODO reduce for nightly
 date = datetime.date
 today = datetime.date.today()
 end_date_delta = datetime.timedelta(days=1)
-start_date_delta = datetime.timedelta(BIDDING_LOOKBACK)
+start_date_delta = datetime.timedelta(LOOKBACK)
 start_date = today - start_date_delta
 end_date = today - end_date_delta
 
@@ -29,31 +31,47 @@ end_date = today - end_date_delta
 #start_date = '2020-02-01'
 #end_date = '2020-02-04'
 
-# Helper class to convert a DynamoDB item to JSON.
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            if o % 1 > 0:
-                return float(o)
-            else:
-                return int(o)
-        return super(DecimalEncoder, self).default(o)
 
-
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global sendG
-    global clientsG
+    global clientG
+    global emailToG
     global dynamodb
-    global EMAIL_TO
     global logger
-    
-    EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(env,dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
 
-    logger = LambdaUtils.getLogger(env)
-    logger.info("runBranchIntegration:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    emailToG = clientEvent['rootEvent']['emailToInternal']
+    sendG = LambdaUtils.getSendG(
+        clientEvent['rootEvent']['env']
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    )
+    orgDetails = json.loads(
+        clientEvent['orgDetails']
+    )
+    clientG = Client(
+        orgDetails['_orgId'],
+        orgDetails['_clientName'],
+        orgDetails['_emailAddresses'],
+        orgDetails['_keyFilename'],
+        orgDetails['_pemFilename'],
+        orgDetails['_bidParameters'],
+        orgDetails['_adgroupBidParameters'],
+        orgDetails['_branchBidParameters'],
+        orgDetails['_campaignIds'],
+        orgDetails['_keywordAdderIds'],
+        orgDetails['_keywordAdderParameters'],
+        orgDetails['_branchIntegrationParameters'],
+        orgDetails['_currency'],
+        orgDetails['_appName'],
+        orgDetails['_appID'],
+        orgDetails['_campaignName']
+    )
+    logger = LambdaUtils.getLogger(
+        clientEvent['rootEvent']['env']
+    )  
+    logger.info("runBranchIntegration:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
 def getKeywordReportFromBranchHelper(url, payload, headers):
@@ -62,7 +80,7 @@ def getKeywordReportFromBranchHelper(url, payload, headers):
     return requests.post(url, json=payload, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 @retry
-def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, aggregation):
+def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregation):
     payload = {
         "branch_key": branch_key,
         "branch_secret": branch_secret,
@@ -105,139 +123,134 @@ def getKeywordReportFromBranch(client, branch_job, branch_key, branch_secret, ag
     
     # TODO extract to utils
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (client.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runBranchIntegration for %s" % (date, response.status_code, client.clientName)
+        subject ="%s - %d ERROR in runBranchIntegration for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
-            EmailUtils.sendTextEmail(email, subject, EMAIL_TO, [], config.EMAIL_FROM)
+            EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
         return False
 
     return json.loads(response.text)
 
 
-@debug
 def process():
-    for client in clientsG:
-        try:
-            branch_key = client.branchIntegrationParameters["branch_key"]
-            branch_secret = client.branchIntegrationParameters["branch_secret"]
-        except KeyError as error:
-            logger.info("runBranchIntegration:::no branch config skipping" + str(client.orgId))
+    try:
+        branch_key = clientG.branchIntegrationParameters["branch_key"]
+        branch_secret = clientG.branchIntegrationParameters["branch_secret"]
+    except KeyError as error:
+        logger.info("runBranchIntegration:::no branch config skipping" + str(clientG.orgId))
+        return
+    
+    print("runBranchIntegration:::" + clientG.clientName + ":::" + str(clientG.orgId))
+    for data_source in config.DATA_SOURCES.keys():    
+        data_source_key = data_source[:-1] + "_key" # key field of db table, slice off the last character
+        branch_job = config.DATA_SOURCES.get(data_source)
+        table = dynamodb.Table(data_source)
+        if not table:
+            logger.info("runBranchIntegration:process:::issue connecting to:::" + data_source)
             continue
-
-        for data_source in config.DATA_SOURCES.keys():    
-            data_source_key = data_source[:-1] + "_key" # key field of db table, slice off the last character
-            branch_job = config.DATA_SOURCES.get(data_source)
-            table = dynamodb.Table(data_source)
-            if not table:
-                logger.info("runBranchIntegration:process:::issue connecting to:::" + data_source)
-                continue
+        
+        logger.info("runBranchIntegration:::found table!" + data_source)
+        branch_job_aggregations = config.AGGREGATIONS[branch_job]
+        for aggregation in branch_job_aggregations:
+            response = getKeywordReportFromBranch(
+                branch_job, 
+                branch_key, 
+                branch_secret, 
+                aggregation
+            )
             
-            logger.info("runBranchIntegration:::found table!" + data_source)
-            branch_job_aggregations = config.AGGREGATIONS[branch_job]
-            for aggregation in branch_job_aggregations:
-                response = getKeywordReportFromBranch(
-                    client,
-                    branch_job, 
-                    branch_key, 
-                    branch_secret, 
-                    aggregation
-                )
-                
-                if not response:
-                    logger.info("runBranchIntegration:process:::no results from:::" + branch_job)
+            if not response:
+                logger.info("runBranchIntegration:process:::no results from:::" + branch_job)
+                continue
+            data = { aggregation: response }
+            results = data[aggregation]['results']
+            for result in results:
+                if not 'last_attributed_touch_data_tilde_campaign' in result["result"]:
+                    logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
                     continue
-                data = { aggregation: response }
-                results = data[aggregation]['results']
-                for result in results:
-                    if not 'last_attributed_touch_data_tilde_campaign' in result["result"]:
-                        logger.info("runBranchIntegration:process:::Non keyword branch item found, skipping")
-                        continue
-                    
-                    if aggregation != "revenue":
-                        logger.debug(branch_job + ":::handle unique_count")
-                        timestamp = result["timestamp"].split('T')[0]
-                        campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
-                        campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-                        ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                        # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
-                        count = str(result["result"]["unique_count"])
-                        # event_key === campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
-                        if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
-                            keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                            event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
-                        else:
-                            keyword = "n/a"
-                            event_key = campaign_id + dashG + ad_set_id
-                        try:
-                            response = table.put_item(
-                                Item={
-                                    data_source_key: event_key,
-                                    'timestamp': timestamp,
-                                    'campaign': campaign,
-                                    'campaign_id': campaign_id,
-                                    'keyword': keyword,
-                                    'ad_set_id': ad_set_id,
-                                    # 'ad_set_name': ad_set_name,
-                                    'count': count,
-                                    'org_id': str(client.orgId)
-                                }
-                            )
-                        except ClientError as e:
-                            logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
-                        else:
-                            logger.debug("runBranchIntegration:process:::PutItem succeeded:")
+                
+                if aggregation != "revenue":
+                    logger.debug(branch_job + ":::handle unique_count")
+                    timestamp = result["timestamp"].split('T')[0]
+                    campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+                    campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+                    ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+                    # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                    count = str(result["result"]["unique_count"])
+                    # event_key === campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
+                    if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
+                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
                     else:
-                        # NOTE currently revenue must run after count
-                        logger.debug(branch_job + ":::handle revenue aggregation")
-                        timestamp = result["timestamp"].split('T')[0]
-                        campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
-                        campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
-                        ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
-                        # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
-                        revenue = decimal.Decimal(result["result"]["revenue"])
-                        if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
-                            keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                            event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
-                        else:
-                            event_key = campaign_id + dashG + ad_set_id
-                        try:
-                            response = table.update_item(
-                                Key={
-                                    data_source_key: event_key,
-                                    'timestamp': timestamp,
-                                },
-                                UpdateExpression='SET revenue = :val',
-                                ExpressionAttributeValues={
-                                    ':val': revenue
-                                }
-                            )
-                        except ClientError as e:
-                            logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
-                            print(json.dumps(response, indent=4, cls=DecimalEncoder))
-                        else:
-                            logger.debug("runBranchIntegration:process:::PutItem succeeded")
-                    
-
-@debug
-def terminate():
-    pass
-
+                        keyword = "n/a"
+                        event_key = campaign_id + dashG + ad_set_id
+                    try:
+                        response = table.put_item(
+                            Item={
+                                data_source_key: event_key,
+                                'timestamp': timestamp,
+                                'campaign': campaign,
+                                'campaign_id': campaign_id,
+                                'keyword': keyword,
+                                'ad_set_id': ad_set_id,
+                                # 'ad_set_name': ad_set_name,
+                                'count': count,
+                                'org_id': str(clientG.orgId)
+                            }
+                        )
+                    except ClientError as e:
+                        logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                    else:
+                        logger.debug("runBranchIntegration:process:::PutItem succeeded:")
+                else:
+                    # NOTE currently revenue must run after count
+                    logger.debug(branch_job + ":::handle revenue aggregation")
+                    timestamp = result["timestamp"].split('T')[0]
+                    campaign = str(result["result"]["last_attributed_touch_data_tilde_campaign"])
+                    campaign_id = str(result["result"]["last_attributed_touch_data_tilde_campaign_id"])
+                    ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
+                    # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
+                    revenue = decimal.Decimal(result["result"]["revenue"])
+                    if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
+                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
+                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
+                    else:
+                        event_key = campaign_id + dashG + ad_set_id
+                    try:
+                        response = table.update_item(
+                            Key={
+                                data_source_key: event_key,
+                                'timestamp': timestamp,
+                            },
+                            UpdateExpression='SET revenue = :val',
+                            ExpressionAttributeValues={
+                                ':val': revenue
+                            }
+                        )
+                    except ClientError as e:
+                        logger.warning("runBranchIntegration:process:::PutItem failed due to" + e.response['Error']['Message'])
+                        print(json.dumps(response, indent=4, cls=DecimalEncoder))
+                    else:
+                        logger.debug("runBranchIntegration:process:::PutItem succeeded")
+                
 
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["test@adoya.io"])
+    clientEvent = LambdaUtils.getClientForLocalRun(
+        int(sys.argv[1]),
+        ['james@adoya.io']
+    )
+    initialize(clientEvent)
     process()
-    terminate()
 
-
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
+def lambda_handler(clientEvent):
+    initialize(clientEvent)
     process()
-    terminate()
+
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Branch Integration Complete')
+        'body': json.dumps('Run Branch Integration Complete for ' + clientG.clientName)
     }

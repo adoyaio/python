@@ -1,3 +1,4 @@
+import logging
 import json
 import boto3
 import runAppleIntegrationKeyword
@@ -6,36 +7,77 @@ import runBidAdjuster
 import runAdgroupBidAdjuster
 import runKeywordAdder
 import runClientDailyReport
+from Client import Client
+from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
+from utils.DecimalEncoder import DecimalEncoder
+
+def initialize(event):
+    global sendG
+    global clientsG
+    global dynamoResource
+    global lambdaClient
+    global logger
+
+    print(str(event))
+    sendG = LambdaUtils.getSendG(
+        event['env']
+    )
+    dynamoResource = LambdaUtils.getDynamoResource(
+        event['env'],
+        event['dynamoEndpoint']
+    )
+
+    lambdaClient = LambdaUtils.getLambdaClient(
+        event['env'],
+        event['lambdaEndpoint']
+    )
+
+    clientsG = Client.getClients(
+        dynamoResource
+    )
+
+    logger = LambdaUtils.getLogger(
+        event['env']
+    )
 
 
-def lambda_handler(event, context):
-    # invoke_response_branch = runAppleIntegration.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_branch))
+def process(event):
+    for client in clientsG:
+        clientEvent = {}
+        clientEvent['rootEvent'] = event
+        clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+        clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport', 'runBidAdjuster', 'runAdgroupBidAdjuster','runKeywordAdder']
 
-    invoke_response_branch = runAppleIntegrationKeyword.lambda_handler(event, context)
-    print(json.dumps(invoke_response_branch))
-
-    invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
-    print(json.dumps(invoke_response_branch))
-
-    invoke_response_dr = runClientDailyReport.lambda_handler(event, context)
-    print(json.dumps(invoke_response_dr))
-
-    invoke_response_rba = runBidAdjuster.lambda_handler(event, context)
-    print(json.dumps(invoke_response_rba))
-
-    invoke_response_raba = runAdgroupBidAdjuster.lambda_handler(event, context)
-    print(json.dumps(invoke_response_raba))
-
-    invoke_response_ka = runKeywordAdder.lambda_handler(event, context)
-    print(json.dumps(invoke_response_ka))
+        if event['env'] == 'prod':
+            invoke_response = lambdaClient.invoke(
+                FunctionName='runClient',
+                InvocationType='Event',
+                Payload=json.dumps(clientEvent)
+            )
+        else:
+            invoke_response = lambdaClient.invoke(
+                FunctionName='runClient',
+                InvocationType='RequestResponse',
+                Payload=json.dumps(clientEvent)
+            )
+        print(str(invoke_response))
 
     return True
 
-    # lambda_client = boto3.client('lambda', region_name="us-east-1")
-    # invoke_response = lambda_client.invoke(
-    #         FunctionName='runBranchIntegration',
-    #         InvocationType='Event',
-    #         LogType='None',
-    #         Payload=json.dumps(event)
-    # )
+
+def lambda_handler(event, context):
+    initialize(event)
+    # print("Lambda Request ID:", context.aws_request_id)
+    # print("Lambda function ARN:", context.invoked_function_arn)
+    
+    try: 
+        process(event)
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Adoya Failed')
+        }
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Adoya Complete')
+    }

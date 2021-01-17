@@ -2,7 +2,7 @@
 EMAIL_FROM = "info@adoya.io"
 EMAIL_TO = ["james@adoya.io", "scott.kaplan@adoya.io"] #used in API only blackbox pulls from event data
 TOTAL_COST_PER_INSTALL_LOOKBACK = 3
-HTTP_REQUEST_TIMEOUT = 300
+HTTP_REQUEST_TIMEOUT = 600
 
 # APPLE
 APPLE_SEARCHADS_URL_BASE                = "https://api.searchads.apple.com/api/v3/"

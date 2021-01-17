@@ -1,40 +1,77 @@
+import logging
 import json
 import boto3
 import runAppleIntegrationKeyword
 import runBranchIntegration
 import runKeywordAdder
 import runClientDailyReport
+from Client import Client
+from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
+from utils.DecimalEncoder import DecimalEncoder
 
 
-def lambda_handler(event, context):
-    # invoke_response_branch = runAppleIntegration.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_branch))
+def initialize(event):
+    global sendG
+    global clientsG
+    global dynamoResource
+    global lambdaClient
+    global logger
 
-    invoke_response_branch = runAppleIntegrationKeyword.lambda_handler(event, context)
-    print(json.dumps(invoke_response_branch))
+    sendG = LambdaUtils.getSendG(
+        event['env']
+    )
+    dynamoResource = LambdaUtils.getDynamoResource(
+        event['env'],
+        event['dynamoEndpoint']
+    )
 
-    invoke_response_branch = runBranchIntegration.lambda_handler(event, context)
-    print(json.dumps(invoke_response_branch))
+    lambdaClient = LambdaUtils.getLambdaClient(
+        event['env'],
+        event['lambdaEndpoint']
+    )
 
-    invoke_response_dr = runClientDailyReport.lambda_handler(event, context)
-    print(json.dumps(invoke_response_dr))
+    clientsG = Client.getClients(
+        dynamoResource
+    )
 
-    # NOTE DONT RUN BIDADJUSTERS ON THE NIGHTLY
-    # invoke_response_rba = runBidAdjuster.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_rba))
+    logger = LambdaUtils.getLogger(
+        event['env']
+    )
 
-    # invoke_response_raba = runAdgroupBidAdjuster.lambda_handler(event, context)
-    # print(json.dumps(invoke_response_raba))
+def process(event):
+    for client in clientsG:
+        clientEvent = {}
+        clientEvent['rootEvent'] = event
+        clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+        clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport','runKeywordAdder']
 
-    invoke_response_ka = runKeywordAdder.lambda_handler(event, context)
-    print(json.dumps(invoke_response_ka))
+        if event['env'] == 'prod':
+            invoke_response = lambdaClient.invoke(
+                FunctionName='runClient',
+                InvocationType='Event',
+                Payload=json.dumps(clientEvent)
+            )
+        else:
+            invoke_response = lambdaClient.invoke(
+                FunctionName='runClient',
+                InvocationType='RequestResponse',
+                Payload=json.dumps(clientEvent)
+            )
+        print(str(invoke_response))
 
     return True
 
-    # lambda_client = boto3.client('lambda', region_name="us-east-1")
-    # invoke_response = lambda_client.invoke(
-    #         FunctionName='runBranchIntegration',
-    #         InvocationType='Event',
-    #         LogType='None',
-    #         Payload=json.dumps(event)
-    # )
+
+def lambda_handler(event, context):
+    initialize(event)
+    try: 
+        process(event)
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Adoya Failed')
+        }
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Run Adoya Complete')
+    }
