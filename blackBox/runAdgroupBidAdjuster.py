@@ -443,6 +443,7 @@ def process():
   summaryReportInfo = { }
   sent = False
   summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = { }
+  
   campaignIds = clientG.campaignIds
   for campaignId in campaignIds:
     data = getAdgroupReportFromApple()

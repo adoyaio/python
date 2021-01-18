@@ -449,7 +449,9 @@ def process():
     print("runBidAdjuster:::" + clientG.clientName + ":::" + str(clientG.orgId))
     summaryReportInfo = {}
     summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {} 
+    
     appleCampaigns = clientG.appleCampaigns
+    
     campaignsForBidAdjuster = list(
         filter(
             lambda campaign:(campaign["campaignType"] == 'exact' or campaign["campaignType"] == 'broad'), appleCampaigns
