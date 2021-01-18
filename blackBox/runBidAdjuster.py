@@ -448,26 +448,19 @@ def emailSummaryReport(data, sent):
 def process():
     print("runBidAdjuster:::" + clientG.clientName + ":::" + str(clientG.orgId))
     summaryReportInfo = {}
-    summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {}
-    
+    summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {} 
     appleCampaigns = clientG.appleCampaigns
     campaignsForBidAdjuster = list(
         filter(
             lambda campaign:(campaign["campaignType"] == 'exact' or campaign["campaignType"] == 'broad'), appleCampaigns
         )
     )
-    print(str(campaignsForBidAdjuster))
-
     for campaign in campaignsForBidAdjuster:
         sent = False
         data = getKeywordReportFromApple(campaign['campaignId'])
         if not data:
             logger.info("runBidAdjuster:process:::no results from api:::")
             continue
-        # grab campaign name for campaign specific params
-        # campaignKeys = list(clientG.keywordAdderIds["campaignId"].keys())
-        # campaignVals = list(clientG.keywordAdderIds["campaignId"].values())
-        # campaignName = campaignKeys[campaignVals.index(campaignId)]
         
         stuff = createUpdatedKeywordBids(
             data, 

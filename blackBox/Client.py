@@ -236,35 +236,35 @@ class Client:
 
     # gets total cost per install for the lookback period
     # NOTE currently unused, bid adjusters use getTotalCostPerInstallForCampaign
-    def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
-        table = dynamoResource.Table('cpi_history')
-        response = table.query(
-            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-        )
-        # default high so bid decreases arent done, until average is being computed from a long enough lookback period
-        total_cost_per_install = 999999
+    # def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
+    #     table = dynamoResource.Table('cpi_history')
+    #     response = table.query(
+    #         KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
+    #         '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+    #     )
+    #     # default high so bid decreases arent done, until average is being computed from a long enough lookback period
+    #     total_cost_per_install = 999999
 
-        print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
-        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
-        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
-        print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
-        print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
+    #     print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
+    #     print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
+    #     print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
+    #     print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
+    #     print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        if len(response['Items']) >= daysToLookBack:
-            totalCost, totalInstalls = 0.0, 0
-            for i in response[u'Items']:
-                totalCost += float(i['spend'])
-                totalInstalls += int(i['installs'])
-                if totalCost > 0 and totalInstalls > 0:
-                    total_cost_per_install = totalCost / totalInstalls
-        return total_cost_per_install
+    #     if len(response['Items']) >= daysToLookBack:
+    #         totalCost, totalInstalls = 0.0, 0
+    #         for i in response[u'Items']:
+    #             totalCost += float(i['spend'])
+    #             totalInstalls += int(i['installs'])
+    #             if totalCost > 0 and totalInstalls > 0:
+    #                 total_cost_per_install = totalCost / totalInstalls
+    #     return total_cost_per_install
 
 
     # gets total cost per install for the lookback period
     def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
+        
         # TODO if its not broad, exact, search, brand return 999999
-
         table = dynamoResource.Table('cpi_history')
 
         response = table.query(
@@ -280,14 +280,13 @@ class Client:
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        # grab specific campaign metrics
-        campaign_keys = list(self.keywordAdderIds["campaignId"].keys())
-        campaign_vals = list(self.keywordAdderIds["campaignId"].values())
+        # grab specific campaign metrics        
+        campaign = next(item for item in self.appleCampaigns if item["campaignId"] == campaign_id)
+        installs_lookup_key = "installs_" + campaign["campaignType"]
+        spend_lookup_key = "spend_" + campaign["campaignType"]
 
-        campaign_name = campaign_keys[campaign_vals.index(campaign_id)]
-
-        installs_lookup_key = "installs_" + campaign_name 
-        spend_lookup_key = "spend_" + campaign_name
+        print("installs_lookup_key " + str(installs_lookup_key))
+        print("spend_lookup_key " + str(spend_lookup_key))
 
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
