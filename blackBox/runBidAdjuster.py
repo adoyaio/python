@@ -479,8 +479,13 @@ if __name__ == "__main__":
 
 def lambda_handler(clientEvent):
     initialize(clientEvent)
-    process()
-
+    try:
+        process()
+    except: 
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Bid Adjuster Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Bid Adjuster Complete for ' + clientG.clientName)

@@ -258,7 +258,13 @@ if __name__ == "__main__":
 
 def lambda_handler(clientEvent):
     initialize(clientEvent)
-    process()
+    try:
+        process()
+    except: 
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Apple Integration Keyword Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Apple Integration Keyword Complete for ' + clientG.clientName)
