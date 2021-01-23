@@ -133,23 +133,20 @@ def getKeywordReportFromApple(campaignId):
 
     return json.loads(response.text)
    
-def createUpdatedKeywordBids(data, campaignId, campaignName):
+def createUpdatedKeywordBids(data, campaign):
     rows = data["data"]["reportingDataResponse"]["row"] 
     if len(rows) == 0:
         return False
 
-    # handle campaign specific params
-    # TODO export this logic to a utility
-
-    # TODO is campaignName part of adoya way list
     BP = clientG.bidParameters
-    HIGH_CPI_BID_DECREASE_THRESH_KEY = "HIGH_CPI_BID_DECREASE_THRESH_" + campaignName.upper()
-    HIGH_CPI_BID_DECREASE_THRESH = BP.get(HIGH_CPI_BID_DECREASE_THRESH_KEY)
-
-    # TODO if not do lookup to miscCampaigns
-
     keyword_info = defaultdict(list)
     summaryReportInfo = {}
+
+    if campaign['campaignType'] == "other":
+        HIGH_CPI_BID_DECREASE_THRESH = campaign['highCPIDecreaseThresh']
+    else:
+        HIGH_CPI_BID_DECREASE_THRESH_KEY = "HIGH_CPI_BID_DECREASE_THRESH_" + campaign['campaignType'].upper()
+        HIGH_CPI_BID_DECREASE_THRESH = BP.get(HIGH_CPI_BID_DECREASE_THRESH_KEY)
 
     for row in rows:
         metadata = row["metadata"]
@@ -281,7 +278,7 @@ def createUpdatedKeywordBids(data, campaignId, campaignName):
         start_date_cpi_lookback, 
         end_date,
         config.TOTAL_COST_PER_INSTALL_LOOKBACK,
-        campaignId
+        campaign
     )
     dprint("runBidAdjuster;::total cpi %s" % str(total_cost_per_install))
 
@@ -302,7 +299,7 @@ def createUpdatedKeywordBids(data, campaignId, campaignName):
 
     # format for apple API specifications
     # add campaign id column as per Apple search api requirement
-    keywords_to_update_bids["campaignId"] = keywords_to_update_bids.shape[0] * [campaignId]
+    keywords_to_update_bids["campaignId"] = keywords_to_update_bids.shape[0] * [campaign["campaignId"]]
 
     # subset only the columns you need
     keywords_to_update_bids = keywords_to_update_bids[["campaignId", "adGroupId", "keywordId", "new_bid"]]
@@ -396,23 +393,6 @@ def sendUpdatedBidsToApple(keywordFileToPost):
     return True
 
 def createEmailBody(data, sent):
-    # Take data like this and pretty print
-    # '1105630 (Covetly)': {
-    #     158675458: {
-    #         159571482: {
-    #             'keyword': 'Funko pop chase',
-    #             'newBid': 4.97664,
-    #             'oldBid': '4.1472'
-    #         },
-    #         159571483: {
-    #             'keyword': 'Funko pop track',
-    #             'newBid': 4.97664,
-    #             'oldBid': '4.1472'
-    #         },
-    #         159571484: {
-    #             'keyword': 'Funko Funko Pop '
-    #             'newBid': 4.97664,
-
     content = ["""Sent to Apple is %s.""" % sent,
                """\t""".join(["Client", "Campaign", "Keyword ID", "Keyword", "Old Bid", "New Bid"])]
 
@@ -443,18 +423,14 @@ def emailSummaryReport(data, sent):
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
-  
-
 def process():
     print("runBidAdjuster:::" + clientG.clientName + ":::" + str(clientG.orgId))
     summaryReportInfo = {}
     summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {} 
-    
     appleCampaigns = clientG.appleCampaigns
-    
     campaignsForBidAdjuster = list(
         filter(
-            lambda campaign:(campaign["campaignType"] == 'exact' or campaign["campaignType"] == 'broad'), appleCampaigns
+            lambda campaign:(campaign["bidAdjusterEnabled"] == True), appleCampaigns
         )
     )
     for campaign in campaignsForBidAdjuster:
@@ -466,31 +442,12 @@ def process():
         
         stuff = createUpdatedKeywordBids(
             data, 
-            campaign['campaignId'], 
-            campaign['campaignType']
+            campaign
         )
-
         if type(stuff) != bool:
             keywordFileToPost, clientSummaryReportInfo[campaign['campaignId']], numberOfUpdatedBids = stuff
             sent = sendUpdatedBidsToApple(keywordFileToPost)
             clientG.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
-
-    # for campaignId in campaignIds:
-    #     sent = False
-    #     data = getKeywordReportFromApple(campaignId)
-    #     if not data:
-    #         logger.info("runBidAdjuster:process:::no results from api:::")
-    #         continue
-    #     # grab campaign name for campaign specific params
-    #     campaignKeys = list(clientG.keywordAdderIds["campaignId"].keys())
-    #     campaignVals = list(clientG.keywordAdderIds["campaignId"].values())
-    #     campaignName = campaignKeys[campaignVals.index(campaignId)]
-        
-    #     stuff = createUpdatedKeywordBids(data, campaignId, str(campaignName))
-    #     if type(stuff) != bool:
-    #         keywordFileToPost, clientSummaryReportInfo[campaignId], numberOfUpdatedBids = stuff
-    #         sent = sendUpdatedBidsToApple(keywordFileToPost)
-    #         clientG.writeUpdatedBids(dynamodb, numberOfUpdatedBids) # JF unused optimization report pre-mvp
 
     emailSummaryReport(summaryReportInfo, sent)
 

@@ -48,8 +48,7 @@ def initialize(clientEvent):
         orgDetails['_bidParameters'],
         orgDetails['_adgroupBidParameters'],
         orgDetails['_branchBidParameters'],
-        orgDetails['_campaignIds'],
-        orgDetails['_keywordAdderIds'],
+        orgDetails['_appleCampaigns'],
         orgDetails['_keywordAdderParameters'],
         orgDetails['_branchIntegrationParameters'],
         orgDetails['_currency'],
@@ -60,7 +59,7 @@ def initialize(clientEvent):
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])
     logger.info("runAppleIntegrationKeyword:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
-# @retry
+@retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
@@ -232,20 +231,26 @@ def export_dict_to_csv(raw_dict, filename):
 def process():
     print("runAppleIntegrationKeyword:::" + clientG.clientName + ":::" + str(clientG.orgId))
     orgId = str(clientG.orgId)
-    campaignIds = clientG.campaignIds
-    for campaignId in campaignIds:
+    appleCampaigns = clientG.appleCampaigns
+    campaignsForAppleKeywordIntegration = list(
+        filter(
+            lambda campaign:(
+                campaign["keywordIntegrationEnabled"] == True
+            ),
+            appleCampaigns
+        )
+    )
+    for campaign in campaignsForAppleKeywordIntegration:
         # TODO JF implement max date call pull ONE value sorted & read max date
         # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
         startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
         endDate = datetime.date.today()
-        # print("start_date:::" + str(start_date))
-        # print("end_date::: " + str(end_date))
-        data = getKeywordReportFromApple(campaignId, startDate, endDate)
+        data = getKeywordReportFromApple(campaign['campaignId'], startDate, endDate)
         if not data:
             logger.info("runAppleIntegrationKeyword:::no data returned")
             continue
 
-        loaded = loadAppleKeywordToDynamo(data, orgId, campaignId)
+        loaded = loadAppleKeywordToDynamo(data, orgId, campaign['campaignId'])
 
 
 if __name__ == "__main__":

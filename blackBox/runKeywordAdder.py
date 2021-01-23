@@ -640,11 +640,17 @@ def process():
   summaryReportInfo = { }
   sent = False
   summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = CSRI = { }
-  
-  # kAI = clientG.keywordAdderIds
-  # searchCampaignId, broadCampaignId = kAI["campaignId"]["search"], kAI["campaignId"]["broad"]
-  # searchMatchData = getSearchTermsReportFromApple(searchCampaignId)
-  # broadMatchData  = getSearchTermsReportFromApple(broadCampaignId)
+
+  searchCampaign = next(
+    item for item in clientG.appleCampaigns if item["campaignType"] == "search"
+  )
+  broadCampaign = next(
+    item for item in clientG.appleCampaigns if item["campaignType"] == "broad"
+  )
+
+  searchMatchData = getSearchTermsReportFromApple(searchCampaign['campaignId'])
+  broadMatchData  = getSearchTermsReportFromApple(broadCampaign['campaignId'])
+
   if not searchMatchData or not broadMatchData:
     CSRI["+e"] = {}
     CSRI["+b"] = {}

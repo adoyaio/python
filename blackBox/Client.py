@@ -262,26 +262,25 @@ class Client:
 
 
     # gets total cost per install for the lookback period
-    def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
-        
-        # TODO if its not broad, exact, search, brand return 999999
-        table = dynamoResource.Table('cpi_history')
+    def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign):
+         # default high so bid decreases arent done, until average is being computed from a long enough lookback period
+        total_cost_per_install = 999999
 
+        if campaign['campaignType'] == 'other':
+            return total_cost_per_install # use default for other types
+
+        table = dynamoResource.Table('cpi_history')
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         )
-        # default high so bid decreases arent done, until average is being computed from a long enough lookback period
-        total_cost_per_install = 999999
-
+       
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
         print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
         print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        # grab specific campaign metrics        
-        campaign = next(item for item in self.appleCampaigns if item["campaignId"] == campaign_id)
         installs_lookup_key = "installs_" + campaign["campaignType"]
         spend_lookup_key = "spend_" + campaign["campaignType"]
 
