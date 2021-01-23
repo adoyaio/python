@@ -246,10 +246,16 @@ if __name__ == "__main__":
     initialize(clientEvent)
     process()
 
+
 def lambda_handler(clientEvent):
     initialize(clientEvent)
-    process()
-
+    try:
+        process()
+    except: 
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Branch Integration Failed')
+        }
     return {
         'statusCode': 200,
         'body': json.dumps('Run Branch Integration Complete for ' + clientG.clientName)
