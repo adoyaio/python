@@ -48,7 +48,6 @@ def returnActiveKeywordsDataFrame(
     keyword_status, 
     adgroup_deleted
 ):
-    # SK: This part is all business logic
     first_filter = ads_data[(ads_data["keywordStatus"] == "ACTIVE") & \
                             (ads_data["adGroupDeleted"] == "False")]
 
@@ -256,18 +255,14 @@ def process():
         if not client.branchIntegrationParameters.get("branch_bid_adjuster_enabled",False):
             continue
   
-        adgroupKeys = client.keywordAdderIds["adGroupId"].keys()
-        for adgroupKey in adgroupKeys:
-            adgroupId = client.keywordAdderIds["adGroupId"][adgroupKey]
-            campaignId = str(client.keywordAdderIds["campaignId"][adgroupKey])
-            print("pulling adgroup_id " + str(adgroupId))
-            print("campaign id " + str(campaignId))
-                
-            # grab campaign name for campaign specific params
-            campaignKeys = list(client.keywordAdderIds["campaignId"].keys())
-            campaignVals = list(client.keywordAdderIds["campaignId"].values())
-            campaignName = campaignKeys[campaignVals.index(campaignId)]
-
+        appleCampaigns = client.appleCampaigns
+        campaignsForBidAdjuster = list(
+            filter(
+                lambda campaign:(campaign.get("branchBidAdjusterEnabled",False) == True), appleCampaigns
+            )
+        )
+        for campaign in campaignsForBidAdjuster:
+            
             # common params
             BBP = client.branchBidParameters
             min_apple_installs = BBP["min_apple_installs"]
@@ -279,13 +274,18 @@ def process():
             revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
 
             # campaign specific params
-            cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaignName
-            cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key, None)
-            revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaignName
-            revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
+            if campaign['campaignType'] == "other":
+                cost_per_purchase_threshold = campaign['costPerPurchaseThresh']
+                revenue_over_ad_spend_threshold = campaign['revenueOverAdSpendThresh']
+            else:
+                cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaign['campaignType']
+                cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key, None)
+                revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaign['campaignType']
+                revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
+
 
             # get apple data
-            kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, adgroupId, start_date, end_date)
+            kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, campaign['adGroupId'], start_date, end_date)
             print("querying with:::" + str(start_date) + " - " + str(end_date))
             print("got back:::" + str(kwResponse["Count"]))
 
@@ -294,7 +294,7 @@ def process():
                 continue
 
             # build dataframe
-            rawDataDf = createDataFrame(kwResponse.get('Items'), campaignId, adgroupId)
+            rawDataDf = createDataFrame(kwResponse.get('Items'), campaign['campaignId'], campaign['adGroupId'])
             # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
             # rawDataDf.to_csv(adgroup_id + ".csv")
@@ -334,9 +334,9 @@ def process():
                 continue
                     
             jsonData = createJsonFromDataFrame(adjustedBids)
-            clientSummaryReportInfo[campaignId] = json.dumps(jsonData)
+            clientSummaryReportInfo[campaign['campaignId']] = json.dumps(jsonData)
             for adGroupId in jsonData.keys():
-                putRequestString = createPutRequestString(campaignId, str(adGroupId))
+                putRequestString = createPutRequestString(campaign['campaignId'], campaign['adGroupId'])
                 requestJson = jsonData[adGroupId]
                 sendUpdatedBidsToApple(
                     client, 
@@ -388,10 +388,8 @@ def createEmailBody(data, sent):
   for client, clientData in data.items():
     content.append(client)
     for campaignId, payload in clientData.items():
-        #content.append("""\t%s\t%s""" % (campaignId, payload))
         content.append("""\t%s\t%s""" % (campaignId,  pprint.pformat(payload)))
      
-
   return "\n".join(content)
 
 

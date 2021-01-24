@@ -57,8 +57,7 @@ def initialize(clientEvent):
         orgDetails['_bidParameters'],
         orgDetails['_adgroupBidParameters'],
         orgDetails['_branchBidParameters'],
-        orgDetails['_campaignIds'],
-        orgDetails['_keywordAdderIds'],
+        orgDetails['_appleCampaigns'],
         orgDetails['_keywordAdderParameters'],
         orgDetails['_branchIntegrationParameters'],
         orgDetails['_currency'],
@@ -66,11 +65,12 @@ def initialize(clientEvent):
         orgDetails['_appID'],
         orgDetails['_campaignName']
     )
+
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
     logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 
-# @retry
+@retry
 def getAdgroupReportFromAppleHelper(url, cert, json, headers):
   return requests.post(
     url, 
@@ -80,69 +80,7 @@ def getAdgroupReportFromAppleHelper(url, cert, json, headers):
     timeout=config.HTTP_REQUEST_TIMEOUT
   )
 
-def getAdgroupReportFromApple():
-# The data from Apple looks like this (Pythonically):
-#   {
-#     'data': {
-#       'reportingDataResponse': {
-#         'row': [
-#           {
-#             'metadata': {
-#               'adGroupDisplayStatus': 'CAMPAIGN_ON_HOLD',
-#               'adGroupId': 152725486,
-#               'adGroupName': 'search_match',
-#               'adGroupServingStateReasons': None,
-#             'adGroupServingStatus': 'RUNNING',
-#             'adGroupStatus': 'ENABLED',
-#             'automatedKeywordsOptIn': True,
-#             'cpaGoal': {
-#               'amount': '1',
-#               'currency': 'USD'
-#             },
-#             'defaultCpcBid': {
-#               'amount': '0.5',
-#               'currency': 'USD'
-#             },
-#           'deleted': False,
-#           'endTime': None,
-#           'modificationTime': '2018-08-29T07:58:51.872',
-#           'startTime': '2018-05-26T00:00:00.000'
-#           },
-#           'other': False,
-#           'total': {
-#             'avgCPA': {
-#               'amount': '0',
-#               'currency': 'USD'
-#             },
-#             'avgCPT': {
-#               'amount': '0',
-#               'currency': 'USD'
-#             },
-#             'conversionRate': 0.0,
-#             'installs': 0,
-#             'latOffInstalls': 0,
-#             'latOnInstalls': 0,
-#             'newDownloads': 0,
-#             'redownloads': 0,
-#             'localSpend': {
-#               'amount': '0',
-#               'currency': 'USD'
-#             },
-#             'taps': 0,
-#             'ttr': 0.0
-#           }
-#         }
-#       ]
-#     }
-#   },
-#   'error': None,
-#   'pagination': {
-#     'itemsPerPage': 1, 
-#     'startIndex': 0, 
-#     'totalResults': 1
-#     }
-#   }
-
+def getAdgroupReportFromApple(campaign):
   payload = { 
     "startTime": str(start_date), 
     "endTime": str(end_date),
@@ -173,8 +111,7 @@ def getAdgroupReportFromApple():
     "returnRowTotals": True, 
     "returnRecordsWithNoMetrics": True
   }
-  
-  url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % clientG.keywordAdderIds["campaignId"]["search"]
+  url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
 
   headers = { "Authorization": "orgId=%s" % clientG.orgId }
   dprint("\nURL is '%s'." % url)
@@ -202,15 +139,18 @@ def getAdgroupReportFromApple():
 
   return json.loads(response.text)
 
-def createUpdatedAdGroupBids(data, campaignId):
+def createUpdatedAdGroupBids(data, campaign):
   rows = data["data"]["reportingDataResponse"]["row"]
   
   if len(rows) == 0:
     return False
 
-  # NOTE using adgroupBidParameters vs bidParameters e.g ABP = client.adgroupBidParameters
   ABP = clientG.adgroupBidParameters
   dprint("Using adgroup bid parameters %s." % ABP)
+  if campaign['campaignType'] == "other":
+    HIGH_CPI_BID_DECREASE_THRESH = campaign['highCPIDecreaseThresh']
+  else:
+    HIGH_CPI_BID_DECREASE_THRESH = ABP["HIGH_CPI_BID_DECREASE_THRESH"]
 
   # compile data from json library and put into dataframe
   adGroup_info = defaultdict(list)
@@ -257,7 +197,7 @@ def createUpdatedAdGroupBids(data, campaignId):
   adGroup_info['bid']         = adGroup_info['bid'].astype(float)
 
   # calculate bid multiplier and create a new column
-  adGroup_info["bid_multiplier"] = ABP["HIGH_CPI_BID_DECREASE_THRESH"] / adGroup_info["avgCPA"]
+  adGroup_info["bid_multiplier"] = HIGH_CPI_BID_DECREASE_THRESH / adGroup_info["avgCPA"]
 
   # cap bid multiplier
   if ABP["OBJECTIVE"] == "aggressive":
@@ -271,19 +211,19 @@ def createUpdatedAdGroupBids(data, campaignId):
 
   # create upper bid cap tied to target cost per install.
   if ABP["OBJECTIVE"] == "aggressive":
-      bidCap_targetCPI = ABP["HIGH_CPI_BID_DECREASE_THRESH"] * 1.20
+      bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 1.20
   elif ABP["OBJECTIVE"] == "standard":
-      bidCap_targetCPI = ABP["HIGH_CPI_BID_DECREASE_THRESH"] * 1
+      bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 1
   elif ABP["OBJECTIVE"] == "conservative":
-      bidCap_targetCPI = ABP["HIGH_CPI_BID_DECREASE_THRESH"] * 0.80
+      bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 0.80
   else:
       print("no objective selected")
 
   #write your conditional statement for the different scenarios
-  adGroup_info_cond = [(adGroup_info.avgCPA      <= ABP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+  adGroup_info_cond = [(adGroup_info.avgCPA      <= HIGH_CPI_BID_DECREASE_THRESH) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]) & \
                        (adGroup_info.installs    >  ABP["NO_INSTALL_BID_DECREASE_THRESH"]),
-                       (adGroup_info.avgCPA      >  ABP["HIGH_CPI_BID_DECREASE_THRESH"]) & \
+                       (adGroup_info.avgCPA      >  HIGH_CPI_BID_DECREASE_THRESH) & \
                        (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]),
                        (adGroup_info.taps        <  ABP["TAP_THRESHOLD"]),
                        (adGroup_info.installs    == ABP["NO_INSTALL_BID_DECREASE_THRESH"]) & \
@@ -306,12 +246,12 @@ def createUpdatedAdGroupBids(data, campaignId):
     start_date, 
     end_date,
     config.TOTAL_COST_PER_INSTALL_LOOKBACK,
-    campaignId
+    campaign
   )
   dprint("runAdgroupBidAdjuster:::total cpi %s" % str(total_cost_per_install))
 
   bid_decision = adGroup_info_choices_increases \
-                 if total_cost_per_install <= ABP["HIGH_CPI_BID_DECREASE_THRESH"] \
+                 if total_cost_per_install <= HIGH_CPI_BID_DECREASE_THRESH \
                  else adGroup_info_choices
 
   #calculate the bid adjustments
@@ -321,7 +261,7 @@ def createUpdatedAdGroupBids(data, campaignId):
   adGroup_info['bid'] = np.clip(adGroup_info['bid'], ABP["MIN_BID"], bidCap_targetCPI)
 
   #include campaign id info per apple search ads requirement
-  adGroup_info['campaignId'] = adGroup_info.shape[0]*[clientG.keywordAdderIds["campaignId"]["search"]];
+  adGroup_info['campaignId'] = adGroup_info.shape[0]*[campaign['campaignId']]
   
   #extract only the columns you need per apple search ads requirement
   adGroup_info = adGroup_info[
@@ -403,8 +343,6 @@ def sendUpdatedBidsToApple(adGroupFileToPost):
   #    }
   #  ]
   #
-  # It's an array; can it have more than one entry? Zero entries?
-
   headers = {
     "Authorization": "orgId=%s" % clientG.orgId,
     "Content-Type" : "application/json",
@@ -431,7 +369,7 @@ def createEmailBody(data, sent):
 
 
 def emailSummaryReport(data, sent):
-    messageString = createEmailBody(data, sent);
+    messageString = createEmailBody(data, sent)
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
@@ -444,23 +382,32 @@ def process():
   summaryReportInfo = { }
   sent = False
   summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = { }
-  campaignIds = clientG.campaignIds
-  for campaignId in campaignIds:
-    data = getAdgroupReportFromApple()
+  
+  appleCampaigns = clientG.appleCampaigns
+  campaignsForAdgroupBidAdjuster = list(
+    filter(
+      lambda campaign:(campaign["adgroupBidAdjusterEnabled"] == True), appleCampaigns
+    )
+  )
+
+  for campaign in campaignsForAdgroupBidAdjuster:
+    logger.info("running for campaign type " + campaign['campaignType'])
+
+    data = getAdgroupReportFromApple(campaign)
     if not data:
       logger.info("runAdgroupBidAdjuster:process:::no results from api:::")
-      continue
-    stuff = createUpdatedAdGroupBids(data, campaignId)
+      return
+
+    stuff = createUpdatedAdGroupBids(data, campaign)
     if type(stuff) != bool:
       updatedBids, numberOfBids = stuff
       logger.info("runAdgroupBidAdjuster: updatedBids " + str(updatedBids))
       logger.info("runAdgroupBidAdjuster: numberOfBids " + str(numberOfBids))
       sent = sendUpdatedBidsToApple(updatedBids)
-      clientSummaryReportInfo[clientG.keywordAdderIds["campaignId"]["search"]] = json.dumps(updatedBids)
+      clientSummaryReportInfo[campaign["campaignId"]] = json.dumps(updatedBids)
       clientG.writeUpdatedAdgroupBids(dynamodb, numberOfBids)
 
   emailSummaryReport(summaryReportInfo, sent)
-
 
 if __name__ == "__main__":
     clientEvent = LambdaUtils.getClientForLocalRun(

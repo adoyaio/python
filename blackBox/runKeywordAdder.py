@@ -55,8 +55,7 @@ def initialize(clientEvent):
         orgDetails['_bidParameters'],
         orgDetails['_adgroupBidParameters'],
         orgDetails['_branchBidParameters'],
-        orgDetails['_campaignIds'],
-        orgDetails['_keywordAdderIds'],
+        orgDetails['_appleCampaigns'],
         orgDetails['_keywordAdderParameters'],
         orgDetails['_branchIntegrationParameters'],
         orgDetails['_currency'],
@@ -641,10 +640,20 @@ def process():
   summaryReportInfo = { }
   sent = False
   summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = CSRI = { }
-  kAI = clientG.keywordAdderIds
-  searchCampaignId, broadCampaignId = kAI["campaignId"]["search"], kAI["campaignId"]["broad"]
-  searchMatchData = getSearchTermsReportFromApple(searchCampaignId)
-  broadMatchData  = getSearchTermsReportFromApple(broadCampaignId)
+
+  searchCampaign = next(
+    item for item in clientG.appleCampaigns if item["campaignType"] == "search"
+  )
+  broadCampaign = next(
+    item for item in clientG.appleCampaigns if item["campaignType"] == "broad"
+  )
+  exactCampaign = next(
+    item for item in clientG.appleCampaigns if item["campaignType"] == "exact"
+  )
+
+  searchMatchData = getSearchTermsReportFromApple(searchCampaign['campaignId'])
+  broadMatchData  = getSearchTermsReportFromApple(broadCampaign['campaignId'])
+
   if not searchMatchData or not broadMatchData:
     CSRI["+e"] = {}
     CSRI["+b"] = {}
@@ -657,8 +666,26 @@ def process():
     CSRI["-e"] = {}
     CSRI["-b"] = {}
     return
+  
+  ids = {}
+  ids['campaignId'] = {}
+  ids['adGroupId'] = {}
+  ids["campaignId"]["search"] = searchCampaign["campaignId"]
+  ids["campaignId"]["broad"] = broadCampaign["campaignId"]
+  ids["campaignId"]["exact"] = exactCampaign["campaignId"]
+  ids["adGroupId"]["search"] = searchCampaign["adGroupId"]
+  ids["adGroupId"]["broad"] = broadCampaign["adGroupId"]
+  ids["adGroupId"]["exact"] = exactCampaign["adGroupId"]
+
   exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
-    analyzeKeywords(searchMatchData, broadMatchData, kAI, clientG.keywordAdderParameters, clientG.currency)
+    analyzeKeywords(
+      searchMatchData, 
+      broadMatchData, 
+      ids, 
+      clientG.keywordAdderParameters, 
+      clientG.currency
+    )
+  
   sent = convertAnalysisIntoApplePayloadAndSend(
     CSRI,
     exactPositive,
@@ -672,7 +699,6 @@ def process():
   )
   
   emailSummaryReport(summaryReportInfo, sent)
-
 
 if __name__ == "__main__":
     clientEvent = LambdaUtils.getClientForLocalRun(

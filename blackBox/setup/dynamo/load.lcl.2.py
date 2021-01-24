@@ -66,7 +66,8 @@ if __name__ == '__main__':
     tableName = 'apple_keyword'
     local = dynamodbLocal.Table(tableName)
     prod = dynamodbProd.Table(tableName)
-
+    # TODO add lookback for now just a counter
+    count = 0
     done = False
     start_key = None
     query_kwargs = {}
@@ -80,7 +81,8 @@ if __name__ == '__main__':
         prodResponse = prod.query(**query_kwargs)
         load_items_to_local(prodResponse.get('Items', []), local, tableName)
         start_key = prodResponse.get('LastEvaluatedKey', None)
-        done = start_key is None
+        count += 1
+        done = start_key is None or count == 10
 
 
     # branch_commerce_events

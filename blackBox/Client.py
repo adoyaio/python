@@ -9,39 +9,39 @@ from utils.DecimalEncoder import DecimalEncoder
 ONE_YEAR_IN_DAYS = 365
 
 class Client:
-    def __init__(self,
-                 orgId,
-                 clientName,
-                 emailAddresses,
-                 keyFilename, pemFilename,
-                 bidParameters,
-                 adgroupBidParameters,
-                 branchBidParameters,
-                 campaignIds,
-                 keywordAdderIds,
-                 keywordAdderParameters,
-                 branchIntegrationParameters,
-                 currency,
-                 appName,
-                 appID,
-                 campaignName
-                 ):
-        
+    def __init__(
+        self,
+        orgId,
+        clientName,
+        emailAddresses,
+        keyFilename, 
+        pemFilename,
+        bidParameters,
+        adgroupBidParameters,
+        branchBidParameters,
+        appleCampaigns,
+        keywordAdderParameters,
+        branchIntegrationParameters,
+        currency,
+        appName,
+        appID,
+        campaignName
+    ):  
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
         
-        if "campaignId" not in keywordAdderIds or \
-                "adGroupId" not in keywordAdderIds:
-            raise NameError("Missing campaignId or adGroupId in keywordAdderIds")
+        # if "campaignId" not in keywordAdderIds or \
+        #         "adGroupId" not in keywordAdderIds:
+        #     raise NameError("Missing campaignId or adGroupId in keywordAdderIds")
 
-        kAPCI, kAPGI = keywordAdderIds["campaignId"], keywordAdderIds["adGroupId"]
-        if "search" not in kAPCI or "broad" not in kAPCI or "exact" not in kAPCI:
-            raise NameError(
-                "Missing search, broad, or exact in keywordAdderIds[\"campaignId\"]. It was %s." % str(kAPCI))
+        # kAPCI, kAPGI = keywordAdderIds["campaignId"], keywordAdderIds["adGroupId"]
+        # if "search" not in kAPCI or "broad" not in kAPCI or "exact" not in kAPCI:
+        #     raise NameError(
+        #         "Missing search, broad, or exact in keywordAdderIds[\"campaignId\"]. It was %s." % str(kAPCI))
 
-        if "search" not in kAPGI or "broad" not in kAPGI or "exact" not in kAPGI:
-            raise NameError(
-                "Missing search, broad, or exact in keywordAdderIds[\"adGroupId\"]. It was %s." % str(kAPGI))
+        # if "search" not in kAPGI or "broad" not in kAPGI or "exact" not in kAPGI:
+        #     raise NameError(
+        #         "Missing search, broad, or exact in keywordAdderIds[\"adGroupId\"]. It was %s." % str(kAPGI))
 
         self._orgId = orgId
         self._clientName = clientName
@@ -51,8 +51,7 @@ class Client:
         self._bidParameters = bidParameters
         self._adgroupBidParameters = adgroupBidParameters
         self._branchBidParameters = branchBidParameters
-        self._campaignIds = campaignIds
-        self._keywordAdderIds = keywordAdderIds
+        self._appleCampaigns = appleCampaigns
         self._keywordAdderParameters = keywordAdderParameters
         self._branchIntegrationParameters = branchIntegrationParameters
         self._currency = currency
@@ -109,16 +108,12 @@ class Client:
         self._branchBidParameters = branchBidParameters   
 
     @property
-    def keywordAdderIds(self):
-        return dict(self._keywordAdderIds)
+    def appleCampaigns(self):
+        return list(self._appleCampaigns)
 
     @property
     def keywordAdderParameters(self):
         return dict(self._keywordAdderParameters)
-
-    @property
-    def campaignIds(self):
-        return tuple(self._campaignIds)
 
     @property
     def branchIntegrationParameters(self):
@@ -237,58 +232,56 @@ class Client:
 
     # gets total cost per install for the lookback period
     # NOTE currently unused, bid adjusters use getTotalCostPerInstallForCampaign
-    def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
-        table = dynamoResource.Table('cpi_history')
-        response = table.query(
-            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
-        )
-        # default high so bid decreases arent done, until average is being computed from a long enough lookback period
-        total_cost_per_install = 999999
+    # def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
+    #     table = dynamoResource.Table('cpi_history')
+    #     response = table.query(
+    #         KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
+    #         '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+    #     )
+    #     # default high so bid decreases arent done, until average is being computed from a long enough lookback period
+    #     total_cost_per_install = 999999
 
-        print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
-        print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
-        print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
-        print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
-        print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
+    #     print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
+    #     print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
+    #     print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
+    #     print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
+    #     print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        if len(response['Items']) >= daysToLookBack:
-            totalCost, totalInstalls = 0.0, 0
-            for i in response[u'Items']:
-                totalCost += float(i['spend'])
-                totalInstalls += int(i['installs'])
-                if totalCost > 0 and totalInstalls > 0:
-                    total_cost_per_install = totalCost / totalInstalls
-        return total_cost_per_install
+    #     if len(response['Items']) >= daysToLookBack:
+    #         totalCost, totalInstalls = 0.0, 0
+    #         for i in response[u'Items']:
+    #             totalCost += float(i['spend'])
+    #             totalInstalls += int(i['installs'])
+    #             if totalCost > 0 and totalInstalls > 0:
+    #                 total_cost_per_install = totalCost / totalInstalls
+    #     return total_cost_per_install
 
 
     # gets total cost per install for the lookback period
-    def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign_id):
-        # TODO if its not broad, exact, search, brand return 999999
+    def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign):
+         # default high so bid decreases arent done, until average is being computed from a long enough lookback period
+        total_cost_per_install = 999999
+
+        if campaign['campaignType'] == 'other':
+            return total_cost_per_install # use default for other types
 
         table = dynamoResource.Table('cpi_history')
-
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
             '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
         )
-        # default high so bid decreases arent done, until average is being computed from a long enough lookback period
-        total_cost_per_install = 999999
-
+       
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))
         print("getTotalCostPerInstall:::start_date:::" + start_date.strftime('%Y-%m-%d'))
         print("getTotalCostPerInstall:::end_date:::" + end_date.strftime('%Y-%m-%d'))
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        # grab specific campaign metrics
-        campaign_keys = list(self.keywordAdderIds["campaignId"].keys())
-        campaign_vals = list(self.keywordAdderIds["campaignId"].values())
+        installs_lookup_key = "installs_" + campaign["campaignType"]
+        spend_lookup_key = "spend_" + campaign["campaignType"]
 
-        campaign_name = campaign_keys[campaign_vals.index(campaign_id)]
-
-        installs_lookup_key = "installs_" + campaign_name 
-        spend_lookup_key = "spend_" + campaign_name
+        print("installs_lookup_key " + str(installs_lookup_key))
+        print("spend_lookup_key " + str(spend_lookup_key))
 
         if len(response['Items']) >= daysToLookBack:
             totalCost, totalInstalls = 0.0, 0
@@ -435,8 +428,7 @@ class Client:
                     client["orgDetails"]["bidParameters"],
                     client["orgDetails"]["adgroupBidParameters"],
                     client["orgDetails"]["branchBidParameters"],
-                    client["orgDetails"]["campaignIds"],
-                    client["orgDetails"]["keywordAdderIds"],
+                    client["orgDetails"]["appleCampaigns"],
                     client["orgDetails"]["keywordAdderParameters"],
                     client["orgDetails"]["branchIntegrationParameters"],
                     client["orgDetails"]["currency"],
