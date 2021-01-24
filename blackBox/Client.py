@@ -115,10 +115,6 @@ class Client:
     def keywordAdderParameters(self):
         return dict(self._keywordAdderParameters)
 
-    # @property
-    # def campaignIds(self):
-    #     return tuple(self._campaignIds)
-
     @property
     def branchIntegrationParameters(self):
         return dict(self._branchIntegrationParameters)
