@@ -262,19 +262,7 @@ def process():
             )
         )
         for campaign in campaignsForBidAdjuster:
-
-        # adgroupKeys = client.keywordAdderIds["adGroupId"].keys()
-        # for adgroupKey in adgroupKeys:
-        #     adgroupId = client.keywordAdderIds["adGroupId"][adgroupKey]
-        #     campaignId = str(client.keywordAdderIds["campaignId"][adgroupKey])
-        #     print("pulling adgroup_id " + str(adgroupId))
-        #     print("campaign id " + str(campaignId))
-                
-        #     # grab campaign name for campaign specific params
-        #     campaignKeys = list(client.keywordAdderIds["campaignId"].keys())
-        #     campaignVals = list(client.keywordAdderIds["campaignId"].values())
-        #     campaignName = campaignKeys[campaignVals.index(campaignId)]
-
+            
             # common params
             BBP = client.branchBidParameters
             min_apple_installs = BBP["min_apple_installs"]
@@ -286,10 +274,15 @@ def process():
             revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
 
             # campaign specific params
-            cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaign['campaignType']
-            cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key, None)
-            revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaign['campaignType']
-            revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
+            if campaign['campaignType'] == "other":
+                cost_per_purchase_threshold = campaign['costPerPurchaseThresh']
+                revenue_over_ad_spend_threshold = campaign['revenueOverAdSpendThresh']
+            else:
+                cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaign['campaignType']
+                cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key, None)
+                revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaign['campaignType']
+                revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
+
 
             # get apple data
             kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, campaign['adGroupId'], start_date, end_date)
