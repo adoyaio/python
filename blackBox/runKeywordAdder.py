@@ -647,6 +647,9 @@ def process():
   broadCampaign = next(
     item for item in clientG.appleCampaigns if item["campaignType"] == "broad"
   )
+  exactCampaign = next(
+    item for item in clientG.appleCampaigns if item["campaignType"] == "exact"
+  )
 
   searchMatchData = getSearchTermsReportFromApple(searchCampaign['campaignId'])
   broadMatchData  = getSearchTermsReportFromApple(broadCampaign['campaignId'])
@@ -663,8 +666,26 @@ def process():
     CSRI["-e"] = {}
     CSRI["-b"] = {}
     return
+  
+  ids = {}
+  ids['campaignId'] = {}
+  ids['adGroupId'] = {}
+  ids["campaignId"]["search"] = searchCampaign["campaignId"]
+  ids["campaignId"]["broad"] = broadCampaign["campaignId"]
+  ids["campaignId"]["exact"] = exactCampaign["campaignId"]
+  ids["adGroupId"]["search"] = searchCampaign["adGroupId"]
+  ids["adGroupId"]["broad"] = broadCampaign["adGroupId"]
+  ids["adGroupId"]["exact"] = exactCampaign["adGroupId"]
+
   exactPositive, exactPositiveUrl, broadPositive, broadPositiveUrl, exactNegative, exactNegativeUrl, broadNegative, broadNegativeUrl = \
-    analyzeKeywords(searchMatchData, broadMatchData, kAI, clientG.keywordAdderParameters, clientG.currency)
+    analyzeKeywords(
+      searchMatchData, 
+      broadMatchData, 
+      ids, 
+      clientG.keywordAdderParameters, 
+      clientG.currency
+    )
+  
   sent = convertAnalysisIntoApplePayloadAndSend(
     CSRI,
     exactPositive,
@@ -678,7 +699,6 @@ def process():
   )
   
   emailSummaryReport(summaryReportInfo, sent)
-
 
 if __name__ == "__main__":
     clientEvent = LambdaUtils.getClientForLocalRun(

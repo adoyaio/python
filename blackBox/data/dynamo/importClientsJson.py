@@ -2,10 +2,10 @@ import decimal
 import json
 import boto3
 
-# UNCOMMENT FOR PROD
+# ********* PROD ***********
 # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-# UNCOMMENT FOR LOCAL
+# ********* LOCAL **********
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
 
 table = dynamodb.Table('clients')

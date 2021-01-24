@@ -369,7 +369,7 @@ def createEmailBody(data, sent):
 
 
 def emailSummaryReport(data, sent):
-    messageString = createEmailBody(data, sent);
+    messageString = createEmailBody(data, sent)
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
