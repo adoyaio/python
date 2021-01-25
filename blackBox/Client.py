@@ -230,8 +230,8 @@ class Client:
         return response['Items']
 
 
-    # gets total cost per install for the lookback period
     # NOTE currently unused, bid adjusters use getTotalCostPerInstallForCampaign
+    # gets total cost per install for the lookback period
     # def getTotalCostPerInstall(self, dynamoResource, start_date, end_date, daysToLookBack):
     #     table = dynamoResource.Table('cpi_history')
     #     response = table.query(
