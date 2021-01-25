@@ -314,7 +314,20 @@ def sendEmailReport(dataForVariousTimes):
             "revenue": 0.0
         }
     }
-    
+
+    searchCampaign = next(
+        item for item in clientG.appleCampaigns if item["campaignType"] == "search"
+    )
+    broadCampaign = next(
+        item for item in clientG.appleCampaigns if item["campaignType"] == "broad"
+    )
+    exactCampaign = next(
+        item for item in clientG.appleCampaigns if item["campaignType"] == "exact"
+    )
+    brandCampaign = next(
+        item for item in clientG.appleCampaigns if item["campaignType"] == "brand"
+    )
+
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
         summary[someTime] = {"installs": 0, "spend": 0.0}
         
@@ -330,22 +343,22 @@ def sendEmailReport(dataForVariousTimes):
             summary[someTime]["spend"] += spend
 
             # calculate campaign level cpi etc 
-            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("search"):
+            if str(campaignId) == searchCampaign.get("campaignId"):
                 summary[someTime]["cpi_search"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_search"] = installs
                 summary[someTime]["spend_search"] = spend
 
-            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("broad"):
+            if str(campaignId) == broadCampaign.get("campaignId"):
                 summary[someTime]["cpi_broad"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_broad"] = installs
                 summary[someTime]["spend_broad"] = spend
             
-            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("exact"):
+            if str(campaignId) == exactCampaign.get("campaignId"):
                 summary[someTime]["cpi_exact"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_exact"] = installs
                 summary[someTime]["spend_exact"] = spend
 
-            if str(campaignId) == clientG.keywordAdderIds.get("campaignId").get("brand"):
+            if str(campaignId) == brandCampaign.get("campaignId"):
                 summary[someTime]["cpi_brand"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_brand"] = installs
                 summary[someTime]["spend_brand"] = spend
