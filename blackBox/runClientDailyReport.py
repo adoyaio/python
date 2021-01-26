@@ -314,19 +314,10 @@ def sendEmailReport(dataForVariousTimes):
             "revenue": 0.0
         }
     }
-
-    searchCampaign = next(
-        item for item in clientG.appleCampaigns if item["campaignType"] == "search"
-    )
-    broadCampaign = next(
-        item for item in clientG.appleCampaigns if item["campaignType"] == "broad"
-    )
-    exactCampaign = next(
-        item for item in clientG.appleCampaigns if item["campaignType"] == "exact"
-    )
-    brandCampaign = next(
-        item for item in clientG.appleCampaigns if item["campaignType"] == "brand"
-    )
+    searchCampaign = next(filter(lambda x: x["campaignType"] == "search", clientG.appleCampaigns), None)
+    broadCampaign = next(filter(lambda x: x["campaignType"] == "broad", clientG.appleCampaigns), None)
+    exactCampaign = next(filter(lambda x: x["campaignType"] == "exact", clientG.appleCampaigns), None)
+    brandCampaign = next(filter(lambda x: x["campaignType"] == "brand", clientG.appleCampaigns), None)
 
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
         summary[someTime] = {"installs": 0, "spend": 0.0}
@@ -343,22 +334,22 @@ def sendEmailReport(dataForVariousTimes):
             summary[someTime]["spend"] += spend
 
             # calculate campaign level cpi etc 
-            if str(campaignId) == searchCampaign.get("campaignId"):
+            if searchCampaign is not None and str(campaignId) == searchCampaign.get("campaignId"):
                 summary[someTime]["cpi_search"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_search"] = installs
                 summary[someTime]["spend_search"] = spend
 
-            if str(campaignId) == broadCampaign.get("campaignId"):
+            if broadCampaign is not None and str(campaignId) == broadCampaign.get("campaignId"):
                 summary[someTime]["cpi_broad"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_broad"] = installs
                 summary[someTime]["spend_broad"] = spend
             
-            if str(campaignId) == exactCampaign.get("campaignId"):
+            if exactCampaign is not None and str(campaignId) == exactCampaign.get("campaignId"):
                 summary[someTime]["cpi_exact"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_exact"] = installs
                 summary[someTime]["spend_exact"] = spend
 
-            if str(campaignId) == brandCampaign.get("campaignId"):
+            if brandCampaign is not None and str(campaignId) == brandCampaign.get("campaignId"):
                 summary[someTime]["cpi_brand"] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_brand"] = installs
                 summary[someTime]["spend_brand"] = spend
@@ -438,6 +429,7 @@ def process():
         campaignData = getCampaignData(
             daysToGoBack
         )
+
         if(campaignData != False):
             dataArray = campaignData["data"]["reportingDataResponse"]["row"]
             dprint("For %d (%s), there are %d campaigns in the campaign data." % \
