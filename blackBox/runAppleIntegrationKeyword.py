@@ -77,6 +77,22 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
                     "sortOrder": "DESCENDING"
                 }
             ],
+            "conditions": [
+                {
+                    "field": "keywordStatus",
+                    "operator": "IN",
+                    "values": [
+                        "ACTIVE"
+                    ]
+                },
+                {
+                    "field": "keywordDisplayStatus",
+                    "operator": "IN",
+                    "values": [
+                        "RUNNING"
+                    ]
+                }
+            ],
             "fields": [
                 "localSpend",
                 "taps",
@@ -245,6 +261,8 @@ def process():
         # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
         startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
         endDate = datetime.date.today()
+        # startDate = '2021-01-22'
+        # endDate = '2021-01-28'
         data = getKeywordReportFromApple(campaign['campaignId'], startDate, endDate)
         if not data:
             logger.info("runAppleIntegrationKeyword:::no data returned")

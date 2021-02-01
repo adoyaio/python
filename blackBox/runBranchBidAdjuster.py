@@ -189,15 +189,6 @@ def createPutRequestString(campaignId, adgroupId):
     return "https://api.searchads.apple.com/api/v3/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
         campaignId, adgroupId)
 
-# def writeRequestFile(put_request_string, request_json, request_output_filename):
-#     try:
-#         out_file_object = open(request_output_filename, "w")
-#     except:
-#         print("Error: Issues opening the output file")
-#     out_file_object.write(put_request_string)
-#     out_file_object.write("\n\n")
-#     out_file_object.write(str(request_json))
-#     out_file_object.close()
 
 def createDataFrame(items, campaign_id, adgroup_id):
     keyword_info = defaultdict(list)
@@ -297,7 +288,7 @@ def process():
             rawDataDf = createDataFrame(kwResponse.get('Items'), campaign['campaignId'], campaign['adGroupId'])
             # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
-            # rawDataDf.to_csv(adgroup_id + ".csv")
+            # rawDataDf.to_csv(campaign['adGroupId'] + ".csv")
             # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
                
             if rawDataDf.empty:

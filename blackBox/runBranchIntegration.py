@@ -28,8 +28,8 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-#start_date = '2020-02-01'
-#end_date = '2020-02-04'
+# start_date = '2021-01-01'
+# end_date = '2021-01-07'
 
 
 def initialize(clientEvent):
@@ -119,6 +119,8 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
     logger.info("Headers are %s." % headers)
     response = getKeywordReportFromBranchHelper(url, payload, headers)
     logger.info("Response is %s." % response)
+
+    print(str(json.dumps(response.text, indent=4, cls=DecimalEncoder)))
     
     # TODO extract to utils
     if response.status_code != 200:
