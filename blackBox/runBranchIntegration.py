@@ -28,8 +28,8 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-# start_date = '2021-01-01'
-# end_date = '2021-01-07'
+# start_date = '2021-01-29'
+# end_date = '2021-02-01'
 
 
 def initialize(clientEvent):
@@ -100,6 +100,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
         ],
         "granularity": "day", "aggregation": aggregation,
         "filters": {
+            "name" : ["PURCHASE"],
             "last_attributed_touch_data_tilde_feature":
                 [
                     "paid advertising"
