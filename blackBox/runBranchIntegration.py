@@ -28,8 +28,8 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 # FOR QA PURPOSES set these fields explicitly
-#start_date = '2020-02-01'
-#end_date = '2020-02-04'
+# start_date = '2021-01-25'
+# end_date = '2021-01-31'
 
 
 def initialize(clientEvent):
@@ -47,6 +47,8 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
+    # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+
     orgDetails = json.loads(
         clientEvent['orgDetails']
     )
@@ -100,6 +102,7 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
         ],
         "granularity": "day", "aggregation": aggregation,
         "filters": {
+            "name" : ["PURCHASE"],
             "last_attributed_touch_data_tilde_feature":
                 [
                     "paid advertising"
@@ -119,6 +122,8 @@ def getKeywordReportFromBranch(branch_job, branch_key, branch_secret, aggregatio
     logger.info("Headers are %s." % headers)
     response = getKeywordReportFromBranchHelper(url, payload, headers)
     logger.info("Response is %s." % response)
+
+    print(str(json.dumps(response.text, indent=4, cls=DecimalEncoder)))
     
     # TODO extract to utils
     if response.status_code != 200:
@@ -180,10 +185,10 @@ def process():
                     ad_set_id = str(result["result"]["last_attributed_touch_data_tilde_ad_set_id"])
                     # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                     count = str(result["result"]["unique_count"])
-                    # event_key === campaign_id + dashG + ad_set_id + dashG + ad_set_name  # eg 197915189-197913017-search_match
+                    # event_key === campaign_id + dashG + ad_set_id + dashG + keyword # eg 197915189-197913017-search_match
                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
-                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
+                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"]).lower()
+                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.lower().replace(" ", dashG)
                     else:
                         keyword = "n/a"
                         event_key = campaign_id + dashG + ad_set_id
@@ -215,8 +220,8 @@ def process():
                     # ad_set_name = str(result["result"]["last_attributed_touch_data_tilde_ad_set_name"])
                     revenue = decimal.Decimal(result["result"]["revenue"])
                     if 'last_attributed_touch_data_tilde_keyword' in result["result"]:
-                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"])
-                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.replace(" ", dashG)
+                        keyword = str(result["result"]["last_attributed_touch_data_tilde_keyword"]).lower()
+                        event_key = campaign_id + dashG + ad_set_id + dashG + keyword.lower().replace(" ", dashG)
                     else:
                         event_key = campaign_id + dashG + ad_set_id
                     try:

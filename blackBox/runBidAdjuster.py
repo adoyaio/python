@@ -88,6 +88,22 @@ def getKeywordReportFromApple(campaignId):
                     "sortOrder": "DESCENDING"
                 }
             ],
+            "conditions": [
+                {
+                    "field": "keywordStatus",
+                    "operator": "IN",
+                    "values": [
+                        "ACTIVE"
+                    ]
+                },
+                {
+                    "field": "keywordDisplayStatus",
+                    "operator": "IN",
+                    "values": [
+                        "RUNNING"
+                    ]
+                }
+            ],
             "fields": [
                 "localSpend",
                 "taps",

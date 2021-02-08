@@ -22,6 +22,10 @@ from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 
 LOOKBACK = 7 # TODO reduce for nightly
+startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
+endDate = datetime.date.today()
+# startDate = '2021-01-25'
+# endDate = '2021-01-31'
 
 def initialize(clientEvent):
     global sendG
@@ -38,6 +42,8 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
+    # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+
     orgDetails = json.loads(clientEvent['orgDetails'])
     clientG = Client(
         orgDetails['_orgId'],
@@ -75,6 +81,22 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
                 {
                     "field": "localSpend",
                     "sortOrder": "DESCENDING"
+                }
+            ],
+            "conditions": [
+                {
+                    "field": "keywordStatus",
+                    "operator": "IN",
+                    "values": [
+                        "ACTIVE"
+                    ]
+                },
+                {
+                    "field": "keywordDisplayStatus",
+                    "operator": "IN",
+                    "values": [
+                        "RUNNING"
+                    ]
                 }
             ],
             "fields": [
@@ -145,7 +167,7 @@ def loadAppleKeywordToDynamo(data, orgId, campaignId):
             date = str(granularity['date'])
 
             # always pull from meta
-            keyword = str(row['metadata']['keyword'])
+            keyword = str(row['metadata']['keyword']).lower()
             keyword_id = str(row['metadata']['keywordId'])
             keywordStatus = row['metadata']['keywordStatus']
             keywordDisplayStatus = row['metadata']['keywordDisplayStatus']
@@ -243,8 +265,6 @@ def process():
     for campaign in campaignsForAppleKeywordIntegration:
         # TODO JF implement max date call pull ONE value sorted & read max date
         # date_results = keyword_table.scan(FilterExpression=Key('campaignId').eq(str(campaignId)))
-        startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
-        endDate = datetime.date.today()
         data = getKeywordReportFromApple(campaign['campaignId'], startDate, endDate)
         if not data:
             logger.info("runAppleIntegrationKeyword:::no data returned")
