@@ -21,10 +21,9 @@ class DecimalEncoder(json.JSONEncoder):
         return super(DecimalEncoder, self).default(o)
 
 def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, timestamp):
-    # TODO to lower
     table = dynamoResource.Table('branch_commerce_events')
     # normalize search term to how its being stored in db
-    event_key = str(campaign_id) + dashG + str(ad_set_id) + dashG + keyword.replace(" ", dashG)
+    event_key = str(campaign_id) + dashG + str(ad_set_id) + dashG + keyword.lower().replace(" ", dashG)
     response = table.query(
         KeyConditionExpression=Key('branch_commerce_event_key').eq(event_key) & Key('timestamp').eq(timestamp),
     )
