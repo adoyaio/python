@@ -51,14 +51,33 @@ def returnActiveKeywordsDataFrame(
     first_filter = ads_data[(ads_data["keywordStatus"] == "ACTIVE") & \
                             (ads_data["adGroupDeleted"] == "False")]
 
-    group_by = first_filter.groupby(["adGroupId", "keywordId", "bid"]) \
+    latest_row = first_filter.sort_values('date').groupby('keywordId').tail(1).reset_index(drop=True)
+    latest_bid = latest_row.filter(items=["bid", "keywordId"])
+    latest_bid.sort_values("keywordId", inplace=True)
+    latest_bid.reset_index(drop=True, inplace=True)
+
+    aggregated = first_filter.groupby(["adGroupId", "keywordId"]) \
         .agg({"installs": np.sum, \
               "branch_commerce_event_count": np.sum, \
               "branch_revenue": np.sum, \
               "localSpend": np.sum})
-    second_filter = group_by[(group_by["installs"] >= min_apple_installs)].reset_index()
+
+    aggregated.sort_values("keywordId", inplace=True)
+    aggregated.reset_index(drop=False, inplace=True)
+
+    concatenated = aggregated.merge(latest_bid, left_on="keywordId", right_on="keywordId")
+    second_filter = concatenated[(concatenated["installs"] >= min_apple_installs)].reset_index()
     return second_filter[
-        ["adGroupId", "keywordId", "bid", "installs", "branch_commerce_event_count", "branch_revenue", "localSpend"]]
+        [
+            "adGroupId", 
+            "keywordId", 
+            "bid", 
+            "installs", 
+            "branch_commerce_event_count", 
+            "branch_revenue", 
+            "localSpend"
+        ]
+    ]
 
 def returnCostPerPurchaseOptimizedBid(
     active_keywords_dataFrame, 
@@ -288,7 +307,7 @@ def process():
             rawDataDf = createDataFrame(kwResponse.get('Items'), campaign['campaignId'], campaign['adGroupId'])
             # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
-            # rawDataDf.to_csv(campaign['adGroupId'] + ".csv")
+            # rawDataDf.to_csv(campaign['adGroupId'] + 'raw' + ".csv")
             # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
                
             if rawDataDf.empty:
@@ -301,7 +320,7 @@ def process():
                 keywordStatus,
                 adgroupDeleted
             )
-                    
+                
             if activeKeywords.empty:
                 print("There weren't any keywords that met the initial filtering criteria")
                 continue
@@ -393,19 +412,13 @@ def emailSummaryReport(data, sent):
     EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
 
 
-def terminate():
-    pass
-
-
 if __name__ == "__main__":
     initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
     process()
-    terminate()
 
 def lambda_handler(event, context):
     initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
     process()
-    terminate()
     return {
         'statusCode': 200,
         'body': json.dumps('Run Branch Bid Adjuster Complete')
