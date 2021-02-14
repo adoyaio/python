@@ -158,7 +158,7 @@ class Client:
     def addRowToCpiHistory(self, rowOfHistory, dynamoResource, end_date):
         table = dynamoResource.Table('cpi_history')
         
-        org_id = str(self.orgId)  # TODO JF revisit when org_id is string
+        org_id = str(self.orgId)  # NOTE org_id is currently number 
         timestamp = str(end_date) # write to history table with yesterday timestamp
         
         table.put_item(
@@ -267,8 +267,10 @@ class Client:
 
         table = dynamoResource.Table('cpi_history')
         response = table.query(
-            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(
+                start_date.strftime('%Y-%m-%d'), 
+                end_date.strftime('%Y-%m-%d')
+            )
         )
        
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))

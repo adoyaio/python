@@ -5,7 +5,6 @@ import logging
 import pprint
 import boto3
 
-sendG = False  # Set to True to enable sending data to Apple, else a test run.
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 date = datetime.date
