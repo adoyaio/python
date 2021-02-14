@@ -48,22 +48,33 @@ def returnActiveKeywordsDataFrame(
     keyword_status, 
     adgroup_deleted
 ):
-    first_filter = ads_data[(ads_data["keywordStatus"] == "ACTIVE") & \
-                            (ads_data["adGroupDeleted"] == "False")]
+    first_filter = ads_data[
+        (ads_data["keywordStatus"] == "ACTIVE") & (ads_data["adGroupDeleted"] == "False")
+    ]
 
-    latest_row = first_filter.sort_values('date').groupby('keywordId').tail(1).reset_index(drop=True)
-    latest_bid = latest_row.filter(items=["bid", "keywordId"])
-    latest_bid.sort_values("keywordId", inplace=True)
-    latest_bid.reset_index(drop=True, inplace=True)
+    latest_row = first_filter \
+        .sort_values('date') \
+        .groupby('keywordId') \
+        .tail(1) \
+        .reset_index(drop=True)
 
-    aggregated = first_filter.groupby(["adGroupId", "keywordId"]) \
-        .agg({"installs": np.sum, \
-              "branch_commerce_event_count": np.sum, \
-              "branch_revenue": np.sum, \
-              "localSpend": np.sum})
+    latest_bid = latest_row \
+        .filter(items=["bid", "keywordId"]) \
+        .sort_values("keywordId") \
+        .reset_index(drop=True)
 
-    aggregated.sort_values("keywordId", inplace=True)
-    aggregated.reset_index(drop=False, inplace=True)
+    aggregated = first_filter \
+        .groupby(["adGroupId", "keywordId"]) \
+        .agg(
+            {
+                "installs": np.sum,
+                "branch_commerce_event_count": np.sum,
+                "branch_revenue": np.sum,
+                "localSpend": np.sum
+            }
+        ) \
+        .sort_values("keywordId") \
+        .reset_index(drop=False)
 
     concatenated = aggregated.merge(latest_bid, left_on="keywordId", right_on="keywordId")
     second_filter = concatenated[(concatenated["installs"] >= min_apple_installs)].reset_index()
@@ -90,7 +101,7 @@ def returnCostPerPurchaseOptimizedBid(
     lower_cost_per_purchase_threshold = cost_per_purchase_threshold * (1 - cost_per_purchase_threshold_buffer)
     upper_cost_per_purchase_threshold = cost_per_purchase_threshold * (1 + cost_per_purchase_threshold_buffer)
 
-    # JF this will throw an error if commerce event count is 0, handling this by iterating each row and caclulating cpp
+    # NOTE this will throw an error if commerce event count is 0, handling this by iterating each row and caclulating cpp
     # active_keywords_dataFrame["cost_per_purchase"] = active_keywords_dataFrame["localSpend"] / \
     #                                                  active_keywords_dataFrame["branch_commerce_event_count"]
     cpp = []
