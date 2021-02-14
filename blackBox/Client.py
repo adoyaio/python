@@ -158,7 +158,7 @@ class Client:
     def addRowToCpiHistory(self, rowOfHistory, dynamoResource, end_date):
         table = dynamoResource.Table('cpi_history')
         
-        org_id = str(self.orgId)  # TODO JF revisit when org_id is string
+        org_id = str(self.orgId)  # NOTE org_id is currently number 
         timestamp = str(end_date) # write to history table with yesterday timestamp
         
         table.put_item(
