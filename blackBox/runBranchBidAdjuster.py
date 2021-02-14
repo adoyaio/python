@@ -293,10 +293,9 @@ def process():
                 revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaign['campaignType']
                 revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
 
-
             # get apple data
             kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, campaign['adGroupId'], start_date, end_date)
-            print("querying with:::" + str(start_date) + " - " + str(end_date))
+            print("querying" + campaign['adGroupId'] +  ":::with:::" + str(start_date) + " - " + str(end_date))
             print("got back:::" + str(kwResponse["Count"]))
 
             if (kwResponse["Count"] == 0):
@@ -307,7 +306,7 @@ def process():
             rawDataDf = createDataFrame(kwResponse.get('Items'), campaign['campaignId'], campaign['adGroupId'])
             # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
-            # rawDataDf.to_csv(campaign['adGroupId'] + 'raw' + ".csv")
+            # rawDataDf.to_csv(campaign['adGroupId'] + 'rawDataDf' + ".csv")
             # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
                
             if rawDataDf.empty:

@@ -267,8 +267,10 @@ class Client:
 
         table = dynamoResource.Table('cpi_history')
         response = table.query(
-            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(start_date.strftime(
-            '%Y-%m-%d'), end_date.strftime('%Y-%m-%d'))
+            KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(
+                start_date.strftime('%Y-%m-%d'), 
+                end_date.strftime('%Y-%m-%d')
+            )
         )
        
         print("getTotalCostPerInstall:::orgId:::" + str(self.orgId))

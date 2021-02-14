@@ -1,5 +1,4 @@
-from __future__ import print_function # Python 2/3 compatibility
-
+import datetime
 import decimal
 import json
 import boto3
@@ -66,12 +65,20 @@ if __name__ == '__main__':
     tableName = 'apple_keyword'
     local = dynamodbLocal.Table(tableName)
     prod = dynamodbProd.Table(tableName)
-    # TODO add lookback for now just a counter
+    today = datetime.date.today()
+    end_date_delta = datetime.timedelta(days=1)
+    start_date_delta = datetime.timedelta(14)
+    start_date = today - start_date_delta
+    end_date = today - end_date_delta
     count = 0
     done = False
     start_key = None
     query_kwargs = {}
-    query_kwargs['KeyConditionExpression'] = Key('org_id').eq(str(orgId))
+    # query_kwargs['KeyConditionExpression'] = Key('org_id').eq(str(orgId))
+    query_kwargs['KeyConditionExpression'] = Key('org_id').eq(str(orgId)) & Key('date').between(
+                start_date.strftime('%Y-%m-%d'), 
+                end_date.strftime('%Y-%m-%d')
+            )
     query_kwargs['IndexName'] = 'org_id-timestamp-index'    
 
     while not done:
@@ -82,7 +89,8 @@ if __name__ == '__main__':
         load_items_to_local(prodResponse.get('Items', []), local, tableName)
         start_key = prodResponse.get('LastEvaluatedKey', None)
         count += 1
-        done = start_key is None or count == 10
+        # done = start_key is None or count == 10
+        done = start_key is None
 
 
     # branch_commerce_events
