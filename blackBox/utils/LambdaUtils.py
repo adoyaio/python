@@ -59,7 +59,21 @@ def getLogger(env):
         logger.setLevel(logging.INFO)
         return logger
 
+def getBidParamsForJob(orgDetails, campaign, job):
+    if job == "bidAdjuster":
+        clientG = Client.buildFromDictionary(orgDetails)
+        params = {}
+        params.update(clientG.bidParameters)
+        params.update(campaign.get('bidParameters',[]))
+        return params
 
+    if job == "branchBidAdjuster":
+        clientG = Client.buildFromDictionary(orgDetails)
+        params = {}
+        params.update(clientG.branchBidParameters)
+        params.update(campaign.get('branchBidParameters',[]))
+        return params
+    
 def getClientForLocalRun(orgId, emailToInternal):
     clientEvent = {}
     clientEvent['rootEvent'] = {

@@ -262,6 +262,7 @@ class Client:
          # default high so bid decreases arent done, until average is being computed from a long enough lookback period
         total_cost_per_install = 999999
 
+        # TODO remove pivot all campaign types should suport cpi
         if campaign['campaignType'] == 'other':
             return total_cost_per_install # use default for other types
 
@@ -318,33 +319,24 @@ class Client:
 
     # v0 opimization summary tables candidates for removal
     def writeUpdatedBids(self, dynamoResource, newValue):
-        # print('Client.updatedBids: set value ' + str(newValue))
-        # print('Client.updatedBids: is stale ' + str(self._updatedBidsIsStale))
         if not self._updatedBidsIsStale:
             self._updatedBidsIsStale = True
-            # print('Client.updatedBids: set updatedBidsIsStale ' + str(self._updatedBidsIsStale))
         else:
-            # print('Client.updatedBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedBidsCount(dynamoResource))
             newValue = int(newValue) + int(self.readUpdatedBidsCount(dynamoResource))
         
         i = {
             "org_id": str(self.orgId),
             "bids": str(newValue)
         }
-        # print("Client.updatedBids: adding bids entry:", i)
         table = dynamoResource.Table('bids')
         table.put_item(
             Item=i
         )
 
     def writeUpdatedAdgroupBids(self, dynamoResource, newValue):
-        # print('Client.writeUpdatedAdgroupBids: set value ' + str(newValue))
-        # print('Client.updatedAdgroupBidsIsStale: is stale ' + str(self._updatedAdgroupBidsIsStale))
         if not self._updatedAdgroupBidsIsStale:
             self._updatedAdgroupBidsIsStale = True
-            # print('Client.updatedAdgroupBids: set updatedBidsIsStale ' + str(self._updatedAdgroupBidsIsStale))
         else:
-            # print('Client.updatedAdgroupBids: increment value ' + str(newValue) + ' + ' + self.readUpdatedAdgroupBidsCount(dynamoResource))
             newValue = int(newValue) + int(self.readUpdatedAdgroupBidsCount(dynamoResource))
 
         i = {
@@ -415,30 +407,58 @@ class Client:
         if len(response['Items']) > 0:
             return response['Items'][0]["keywords"]
 
+    def buildFromDictionary(orgDetails):
+        return Client(
+            orgDetails['_orgId'],
+            orgDetails['_clientName'],
+            orgDetails['_emailAddresses'],
+            orgDetails['_keyFilename'],
+            orgDetails['_pemFilename'],
+            orgDetails['_bidParameters'],
+            orgDetails['_adgroupBidParameters'],
+            orgDetails['_branchBidParameters'],
+            orgDetails['_appleCampaigns'],
+            orgDetails['_keywordAdderParameters'],
+            orgDetails['_branchIntegrationParameters'],
+            orgDetails['_currency'],
+            orgDetails['_appName'],
+            orgDetails['_appID'],
+            orgDetails['_campaignName']
+        )
 
     # initialize and return array of Client objects
     def getClients(dynamoResource):
         CLIENTS = []
-        for client in (dynamoResource.Table('clients').scan()["Items"]):
-            CLIENTS.append(
-                Client(
-                    client["orgDetails"]["orgId"],
-                    client["orgDetails"]["clientName"],
-                    client["orgDetails"]["emailAddresses"],
-                    client["orgDetails"]["keyFilename"],
-                    client["orgDetails"]["pemFilename"],
-                    client["orgDetails"]["bidParameters"],
-                    client["orgDetails"]["adgroupBidParameters"],
-                    client["orgDetails"]["branchBidParameters"],
-                    client["orgDetails"]["appleCampaigns"],
-                    client["orgDetails"]["keywordAdderParameters"],
-                    client["orgDetails"]["branchIntegrationParameters"],
-                    client["orgDetails"]["currency"],
-                    client["orgDetails"]["appName"],
-                    client["orgDetails"]["appID"],
-                    client["orgDetails"]["campaignName"]
+        table = dynamoResource.Table('clients')
+        done = False
+        start_key = None
+        scan_kwargs = {}
+        while not done:
+            if start_key:
+                scan_kwargs['ExclusiveStartKey'] = start_key
+            response = table.scan(**scan_kwargs)
+            for client in response.get('Items'):             
+                CLIENTS.append(
+                    Client(
+                        client["orgDetails"]["orgId"],
+                        client["orgDetails"]["clientName"],
+                        client["orgDetails"]["emailAddresses"],
+                        client["orgDetails"]["keyFilename"],
+                        client["orgDetails"]["pemFilename"],
+                        client["orgDetails"]["bidParameters"],
+                        client["orgDetails"]["adgroupBidParameters"],
+                        client["orgDetails"]["branchBidParameters"],
+                        client["orgDetails"]["appleCampaigns"],
+                        client["orgDetails"]["keywordAdderParameters"],
+                        client["orgDetails"]["branchIntegrationParameters"],
+                        client["orgDetails"]["currency"],
+                        client["orgDetails"]["appName"],
+                        client["orgDetails"]["appID"],
+                        client["orgDetails"]["campaignName"]
+                    )
                 )
-            )
+            start_key = response.get('LastEvaluatedKey', None)
+            done = start_key is None 
 
         # handle data types since dynamo uses decimal and bid adjusters use float
         for client in CLIENTS:

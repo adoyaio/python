@@ -48,24 +48,7 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['dynamoEndpoint']
     )
     orgDetails = json.loads(clientEvent['orgDetails'])
-    clientG = Client(
-        orgDetails['_orgId'],
-        orgDetails['_clientName'],
-        orgDetails['_emailAddresses'],
-        orgDetails['_keyFilename'],
-        orgDetails['_pemFilename'],
-        orgDetails['_bidParameters'],
-        orgDetails['_adgroupBidParameters'],
-        orgDetails['_branchBidParameters'],
-        orgDetails['_appleCampaigns'],
-        orgDetails['_keywordAdderParameters'],
-        orgDetails['_branchIntegrationParameters'],
-        orgDetails['_currency'],
-        orgDetails['_appName'],
-        orgDetails['_appID'],
-        orgDetails['_campaignName']
-    )
-
+    clientG = Client.buildFromDictionary(orgDetails)
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
     logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
