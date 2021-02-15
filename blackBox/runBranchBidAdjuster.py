@@ -34,12 +34,22 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global logger
     
     EMAIL_TO = emailToInternal
-    sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoResource(env, dynamoEndpoint)
-    clientsG = Client.getClients(dynamodb)
-
-    logger = LambdaUtils.getLogger(env)
-    logger.info("In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint))
+    sendG = LambdaUtils.getSendG(
+        env
+    )
+    dynamodb = LambdaUtils.getDynamoResource(
+        env, 
+        dynamoEndpoint
+    )
+    clientsG = Client.getClients(
+        dynamodb
+    )
+    logger = LambdaUtils.getLogger(
+        env
+    )
+    logger.info(
+        "In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint)
+    )
 
 
 def returnActiveKeywordsDataFrame(
@@ -283,9 +293,9 @@ def process():
             )
         )
         for campaign in campaignsForBidAdjuster:
-            
-            # common params
-            BBP = client.branchBidParameters
+            BBP = LambdaUtils.getBidParamsForJob(client.__dict__, campaign, "branchBidAdjuster")
+            print("bidParameters" + str(BBP))
+
             min_apple_installs = BBP["min_apple_installs"]
             branch_optimization_goal = BBP["branch_optimization_goal"]
             branch_min_bid = BBP["branch_min_bid"]
@@ -293,16 +303,8 @@ def process():
             branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
             cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
             revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
-
-            # campaign specific params
-            if campaign['campaignType'] == "other":
-                cost_per_purchase_threshold = campaign['costPerPurchaseThresh']
-                revenue_over_ad_spend_threshold = campaign['revenueOverAdSpendThresh']
-            else:
-                cost_per_purchase_threshold_key = "cost_per_purchase_threshold_" + campaign['campaignType']
-                cost_per_purchase_threshold = BBP.get(cost_per_purchase_threshold_key, None)
-                revenue_over_ad_spend_threshold_key = "revenue_over_ad_spend_threshold_" + campaign['campaignType']
-                revenue_over_ad_spend_threshold = BBP.get(revenue_over_ad_spend_threshold_key, None)
+            cost_per_purchase_threshold = BBP['cost_per_purchase_threshold']
+            revenue_over_ad_spend_threshold = BBP['revenue_over_ad_spend_threshold']
 
             # get apple data
             kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, campaign['adGroupId'], start_date, end_date)

@@ -95,7 +95,7 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
 
 
 # cast to int here because client table was migrated from client.json 
-# TODO in dynamo numbers are serialized so there is no advantage to using int 
+# NOTE in dynamo numbers are serialized so there is no advantage to using int 
 # consider using string for consistency
 
 def getClient(dynamoResource, org_id):

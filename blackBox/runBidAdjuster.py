@@ -50,29 +50,18 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-    orgDetails = json.loads(clientEvent['orgDetails'])
-    clientG = Client(
-        orgDetails['_orgId'],
-        orgDetails['_clientName'],
-        orgDetails['_emailAddresses'],
-        orgDetails['_keyFilename'],
-        orgDetails['_pemFilename'],
-        orgDetails['_bidParameters'],
-        orgDetails['_adgroupBidParameters'],
-        orgDetails['_branchBidParameters'],
-        orgDetails['_appleCampaigns'],
-        orgDetails['_keywordAdderParameters'],
-        orgDetails['_branchIntegrationParameters'],
-        orgDetails['_currency'],
-        orgDetails['_appName'],
-        orgDetails['_appID'],
-        orgDetails['_campaignName']
+    orgDetails = json.loads(
+        clientEvent['orgDetails']
     )
-    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
-    logger.info("runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
+    clientG = Client.buildFromDictionary(orgDetails)
+    logger = LambdaUtils.getLogger(
+        clientEvent['rootEvent']['env']
+    )  
+    logger.info(
+        "runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent'])
+    )
 
 
-# @retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
@@ -149,20 +138,14 @@ def getKeywordReportFromApple(campaignId):
 
     return json.loads(response.text)
    
-def createUpdatedKeywordBids(data, campaign):
+def createUpdatedKeywordBids(data, campaign, BP):
     rows = data["data"]["reportingDataResponse"]["row"] 
     if len(rows) == 0:
         return False
 
-    BP = clientG.bidParameters
     keyword_info = defaultdict(list)
     summaryReportInfo = {}
-
-    if campaign['campaignType'] == "other":
-        HIGH_CPI_BID_DECREASE_THRESH = campaign['highCPIDecreaseThresh']
-    else:
-        HIGH_CPI_BID_DECREASE_THRESH_KEY = "HIGH_CPI_BID_DECREASE_THRESH_" + campaign['campaignType'].upper()
-        HIGH_CPI_BID_DECREASE_THRESH = BP.get(HIGH_CPI_BID_DECREASE_THRESH_KEY)
+    HIGH_CPI_BID_DECREASE_THRESH = BP["HIGH_CPI_BID_DECREASE_THRESH"]
 
     for row in rows:
         metadata = row["metadata"]
@@ -357,7 +340,7 @@ def getAppleKeywordsEndpoint(keyword_file_to_post):
     print("getAppleKeywordsEndpoint:::found url" + url)
     return url
 
-# @retry
+@retry
 def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
     return requests.put(
         url, 
@@ -451,6 +434,8 @@ def process():
     )
     for campaign in campaignsForBidAdjuster:
         sent = False
+        bidParameters = LambdaUtils.getBidParamsForJob(clientG.__dict__, campaign, "bidAdjuster")
+        print("bidParameters" + str(bidParameters))
         data = getKeywordReportFromApple(campaign['campaignId'])
         if not data:
             logger.info("runBidAdjuster:process:::no results from api:::")
@@ -458,7 +443,8 @@ def process():
         
         stuff = createUpdatedKeywordBids(
             data, 
-            campaign
+            campaign,
+            bidParameters
         )
         if type(stuff) != bool:
             keywordFileToPost, clientSummaryReportInfo[campaign['campaignId']], numberOfUpdatedBids = stuff
