@@ -3,10 +3,10 @@ import json
 import boto3
 
 # ********* PROD ***********
-dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+# dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
 # ********* LOCAL **********
-# dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
+dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url="http://localhost:8000")
 
 table = dynamodb.Table('clients')
 
