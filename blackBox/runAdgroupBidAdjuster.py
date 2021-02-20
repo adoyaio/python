@@ -47,8 +47,11 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-    orgDetails = json.loads(clientEvent['orgDetails'])
-    clientG = Client.buildFromDictionary(orgDetails)
+    clientG = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
+    )
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
     logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 

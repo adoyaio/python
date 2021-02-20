@@ -44,8 +44,11 @@ def initialize(clientEvent):
     )
     # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    orgDetails = json.loads(clientEvent['orgDetails'])
-    clientG = Client.buildFromDictionary(orgDetails)
+    clientG = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
+    )
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])
     logger.info("runAppleIntegrationKeyword:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 

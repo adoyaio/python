@@ -30,10 +30,10 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global clientsG
     global dynamodb
-    global EMAIL_TO
+    global emailToG
     global logger
     
-    EMAIL_TO = emailToInternal
+    emailToG = emailToInternal
     sendG = LambdaUtils.getSendG(
         env
     )
@@ -320,7 +320,7 @@ def process():
             # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
             # rawDataDf.to_csv(campaign['adGroupId'] + 'rawDataDf' + ".csv")
-            # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
+            # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", emailToG, [], config.EMAIL_FROM, fp.name)
                
             if rawDataDf.empty:
                 print("Error: There was an issue reading the data to a dataFrame")
@@ -421,7 +421,7 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Branch Bid Adjuster summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
 if __name__ == "__main__":
