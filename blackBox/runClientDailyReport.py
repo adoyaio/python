@@ -13,23 +13,23 @@ from Client import Client
 
 ONE_DAY = 1
 SEVEN_DAYS = 7
-THIRTY_DAYS = 30  # JF with branch integration using this rather than 4
-FOUR_YEARS = 365 * 4  # Ignoring leap years.
+THIRTY_DAYS = 30  # NOTE with branch integration using this rather than 4
+FOUR_YEARS = 365 * 4
 EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
 
 def initialize(clientEvent):
+    # specific to run client daily
     global emailClientsG
-    emailClientsG = LambdaUtils.getEmailClientsG(
-        clientEvent['rootEvent']['env']
-    )
-
     global sendG
     global clientG
     global emailToG
     global dynamodb
     global logger
 
+    emailClientsG = LambdaUtils.getEmailClientsG(
+        clientEvent['rootEvent']['env']
+    )
     emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
         clientEvent['rootEvent']['env']
@@ -37,10 +37,15 @@ def initialize(clientEvent):
     dynamodb = LambdaUtils.getDynamoResource(
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
+    ) 
+    clientG = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
     )
-    orgDetails = json.loads(clientEvent['orgDetails'])
-    clientG = Client.buildFromDictionary(orgDetails)
-    logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
+    logger = LambdaUtils.getLogger(
+        clientEvent['rootEvent']['env']
+    ) 
     logger.info("runClientDailyReport:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
@@ -298,46 +303,28 @@ def sendEmailReport(dataForVariousTimes):
             "revenue": 0.0
         }
     }
-    searchCampaign = next(filter(lambda x: x["campaignType"] == "search", clientG.appleCampaigns), None)
-    broadCampaign = next(filter(lambda x: x["campaignType"] == "broad", clientG.appleCampaigns), None)
-    exactCampaign = next(filter(lambda x: x["campaignType"] == "exact", clientG.appleCampaigns), None)
-    brandCampaign = next(filter(lambda x: x["campaignType"] == "brand", clientG.appleCampaigns), None)
-
+    
     for someTime, campaignsForThatTime in dataForVariousTimes.items():
         summary[someTime] = {"installs": 0, "spend": 0.0}
         
-        # iterate each campaign and get totals
+        # iterate each campaign from asa and get totals
         for campaign in campaignsForThatTime:
             
             # pull install and spend from asa response
             campaignId = campaign["metadata"]["campaignId"]
-            installs, spend = campaign["total"]["installs"], float(campaign["total"]["localSpend"]["amount"])
+            installs = campaign["total"]["installs"]
+            spend = float(campaign["total"]["localSpend"]["amount"])
             
             # increment install and spend for totals
             summary[someTime]["installs"] += installs
             summary[someTime]["spend"] += spend
 
-            # calculate campaign level cpi etc 
-            if searchCampaign is not None and str(campaignId) == searchCampaign.get("campaignId"):
-                summary[someTime]["cpi_search"] = clientG.calculateCPI(spend, installs)
-                summary[someTime]["installs_search"] = installs
-                summary[someTime]["spend_search"] = spend
-
-            if broadCampaign is not None and str(campaignId) == broadCampaign.get("campaignId"):
-                summary[someTime]["cpi_broad"] = clientG.calculateCPI(spend, installs)
-                summary[someTime]["installs_broad"] = installs
-                summary[someTime]["spend_broad"] = spend
-            
-            if exactCampaign is not None and str(campaignId) == exactCampaign.get("campaignId"):
-                summary[someTime]["cpi_exact"] = clientG.calculateCPI(spend, installs)
-                summary[someTime]["installs_exact"] = installs
-                summary[someTime]["spend_exact"] = spend
-
-            if brandCampaign is not None and str(campaignId) == brandCampaign.get("campaignId"):
-                summary[someTime]["cpi_brand"] = clientG.calculateCPI(spend, installs)
-                summary[someTime]["installs_brand"] = installs
-                summary[someTime]["spend_brand"] = spend
-       
+            # get list of client campaigns from dynamo
+            adoyaCampaign = next(filter(lambda x: x["campaignId"] == str(campaignId), clientG.appleCampaigns), None)
+            if adoyaCampaign is not None:
+                summary[someTime]["cpi_" + str(campaignId)] = clientG.calculateCPI(spend, installs)
+                summary[someTime]["installs_" + str(campaignId)] = installs
+                summary[someTime]["spend_" + str(campaignId)] = spend       
         
         # calculate total cpi for timeperiod and put it on the summary object
         summary[someTime]["cpi"] = clientG.calculateCPI(
@@ -382,27 +369,22 @@ def sendEmailReport(dataForVariousTimes):
     # cast to string where needed to avoid dynamo float/decimal issues
     rowOfHistory = {}
     rowOfHistory["spend"] = str(round(summary[ONE_DAY].get("spend"),2))
-    rowOfHistory["spend_exact"] = str(round(summary[ONE_DAY].get("spend_exact",0),2))
-    rowOfHistory["spend_search"] = str(round(summary[ONE_DAY].get("spend_search",0),2))
-    rowOfHistory["spend_broad"] = str(round(summary[ONE_DAY].get("spend_broad",0),2))
-    rowOfHistory["spend_brand"] = str(round(summary[ONE_DAY].get("spend_brand",0),2))
-
     rowOfHistory["installs"] = summary[ONE_DAY].get("installs")
-    rowOfHistory["installs_exact"] = summary[ONE_DAY].get("installs_exact",0)
-    rowOfHistory["installs_search"] = summary[ONE_DAY].get("installs_search",0)
-    rowOfHistory["installs_broad"] = summary[ONE_DAY].get("installs_broad",0)
-    rowOfHistory["installs_brand"] = summary[ONE_DAY].get("installs_brand",0)
-
     rowOfHistory["cpi"] = str(summary[ONE_DAY].get("cpi"))
-    rowOfHistory["cpi_exact"] = str(summary[ONE_DAY].get("cpi_exact", 0.00))
-    rowOfHistory["cpi_broad"] = str(summary[ONE_DAY].get("cpi_broad", 0.00))
-    rowOfHistory["cpi_search"] = str(summary[ONE_DAY].get("cpi_search", 0.00))
-    rowOfHistory["cpi_brand"] = str(summary[ONE_DAY].get("cpi_brand", 0.00))
-
     rowOfHistory["purchases"] = summary[ONE_DAY].get("purchases")
     rowOfHistory["revenue"] = str(summary[ONE_DAY].get("revenue"))
     rowOfHistory["cpp"] = str(summary[ONE_DAY].get("cpp"))
     rowOfHistory["revenueOverCost"] = str(summary[ONE_DAY].get("revenueOverCost"))
+
+    # campaign specific vals
+    appleCampaigns = clientG.appleCampaigns
+    for campaign in appleCampaigns:
+        spendKey = "spend_" + campaign.get("campaignId")
+        installsKey = "installs_" + campaign.get("campaignId")
+        cpiKey = "cpi_" + campaign.get("campaignId")
+        rowOfHistory[spendKey] = str(round(summary[ONE_DAY].get(spendKey,0),2))
+        rowOfHistory[installsKey] = summary[ONE_DAY].get(installsKey,0)
+        rowOfHistory[cpiKey] = str(summary[ONE_DAY].get(cpiKey, 0.00))
 
     clientG.addRowToHistory(rowOfHistory, dynamodb, end_date)
 

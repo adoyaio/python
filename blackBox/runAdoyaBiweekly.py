@@ -18,7 +18,6 @@ def initialize(event):
     global lambdaClient
     global logger
 
-    print(str(event))
     sendG = LambdaUtils.getSendG(
         event['env']
     )

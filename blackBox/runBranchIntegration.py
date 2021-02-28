@@ -49,10 +49,11 @@ def initialize(clientEvent):
     )
     # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    orgDetails = json.loads(
-        clientEvent['orgDetails']
+    clientG = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
     )
-    clientG = Client.buildFromDictionary(orgDetails)
     logger = LambdaUtils.getLogger(
         clientEvent['rootEvent']['env']
     )  

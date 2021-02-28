@@ -30,10 +30,10 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     global sendG
     global clientsG
     global dynamodb
-    global EMAIL_TO
+    global emailToG
     global logger
     
-    EMAIL_TO = emailToInternal
+    emailToG = emailToInternal
     sendG = LambdaUtils.getSendG(
         env
     )
@@ -153,8 +153,18 @@ def returnRevenueOverAdSpendOptimized(
     upper_revenue_over_ad_spend_threshold = revenue_over_ad_spend_threshold * (
             1 + revenue_over_ad_spend_threshold_buffer)
 
-    active_keywords_dataFrame["revenue_over_ad_spend"] = active_keywords_dataFrame["branch_revenue"] / \
-                                                         active_keywords_dataFrame["localSpend"]
+    # NOTE this will throw an error if commerce event count is 0, handling this by iterating each row and caclulating cpp
+    # active_keywords_dataFrame["revenue_over_ad_spend"] = active_keywords_dataFrame["branch_revenue"] / \
+    #                                                      active_keywords_dataFrame["localSpend"]
+    roas = []
+    for row in active_keywords_dataFrame.itertuples():
+        if (row.branch_revenue == 0) or (row.localSpend == 0):
+            roas.append(0)
+        else:
+            roas.append(row.branch_revenue /
+                       row.localSpend)
+
+    active_keywords_dataFrame["revenue_over_ad_spend"] = roas
 
     active_keywords_dataFrame["adjusted_bid"] = active_keywords_dataFrame["bid"]
 
@@ -320,7 +330,7 @@ def process():
             # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
             # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
             # rawDataDf.to_csv(campaign['adGroupId'] + 'rawDataDf' + ".csv")
-            # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", EMAIL_TO, [], config.EMAIL_FROM, fp.name)
+            # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", emailToG, [], config.EMAIL_FROM, fp.name)
                
             if rawDataDf.empty:
                 print("Error: There was an issue reading the data to a dataFrame")
@@ -421,7 +431,7 @@ def emailSummaryReport(data, sent):
     if dateString.startswith("0"):
         dateString = dateString[1:]
     subjectString = "Branch Bid Adjuster summary for %s" % dateString
-    EmailUtils.sendTextEmail(messageString, subjectString, EMAIL_TO, [], config.EMAIL_FROM)
+    EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
 if __name__ == "__main__":

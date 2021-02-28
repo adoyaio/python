@@ -41,7 +41,7 @@ def initialize(clientEvent):
     global emailToG
     global dynamodb
     global logger
-
+    
     emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
         clientEvent['rootEvent']['env']
@@ -49,18 +49,18 @@ def initialize(clientEvent):
     dynamodb = LambdaUtils.getDynamoResource(
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
+    ) 
+    clientG = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
     )
-    orgDetails = json.loads(
-        clientEvent['orgDetails']
-    )
-    clientG = Client.buildFromDictionary(orgDetails)
     logger = LambdaUtils.getLogger(
         clientEvent['rootEvent']['env']
     )  
     logger.info(
         "runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent'])
     )
-
 
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)

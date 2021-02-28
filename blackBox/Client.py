@@ -156,63 +156,21 @@ class Client:
         self.addRowToCpiBranchHistory(rowOfHistory, dynamoResource, end_date)
 
     def addRowToCpiHistory(self, rowOfHistory, dynamoResource, end_date):
-        table = dynamoResource.Table('cpi_history')
-        
-        org_id = str(self.orgId)  # NOTE org_id is currently number 
+        table = dynamoResource.Table('cpi_history')    
+        org_id = str(self.orgId) # org id is currently numerical
         timestamp = str(end_date) # write to history table with yesterday timestamp
-        
+        rowOfHistory.update({'org_id': org_id,'timestamp': timestamp})
         table.put_item(
-            Item={
-                'org_id': org_id,
-                'timestamp': timestamp,
-                'spend': rowOfHistory.get("spend"),
-                'spend_exact': rowOfHistory.get("spend_exact"),
-                'spend_search': rowOfHistory.get("spend_search"),
-                'spend_broad': rowOfHistory.get("spend_broad"),
-                'spend_brand': rowOfHistory.get("spend_brand"),
-                'installs': rowOfHistory.get("installs"),
-                'installs_exact': rowOfHistory.get("installs_exact"),
-                'installs_search': rowOfHistory.get("installs_search"),
-                'installs_broad': rowOfHistory.get("installs_broad"),
-                'installs_brand': rowOfHistory.get("installs_brand"),
-                'cpi': rowOfHistory.get("cpi"),
-                'cpi_exact': rowOfHistory.get("cpi_exact"),
-                'cpi_broad': rowOfHistory.get("cpi_broad"),
-                'cpi_search': rowOfHistory.get("cpi_search"),
-                'cpi_brand': rowOfHistory.get("cpi_brand")
-            }
+            Item=rowOfHistory
         )
 
     def addRowToCpiBranchHistory(self, rowOfHistory, dynamoResource, end_date):
         table = dynamoResource.Table('cpi_branch_history')
-       
         org_id = str(self.orgId) # NOTE revisit when org_id is string
         timestamp = str(end_date) # write to history table with yesterday timestamp
-
+        rowOfHistory.update({'org_id': org_id,'timestamp': timestamp})
         table.put_item(
-            Item={
-                'org_id': org_id,
-                'timestamp': timestamp,
-                'spend': rowOfHistory.get("spend"),
-                'spend_exact': rowOfHistory.get("spend_exact"),
-                'spend_search': rowOfHistory.get("spend_search"),
-                'spend_broad': rowOfHistory.get("spend_broad"),
-                'spend_brand': rowOfHistory.get("spend_brand"),
-                'installs': rowOfHistory.get("installs"),
-                'installs_exact': rowOfHistory.get("installs_exact"),
-                'installs_search': rowOfHistory.get("installs_search"),
-                'installs_broad': rowOfHistory.get("installs_broad"),
-                'installs_brand': rowOfHistory.get("installs_brand"),
-                'cpi': rowOfHistory.get("cpi"),
-                'cpi_exact': rowOfHistory.get("cpi_exact"),
-                'cpi_broad': rowOfHistory.get("cpi_broad"),
-                'cpi_search': rowOfHistory.get("cpi_search"),
-                'cpi_brand': rowOfHistory.get("cpi_brand"),
-                'purchases': rowOfHistory.get("purchases"),
-                'revenue': rowOfHistory.get("revenue"),
-                'cpp': rowOfHistory.get("cpp"),
-                'revenueOverCost': rowOfHistory.get("revenueOverCost")
-            }
+            Item=rowOfHistory
         )
 
     # gets all cpi history lines for a year
@@ -261,11 +219,6 @@ class Client:
     def getTotalCostPerInstallForCampaign(self, dynamoResource, start_date, end_date, daysToLookBack, campaign):
          # default high so bid decreases arent done, until average is being computed from a long enough lookback period
         total_cost_per_install = 999999
-
-        # TODO remove pivot all campaign types should suport cpi
-        if campaign['campaignType'] == 'other':
-            return total_cost_per_install # use default for other types
-
         table = dynamoResource.Table('cpi_history')
         response = table.query(
             KeyConditionExpression=Key('org_id').eq(str(self.orgId)) & Key('timestamp').between(
@@ -280,8 +233,8 @@ class Client:
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        installs_lookup_key = "installs_" + campaign["campaignType"]
-        spend_lookup_key = "spend_" + campaign["campaignType"]
+        installs_lookup_key = "installs_" + campaign["campaignId"]
+        spend_lookup_key = "spend_" + campaign["campaignId"]
 
         print("installs_lookup_key " + str(installs_lookup_key))
         print("spend_lookup_key " + str(spend_lookup_key))
