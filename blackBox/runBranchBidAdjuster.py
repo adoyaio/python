@@ -153,8 +153,18 @@ def returnRevenueOverAdSpendOptimized(
     upper_revenue_over_ad_spend_threshold = revenue_over_ad_spend_threshold * (
             1 + revenue_over_ad_spend_threshold_buffer)
 
-    active_keywords_dataFrame["revenue_over_ad_spend"] = active_keywords_dataFrame["branch_revenue"] / \
-                                                         active_keywords_dataFrame["localSpend"]
+    # NOTE this will throw an error if commerce event count is 0, handling this by iterating each row and caclulating cpp
+    # active_keywords_dataFrame["revenue_over_ad_spend"] = active_keywords_dataFrame["branch_revenue"] / \
+    #                                                      active_keywords_dataFrame["localSpend"]
+    roas = []
+    for row in active_keywords_dataFrame.itertuples():
+        if (row.branch_revenue == 0) or (row.localSpend == 0):
+            roas.append(0)
+        else:
+            roas.append(row.branch_revenue /
+                       row.localSpend)
+
+    active_keywords_dataFrame["revenue_over_ad_spend"] = roas
 
     active_keywords_dataFrame["adjusted_bid"] = active_keywords_dataFrame["bid"]
 
