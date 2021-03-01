@@ -133,10 +133,10 @@ def createUpdatedAdGroupBids(data, campaign):
 
   ABP = clientG.adgroupBidParameters
   dprint("Using adgroup bid parameters %s." % ABP)
-  if campaign['campaignType'] == "other":
-    HIGH_CPI_BID_DECREASE_THRESH = campaign['highCPIDecreaseThresh']
-  else:
-    HIGH_CPI_BID_DECREASE_THRESH = ABP["HIGH_CPI_BID_DECREASE_THRESH"]
+  # if campaign['campaignType'] == "other":
+  #   HIGH_CPI_BID_DECREASE_THRESH = campaign['highCPIDecreaseThresh']
+  # else:
+  HIGH_CPI_BID_DECREASE_THRESH = ABP["HIGH_CPI_BID_DECREASE_THRESH"]
 
   # compile data from json library and put into dataframe
   adGroup_info = defaultdict(list)
