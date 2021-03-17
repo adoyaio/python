@@ -5,6 +5,8 @@ import runBranchIntegration
 import runBidAdjuster
 import runAdgroupBidAdjuster
 import runKeywordAdder
+import runAdGroupBidAdjusterPoorPerformer
+import runBidAdjusterPoorPerformer
 import runClientDailyReport
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 
@@ -44,6 +46,14 @@ def process(clientEvent, context):
     if 'runAdgroupBidAdjuster' in jobDetails:
         runAdgroupBidAdjusterResponse = runAdgroupBidAdjuster.lambda_handler(clientEvent)
         print(json.dumps(runAdgroupBidAdjusterResponse))
+
+    if 'runBidAdjusterPoorPerformer' in jobDetails:
+        runBidAdjusterPoorPerformerResponse = runBidAdjusterPoorPerformer.lambda_handler(clientEvent)
+        print(json.dumps(runBidAdjusterPoorPerformerResponse))
+
+    if 'runAdGroupBidAdjusterPoorPerformer' in jobDetails:
+        runAdGroupBidAdjusterPoorPerformerResponse = runAdGroupBidAdjusterPoorPerformer.lambda_handler(clientEvent)
+        print(json.dumps(runAdGroupBidAdjusterPoorPerformerResponse))
 
     if 'runKeywordAdder' in jobDetails:
         runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent)
