@@ -43,7 +43,7 @@ def process(event):
         clientEvent = {}
         clientEvent['rootEvent'] = event
         clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
-        clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport','runKeywordAdder']
+        clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport', 'runBidAdjusterPoorPerformer', 'runAdGroupBidAdjusterPoorPerformer','runKeywordAdder']
 
         if event['env'] == 'prod':
             invoke_response = lambdaClient.invoke(
