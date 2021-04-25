@@ -26,6 +26,7 @@ def initialize(clientEvent):
     global emailToG
     global dynamodb
     global logger
+    global authToken
 
     emailClientsG = LambdaUtils.getEmailClientsG(
         clientEvent['rootEvent']['env']
@@ -43,6 +44,7 @@ def initialize(clientEvent):
             clientEvent['orgDetails']
         )
     )
+    authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(
         clientEvent['rootEvent']['env']
     ) 
@@ -51,6 +53,10 @@ def initialize(clientEvent):
 @retry
 def getCampaignDataHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+
+@retry
+def getCampaignDataByTokenHelper(url, json, headers):
+    return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
 def getCampaignData(daysToGoBack):
@@ -70,18 +76,34 @@ def getCampaignData(daysToGoBack):
         # "granularity"                : 2, # 1 is hourly, 2 is daily, 3 is monthly etc
     }
 
-    url: str = config.APPLE_KEYWORDS_REPORT_URL
-    headers = {"Authorization": "orgId=%s" % clientG.orgId}
-    dprint("\n\nHeaders: %s" % headers)
-    dprint("\n\nPayload: %s" % payload)
-    dprint("\n\nApple URL: %s" % url)
+    response = dict()
 
-    response = getCampaignDataHelper(
-        url,
-        cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
-        json=payload,
-        headers=headers
-    )
+    # NOTE pivot on token
+    if authToken is not None:
+        url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        # headers = {"Authorization": "Bearer %s" % authToken}
+        dprint("\n\nHeaders: %s" % headers)
+        dprint("\n\nPayload: %s" % payload)
+        dprint("\n\nApple URL: %s" % url)
+        response = getCampaignDataByTokenHelper(
+            url,
+            json=payload,
+            headers=headers
+        )
+    else:
+        url: str = config.APPLE_SEARCHADS_URL_BASE_V3 + config.APPLE_KEYWORDS_REPORT_URL
+        headers = {"Authorization": "orgId=%s" % clientG.orgId}
+        dprint("\n\nHeaders: %s" % headers)
+        dprint("\n\nPayload: %s" % payload)
+        dprint("\n\nApple URL: %s" % url)
+        response = getCampaignDataHelper(
+            url,
+            cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
+            json=payload,
+            headers=headers
+        )
+
     dprint("\n\nResponse: '%s'" % response)
 
     # TODO extract to utils
@@ -89,7 +111,7 @@ def getCampaignData(daysToGoBack):
         email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
         subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status_code, clientG.clientName)
-        logger.warn(email)
+        logger.warning(email)
         logger.error(subject)
         if sendG:
             EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)

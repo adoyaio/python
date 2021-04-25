@@ -121,14 +121,8 @@ def getAuthToken(auth):
     client_id = auth.get('clientId')
     team_id = auth.get('teamId')
     key_id = auth.get('keyId')
-    privateKey = 'MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA=='
-    # key = auth.get('privateKey')
-    # key = '''-----BEGIN EC PRIVATE KEY-----
-    # MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49
-    # AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7
-    # vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA==
-    # -----END EC PRIVATE KEY-----'''
 
+    privateKey = auth.get('privateKey')
     key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
     audience = 'https://appleid.apple.com'
     alg = 'ES256'
@@ -156,19 +150,11 @@ def getAuthToken(auth):
     dprint("\nHeaders %s" % str(headers))
     dprint("\nKey %s" % str(key))
     
-    # create a new client secret
-    # client_secret = jwt.encode(
-    #     payload=payload,  
-    #     headers=headers,
-    #     algorithm=algorithm,
-    #     key=key
-    # )
-
     client_secret = jwt.encode(
         payload=payload,  
         headers=headers,
         key=key,
-        algorithm="ES256"
+        algorithm=alg
     )
 
     # use client secret to get auth token
@@ -186,9 +172,9 @@ def getAuthToken(auth):
     }
     dprint("\nURL is %s" % url)
     dprint("\nHeaders are %s" % headers)
-    # dprint("\nClient secret %s" % client_secret.decode("utf-8"))
+    dprint("\nParams are %s" % params)
 
     response = requests.post(url, params=params, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
     print(response.text)
-    return json.loads(response.text)
+    return json.loads(response.text).get("access_token", None)
