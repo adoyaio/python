@@ -14,6 +14,9 @@ APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE = APPLE_SEARCHADS_URL_BASE + "reports/ca
 APPLE_ADGROUP_REPORTING_URL_TEMPLATE    = APPLE_SEARCHADS_URL_BASE + "reports/campaigns/%s/adgroups" # POST
 APPLE_ADGROUP_UPDATE_URL_TEMPLATE       = APPLE_SEARCHADS_URL_BASE + "campaigns/%s/adgroups/%s" # PUT
 
+# Auth
+APPLE_AUTH_URL = "https://appleid.apple.com/auth/oauth2/token"
+
 # BRANCH
 BRANCH_ANALYTICS_URL_BASE = "https://api2.branch.io/v1/query/analytics"
 

@@ -2,3 +2,7 @@ numpy
 boto3
 requests==2.22.0
 pandas
+PyJWT==2.0.1
+cffi==1.14.5 
+cryptography==3.4.7 
+pycparser==2.20

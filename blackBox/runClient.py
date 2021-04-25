@@ -27,6 +27,10 @@ def process(clientEvent, context):
     print("Lambda function ARN:", context.invoked_function_arn)
     jobDetails = clientEvent['jobDetails']
 
+    # TODO get auth token and add to the clientEvent
+    accessToken = LambdaUtils.getAuthToken(clientEvent['orgDetails'].auth)
+    # add accesToken to the clientEvent
+
     if 'runAppleIntegrationKeyword' in jobDetails:
         appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent)
         print(json.dumps(appleIntegrationKeywordResponse))
