@@ -112,8 +112,12 @@ def getClientForLocalRun(orgId, emailToInternal):
     clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
 
     # handle auth token
-    authToken = getAuthToken(clientJSON['auth'])
-    clientEvent['authToken'] = authToken
+    auth = clientJSON.get('auth', None)
+    if(auth is None):
+        clientEvent['authToken'] = None
+    else:
+        authToken = getAuthToken(clientJSON['auth'])
+        clientEvent['authToken'] = authToken
 
     return clientEvent
 

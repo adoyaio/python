@@ -33,6 +33,7 @@ def initialize(clientEvent):
     global emailToG
     global dynamodb
     global logger
+    global authToken
 
     emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
@@ -49,12 +50,17 @@ def initialize(clientEvent):
             clientEvent['orgDetails']
         )
     )
+    authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])
     logger.info("runAppleIntegrationKeyword:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+
+@retry
+def getKeywordReportByTokenHelper(url, json, headers):
+    return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 
 def getKeywordReportFromApple(campaign_id, start_date, end_date):
@@ -105,17 +111,32 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
         "returnRecordsWithNoMetrics": True
     }
 
-    url = config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
-    headers = {"Authorization": "orgId=%s" % clientG.orgId}
-    dprint("URL is '%s'." % url)
-    dprint("Payload is '%s'." % payload)
-    dprint("Headers are %s." % headers)
-    response = getKeywordReportFromAppleHelper(
-        url,
-        cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
-        json=payload,
-        headers=headers
-    )
+    response = dict()
+
+    # NOTE pivot on token
+    if authToken is not None:
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        dprint("URL is '%s'." % url)
+        dprint("Payload is '%s'." % payload)
+        dprint("Headers are %s." % headers)
+        response = getKeywordReportByToeknHelper(
+            url,
+            json=payload,
+            headers=headers
+        )
+    else:
+        url = config.APPLE_SEARCHADS_URL_BASE_V3 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
+        headers = {"Authorization": "orgId=%s" % clientG.orgId}
+        dprint("URL is '%s'." % url)
+        dprint("Payload is '%s'." % payload)
+        dprint("Headers are %s." % headers)
+        response = getKeywordReportFromAppleHelper(
+            url,
+            cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
+            json=payload,
+            headers=headers
+        )
     logger.info("Response is %s." % response)
 
     # TODO extract to utils
