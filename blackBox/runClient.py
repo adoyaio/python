@@ -28,9 +28,13 @@ def process(clientEvent, context):
     jobDetails = clientEvent['jobDetails']
 
     # TODO get auth token and add to the clientEvent
-    
-    if clientEvent['orgDetails'].auth is not None:
-        authToken = LambdaUtils.getAuthToken(clientEvent['orgDetails'].auth)
+    clientEvent['authToken'] = None
+
+    print(clientEvent['orgDetails'])
+    obj = json.loads(clientEvent['orgDetails'])
+
+    if obj.get("_auth") is not None:
+        authToken = LambdaUtils.getAuthToken(obj.get("_auth"))
         # add accesToken to the clientEvent
         clientEvent["authToken"] = authToken
 
