@@ -41,6 +41,7 @@ def initialize(clientEvent):
     global emailToG
     global dynamodb
     global logger
+    global authToken
 
     emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
@@ -55,6 +56,7 @@ def initialize(clientEvent):
             clientEvent['orgDetails']
         )
     )
+    authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
     logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
@@ -64,6 +66,15 @@ def getAdgroupReportFromAppleHelper(url, cert, json, headers):
   return requests.post(
     url, 
     cert=cert, 
+    json=json, 
+    headers=headers, 
+    timeout=config.HTTP_REQUEST_TIMEOUT
+  )
+
+@retry
+def getAdgroupReportByTokenHelper(url, json, headers):
+  return requests.post(
+    url, 
     json=json, 
     headers=headers, 
     timeout=config.HTTP_REQUEST_TIMEOUT
@@ -100,18 +111,34 @@ def getAdgroupReportFromApple(campaign):
     "returnRowTotals": True, 
     "returnRecordsWithNoMetrics": True
   }
-  url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
 
-  headers = { "Authorization": "orgId=%s" % clientG.orgId }
-  dprint("\nURL is '%s'." % url)
-  dprint("\nPayload is '%s'." % payload)
-  dprint ("\nHeaders are %s." % headers)
-  response = getAdgroupReportFromAppleHelper(
-    url,
-    cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
-    json=payload,
-    headers=headers
-  )
+
+  response = dict()
+  # NOTE pivot on token until v3 sunset
+
+  if authToken is not None:
+    url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
+    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+    dprint("\nURL is '%s'." % url)
+    dprint("\nPayload is '%s'." % payload)
+    dprint ("\nHeaders are %s." % headers)
+    response = getAdgroupReportByTokenHelper(
+      url,
+      json=payload,
+      headers=headers
+    )
+  else:
+    url = config.APPLE_SEARCHADS_URL_BASE_V3 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
+    headers = { "Authorization": "orgId=%s" % clientG.orgId }
+    dprint("\nURL is '%s'." % url)
+    dprint("\nPayload is '%s'." % payload)
+    dprint ("\nHeaders are %s." % headers)
+    response = getAdgroupReportFromAppleHelper(
+      url,
+      cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
+      json=payload,
+      headers=headers
+    )
 
   dprint ("\nResponse is %s." % response)
 

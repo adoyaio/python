@@ -120,7 +120,7 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
         dprint("URL is '%s'." % url)
         dprint("Payload is '%s'." % payload)
         dprint("Headers are %s." % headers)
-        response = getKeywordReportByToeknHelper(
+        response = getKeywordReportByTokenHelper(
             url,
             json=payload,
             headers=headers
@@ -151,6 +151,7 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
         
         return False
 
+    print(response.text)
     return json.loads(response.text, parse_float=decimal.Decimal)
 
 def loadAppleKeywordToDynamo(data, orgId, campaignId):

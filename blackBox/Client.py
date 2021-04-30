@@ -455,7 +455,7 @@ class Client:
                         client.get("orgDetails").get("appName"),
                         client.get("orgDetails").get("appID"),
                         client.get("orgDetails").get("campaignName"),
-                        client.get("orgDetails")("auth")
+                        client.get("orgDetails").get("auth")
                     )
                 )
             start_key = response.get('LastEvaluatedKey', None)

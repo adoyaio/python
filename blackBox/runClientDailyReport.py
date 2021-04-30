@@ -78,11 +78,10 @@ def getCampaignData(daysToGoBack):
 
     response = dict()
 
-    # NOTE pivot on token
+    # NOTE pivot on token until v3 sunset
     if authToken is not None:
         url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
         headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
-        # headers = {"Authorization": "Bearer %s" % authToken}
         dprint("\n\nHeaders: %s" % headers)
         dprint("\n\nPayload: %s" % payload)
         dprint("\n\nApple URL: %s" % url)
