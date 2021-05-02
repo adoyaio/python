@@ -24,6 +24,10 @@ APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE = "reports/campaigns/%s/searchterms"
 APPLE_ADGROUP_REPORTING_URL_TEMPLATE = "reports/campaigns/%s/adgroups" # POST
 APPLE_ADGROUP_UPDATE_URL_TEMPLATE = "campaigns/%s/adgroups/%s" # PUT
 
+# GET https://api.searchads.apple.com/api/v3/search/apps?limit=100
+
+# APPLE_GET_APPS_URL = "search/apps?query=smart+kidz&returnOwnedApps=true&limit=100"
+APPLE_GET_APPS_URL = "search/apps?returnOwnedApps=true&limit=100"
 
 # Auth
 APPLE_AUTH_URL = "https://appleid.apple.com/auth/oauth2/token"
