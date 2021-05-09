@@ -128,7 +128,7 @@ def getAdgroupReportFromApple(campaign):
       headers=headers
     )
   else:
-    url = config.APPLE_SEARCHADS_URL_BASE_V3 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
+    url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
     headers = { "Authorization": "orgId=%s" % clientG.orgId }
     dprint("\nURL is '%s'." % url)
     dprint("\nPayload is '%s'." % payload)

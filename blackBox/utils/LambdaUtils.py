@@ -84,7 +84,7 @@ def getBidParamsForJob(orgDetails, campaign, job):
 def getClientForLocalRun(orgId, emailToInternal):
     clientEvent = {}
     clientEvent['rootEvent'] = {
-        "env": "lcl",
+        "env": "lcl", # adjust here to run a prod run
         "dynamoEndpoint": "http://localhost:8000",
         "lambdaEndpoint": "http://host.docker.internal:3001",
         "emailToInternal": emailToInternal

@@ -15,7 +15,7 @@ HTTP_REQUEST_TIMEOUT = 600
 # APPLE_ADGROUP_UPDATE_URL_TEMPLATE       = APPLE_SEARCHADS_URL_BASE + "campaigns/%s/adgroups/%s" # PUT
 
 APPLE_SEARCHADS_URL_BASE_V3 = "https://api.searchads.apple.com/api/v3/"
-APPLE_SEARCHADS_URL_BASE_V4 = "https://api.searchads.apple.com/api/v3/"
+APPLE_SEARCHADS_URL_BASE_V4 = "https://api.searchads.apple.com/api/v4/"
 APPLE_KEYWORDS_REPORT_URL = "reports/campaigns"
 APPLE_UPDATE_POSITIVE_KEYWORDS_URL = "campaigns/%s/adgroups/%s/targetingkeywords/bulk"
 APPLE_UPDATE_NEGATIVE_KEYWORDS_URL = "campaigns/%s/adgroups/%s/negativekeywords/bulk"

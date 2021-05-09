@@ -61,7 +61,7 @@ def getAppleApps(event, context):
     if auth is not None:
         print("found auth values in client " + str(auth))
         authToken = LambdaUtils.getAuthToken(auth)
-        url = config.APPLE_SEARCHADS_URL_BASE_V3 + config.APPLE_GET_APPS_URL
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_GET_APPS_URL
         headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % org_id}
         dprint("\nURL is '%s'." % url)
         dprint ("\nHeaders are %s." % headers)      

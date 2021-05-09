@@ -90,7 +90,7 @@ def getCampaignData(daysToGoBack):
             headers=headers
         )
     else:
-        url: str = config.APPLE_SEARCHADS_URL_BASE_V3 + config.APPLE_KEYWORDS_REPORT_URL
+        url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
         headers = {"Authorization": "orgId=%s" % clientG.orgId}
         dprint("\n\nHeaders: %s" % headers)
         dprint("\n\nPayload: %s" % payload)

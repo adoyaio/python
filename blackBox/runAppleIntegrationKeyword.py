@@ -127,7 +127,7 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
             headers=headers
         )
     else:
-        url = config.APPLE_SEARCHADS_URL_BASE_V3 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
         headers = {"Authorization": "orgId=%s" % clientG.orgId}
         dprint("URL is '%s'." % url)
         dprint("Payload is '%s'." % payload)
