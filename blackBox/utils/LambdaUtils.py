@@ -78,7 +78,9 @@ def getBidParamsForJob(orgDetails, campaign, job):
         params.update(clientG.branchBidParameters)
         params.update(campaign.get('branchBidParameters',[]))
         return params
-    
+
+
+# build a mock clientEvent
 def getClientForLocalRun(orgId, emailToInternal):
     clientEvent = {}
     clientEvent['rootEvent'] = {
@@ -108,19 +110,21 @@ def getClientForLocalRun(orgId, emailToInternal):
             clientJSON.get('campaignName'),
             clientJSON.get('auth')
         )
-
+    # serialize to json for mock lambda event, 
+    # need to simulate how lamdba marshals a Client into json for the payload
     clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
 
     # handle auth token
-    auth = clientJSON.get('auth', None)
-    if(auth is None):
+    if client.auth is None:
         clientEvent['authToken'] = None
-    else:
-        authToken = getAuthToken(clientJSON['auth'])
-        clientEvent['authToken'] = authToken
-
+        return clientEvent
+        
+    authToken = getAuthToken(clientJSON.get('auth'))
+    clientEvent['authToken'] = authToken
     return clientEvent
 
+
+# gets an oauth token from appleid.apple.com
 def getAuthToken(auth):
     client_id = auth.get('clientId')
     team_id = auth.get('teamId')

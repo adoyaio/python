@@ -127,6 +127,8 @@ class Client:
 
     @property
     def auth(self):
+        if self._auth is None:
+            return None
         return dict(self._auth)
 
     @auth.setter
@@ -370,25 +372,8 @@ class Client:
         if len(response['Items']) > 0:
             return response['Items'][0]["keywords"]
 
+    # when client is serialized to JSON it writes internals with underscore
     def buildFromDictionary(orgDetails):
-        # return Client(
-        #     orgDetails['_orgId'],
-        #     orgDetails['_clientName'],
-        #     orgDetails['_emailAddresses'],
-        #     orgDetails['_keyFilename'],
-        #     orgDetails['_pemFilename'],
-        #     orgDetails['_bidParameters'],
-        #     orgDetails['_adgroupBidParameters'],
-        #     orgDetails['_branchBidParameters'],
-        #     orgDetails['_appleCampaigns'],
-        #     orgDetails['_keywordAdderParameters'],
-        #     orgDetails['_branchIntegrationParameters'],
-        #     orgDetails['_currency'],
-        #     orgDetails['_appName'],
-        #     orgDetails['_appID'],
-        #     orgDetails['_campaignName'],
-        #     orgDetails['_auth']
-        # )
         return Client(
             orgDetails.get('_orgId'),
             orgDetails.get('_clientName'),
@@ -421,24 +406,6 @@ class Client:
             response = table.scan(**scan_kwargs)
             for client in response.get('Items'):             
                 CLIENTS.append(
-                    # Client(
-                    #     client["orgDetails"]["orgId"],
-                    #     client["orgDetails"]["clientName"],
-                    #     client["orgDetails"]["emailAddresses"],
-                    #     client["orgDetails"]["keyFilename"],
-                    #     client["orgDetails"]["pemFilename"],
-                    #     client["orgDetails"]["bidParameters"],
-                    #     client["orgDetails"]["adgroupBidParameters"],
-                    #     client["orgDetails"]["branchBidParameters"],
-                    #     client["orgDetails"]["appleCampaigns"],
-                    #     client["orgDetails"]["keywordAdderParameters"],
-                    #     client["orgDetails"]["branchIntegrationParameters"],
-                    #     client["orgDetails"]["currency"],
-                    #     client["orgDetails"]["appName"],
-                    #     client["orgDetails"]["appID"],
-                    #     client["orgDetails"]["campaignName"],
-                    #     client["orgDetails"]["auth"]
-                    # )
                     Client(
                         client.get("orgDetails").get("orgId"),
                         client.get("orgDetails").get("clientName"),

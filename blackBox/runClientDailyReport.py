@@ -19,8 +19,7 @@ EMAIL_SUBJECT = """%s - Apple Search Ads Update %s"""
 
 
 def initialize(clientEvent):
-    # specific to run client daily
-    global emailClientsG
+    global emailClientsG # specific to run client daily
     global sendG
     global clientG
     global emailToG
@@ -38,7 +37,7 @@ def initialize(clientEvent):
     dynamodb = LambdaUtils.getDynamoResource(
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
-    ) 
+    )
     clientG = Client.buildFromDictionary(
         json.loads(
             clientEvent['orgDetails']

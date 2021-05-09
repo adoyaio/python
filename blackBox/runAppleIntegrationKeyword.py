@@ -43,6 +43,7 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
+    # NOTE uncomment to force an update to production. ie manual backfill if needed
     # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
     clientG = Client.buildFromDictionary(

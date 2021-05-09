@@ -8,7 +8,9 @@ import runKeywordAdder
 import runAdGroupBidAdjusterPoorPerformer
 import runBidAdjusterPoorPerformer
 import runClientDailyReport
+import runBranchBidAdjuster
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
+from Client import Client
 
 
 def initialize(env, dynamoEndpoint, emailToInternal):
@@ -25,16 +27,29 @@ def initialize(env, dynamoEndpoint, emailToInternal):
 def process(clientEvent, context):
     print("Lambda Request ID:", context.aws_request_id)
     print("Lambda function ARN:", context.invoked_function_arn)
+    
+    # get the list of jobs to run from the clientEvent
     jobDetails = clientEvent['jobDetails']
 
-    # TODO get auth token and add to the clientEvent
+    # get auth token and add to the clientEvent, default to None
     clientEvent['authToken'] = None
 
+    print("org details ")
     print(clientEvent['orgDetails'])
-    obj = json.loads(clientEvent['orgDetails'])
+    
+    client = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
+    )
+    # TODO better approach than deserializing from JSON
+    # obj = json.loads(clientEvent['orgDetails'])
+    # if obj.get("_auth") is not None:
+    if client.auth is not None:
 
-    if obj.get("_auth") is not None:
-        authToken = LambdaUtils.getAuthToken(obj.get("_auth"))
+        # authToken = LambdaUtils.getAuthToken(obj.get("_auth"))
+        authToken = LambdaUtils.getAuthToken(client.auth)
+        
         # add accesToken to the clientEvent
         clientEvent["authToken"] = authToken
 
@@ -70,6 +85,10 @@ def process(clientEvent, context):
     if 'runKeywordAdder' in jobDetails:
         runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent)
         print(json.dumps(runKeywordAdderResponse))
+
+    if 'runBranchBidAdjuster' in jobDetails:
+        runBranchBidAdjusterResponse = runBranchBidAdjuster.lambda_handler(clientEvent)
+        print(json.dumps(runBranchBidAdjusterResponse))
 
     return True
 

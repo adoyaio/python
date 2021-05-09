@@ -358,10 +358,11 @@ def getAppleKeywordsEndpoint(keyword_file_to_post):
     for item in keyword_file_to_post:
         adGroupId = item["adGroupId"]
         campaignIdForEndpoint = item["campaignId"]
-        url = config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignIdForEndpoint, adGroupId)
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignIdForEndpoint, adGroupId)
         break
     print("getAppleKeywordsEndpoint:::found url" + url)
     return url
+
 
 @retry
 def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
@@ -373,14 +374,35 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
         timeout=config.HTTP_REQUEST_TIMEOUT
     )
 
+@retry
+def sendUpdatedBidsByTokenHelper(url, json, headers):
+    return requests.put(
+        url, 
+        json=json, 
+        headers=headers, 
+        timeout=config.HTTP_REQUEST_TIMEOUT
+    )
+
 def sendUpdatedBidsToApple(keywordFileToPost):
+    # TODO cleanup getAppleKeywordsEndpoint, pull campaign and adgroup ids from the apple campaign object
     url = getAppleKeywordsEndpoint(keywordFileToPost)
     payload = convertKeywordFileToApplePayload(keywordFileToPost, clientG.currency)
-    headers = {
-        "Authorization": "orgId=%s" % clientG.orgId,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+    
+    # NOTE pivot on token until v3 sunset
+    if authToken is not None:
+        headers = {
+            "Authorization": "Bearer %s" % authToken,
+            "X-AP-Context": "orgId=%s" % clientG.orgId,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+    else:
+        headers = {
+            "Authorization": "orgId=%s" % clientG.orgId,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
@@ -396,12 +418,20 @@ def sendUpdatedBidsToApple(keywordFileToPost):
         return False
 
     if sendG:
-        response = sendUpdatedBidsToAppleHelper(
-            url,
-            cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
-            json=payload,
-            headers=headers
-        )
+        if authToken is not None:
+            response = sendUpdatedBidsByTokenHelper(
+                url,
+                json=payload,
+                headers=headers
+            )
+        else:
+            response = sendUpdatedBidsToAppleHelper(
+                url,
+                cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
+                json=payload,
+                headers=headers
+            )
+        
         if response.status_code != 200:
             email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
             date = time.strftime("%m/%d/%Y")
