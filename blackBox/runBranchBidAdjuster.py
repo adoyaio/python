@@ -241,7 +241,7 @@ def createJsonFromDataFrame(filtered_dataframe):
 
 # TODO rework this to use config
 def createPutRequestString(campaignId, adgroupId):
-    return "https://api.searchads.apple.com/api/v3/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
+    return "https://api.searchads.apple.com/api/v4/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
         campaignId, adgroupId)
 
 
