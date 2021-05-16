@@ -123,7 +123,7 @@ def getSearchTermsReportFromApple(campaignId):
       headers=headers
     )
   else:
-    url = onfig.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
+    url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
     headers = { "Authorization": "orgId=%s" % clientG.orgId }
     dprint ("URL is '%s'." % url)
     dprint ("Payload is '%s'." % payload)

@@ -168,9 +168,11 @@ def createUpdatedAdGroupBids(data, campaign):
   # compile data from json library and put into dataframe
   adGroup_info = defaultdict(list)
   for row in rows:
+      print("james test")
+      print(str(row))
       adGroup_info['adGroupName']            .append(row['metadata']['adGroupName'])
       adGroup_info['adGroupId']              .append(row['metadata']['adGroupId'])
-      adGroup_info['bid']                    .append(row['metadata']['defaultCpcBid']['amount'])
+      adGroup_info['bid']                    .append(row['metadata']['defaultBidAmount']['amount'])
       adGroup_info['impressions']            .append(row['total']['impressions'])
       adGroup_info['taps']                   .append(row['total']['taps'])
       adGroup_info['ttr']                    .append(row['total']['ttr'])
@@ -276,7 +278,7 @@ def createUpdatedAdGroupBids(data, campaign):
     'id',
     'campaignId',
     'name',
-    'defaultCPCBid'
+    'defaultBidAmount'
   ]
   
   #convert dataframe back to json file for updating
@@ -293,11 +295,12 @@ def sendOneUpdatedBidByTokenHelper(url, json, headers):
 
 @debug
 def sendOneUpdatedBidToApple(adGroup, headers, currency):
-  campaignId, adGroupId, bid = adGroup["campaignId"], adGroup["id"], adGroup["defaultCPCBid"]
+  campaignId, adGroupId, bid = adGroup["campaignId"], adGroup["id"], adGroup["defaultBidAmount"]
   del adGroup["campaignId"]
   del adGroup["id"]
-  del adGroup["defaultCPCBid"]
-  adGroup["defaultCpcBid"] = {"amount": "%.2f" % bid, "currency": currency}
+  del adGroup["defaultBidAmount"]
+  adGroup["defaultBidAmount"] = {"amount": "%.2f" % bid, "currency": currency}
+
   url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaignId, adGroupId)
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % adGroup)
@@ -344,7 +347,7 @@ def sendUpdatedBidsToApple(adGroupFileToPost):
   #    { "id"            : 158698070, # That's the adgroup ID.
   #      "campaign_id"   : 158675458,
   #      "name"          : "exact_match",
-  #      "defaultCpcBid" : 0.28
+  #      "defaultBidAmount" : 0.28
   #    }
   #  ]
   #
@@ -388,7 +391,7 @@ def emailSummaryReport(data, sent):
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString = "%s - Ad Group Bid Adjuster summary for %s" % (clientG.clientName, dateString)
+    subjectString = "%s - Ad Group Bid Adjuster Poor Performer summary for %s" % (clientG.clientName, dateString)
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
