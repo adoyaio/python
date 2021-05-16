@@ -16,7 +16,7 @@ from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 
-#SK: Configurable variable to go in clients.json--------------------------------------
+#SK: TODO Configurable variable to go in clients.json
 cpi_bid_adjustment_poor_performer = 0.1
 BIDDING_LOOKBACK = 2
 
@@ -58,7 +58,7 @@ def initialize(clientEvent):
     )
     authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
-    logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
+    logger.info("runAdGroupBidAdjusterPoorPerformer:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 
 @retry
@@ -145,7 +145,7 @@ def getAdgroupReportFromApple(campaign):
   if response.status_code != 200:
     email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
     date = time.strftime("%m/%d/%Y")
-    subject ="%s - %d ERROR in runAdgroupBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
+    subject ="%s - %d ERROR in runAdGroupBidAdjusterPoorPerformer for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
     logger.error(subject)
     if sendG:
@@ -329,7 +329,7 @@ def sendOneUpdatedBidToApple(adGroup, headers, currency):
     if response.status_code != 200:
       email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
       date = time.strftime("%m/%d/%Y")
-      subject ="%s:%d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
+      subject ="%s:%d ERROR in runAdGroupBidAdjusterPoorPerformer for %s" % (date, response.status_code, clientG.clientName)
       logger.warn(email)
       logger.error(subject)
       if sendG:

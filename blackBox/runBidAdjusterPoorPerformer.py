@@ -19,7 +19,7 @@ from Client import Client
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 
-#SK: Configurable variable to go in clients.json--------------------------------------
+#SK: Configurable variable to go in clients.json
 cpi_bid_adjustment_poor_performer = 0.1
 
 #SK: Changed from 14 to 2 days
@@ -65,7 +65,7 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env']
     )  
     logger.info(
-        "runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent'])
+        "runBidAdjusterPoorPerformer:::initialize(), rootEvent='" + str(clientEvent['rootEvent'])
     )
 
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
@@ -154,7 +154,7 @@ def getKeywordReportFromApple(campaignId):
     if response.status_code != 200:
         email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
+        subject ="%s - %d ERROR in runBidAdjusterPoorPerformer for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
@@ -396,7 +396,7 @@ def sendUpdatedBidsToApple(keywordFileToPost):
         if response.status_code != 200:
             email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
             date = time.strftime("%m/%d/%Y")
-            subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
+            subject ="%s:%d ERROR in runBidAdjusterPoorPerformer for %s" % (date, response.status_code, clientG.clientName)
             logger.warn(email)
             logger.error(subject)
             EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
@@ -428,11 +428,11 @@ def createEmailBody(data, sent):
 
 
 def emailSummaryReport(data, sent):
-    messageString = createEmailBody(data, sent);
+    messageString = createEmailBody(data, sent)
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString = "%s - Bid Adjuster summary for %s" % (clientG.clientName, dateString)
+    subjectString = "%s - Bid Adjuster Poor Performer summary for %s" % (clientG.clientName, dateString)
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 
