@@ -152,7 +152,6 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
         
         return False
 
-    print(response.text)
     return json.loads(response.text, parse_float=decimal.Decimal)
 
 def loadAppleKeywordToDynamo(data, orgId, campaignId):

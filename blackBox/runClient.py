@@ -23,7 +23,6 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     sendG = LambdaUtils.getSendG(env)
     dynamoClient = LambdaUtils.getDynamoResource(env,dynamoEndpoint)
 
-
 def process(clientEvent, context):
     print("Lambda Request ID:", context.aws_request_id)
     print("Lambda function ARN:", context.invoked_function_arn)
@@ -33,26 +32,17 @@ def process(clientEvent, context):
 
     # get auth token and add to the clientEvent, default to None
     clientEvent['authToken'] = None
-
-    print("org details ")
-    print(clientEvent['orgDetails'])
     
     client = Client.buildFromDictionary(
         json.loads(
             clientEvent['orgDetails']
         )
     )
-    # TODO better approach than deserializing from JSON
-    # obj = json.loads(clientEvent['orgDetails'])
-    # if obj.get("_auth") is not None:
     if client.auth is not None:
-
-        # authToken = LambdaUtils.getAuthToken(obj.get("_auth"))
         authToken = LambdaUtils.getAuthToken(client.auth)
         
         # add accesToken to the clientEvent
         clientEvent["authToken"] = authToken
-
 
     if 'runAppleIntegrationKeyword' in jobDetails:
         appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent)

@@ -184,5 +184,4 @@ def getAuthToken(auth):
 
     response = requests.post(url, params=params, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
-    print(response.text)
     return json.loads(response.text).get("access_token", None)

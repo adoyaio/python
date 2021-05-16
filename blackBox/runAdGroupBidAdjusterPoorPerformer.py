@@ -168,8 +168,6 @@ def createUpdatedAdGroupBids(data, campaign):
   # compile data from json library and put into dataframe
   adGroup_info = defaultdict(list)
   for row in rows:
-      print("james test")
-      print(str(row))
       adGroup_info['adGroupName']            .append(row['metadata']['adGroupName'])
       adGroup_info['adGroupId']              .append(row['metadata']['adGroupId'])
       adGroup_info['bid']                    .append(row['metadata']['defaultBidAmount']['amount'])
