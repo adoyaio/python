@@ -356,15 +356,8 @@ def sendOneUpdatedBidToApple(adGroup, headers, currency):
 @debug
 def sendUpdatedBidsToApple(adGroupFileToPost):
   # The adGroupFileToPost payload looks like this:
-  #  [
-  #    { "id"            : 158698070, # That's the adgroup ID.
-  #      "campaign_id"   : 158675458,
-  #      "name"          : "exact_match",
-  #      "defaultBidAmount" : 0.28
-  #    }
-  #  ]
-  #
-  
+  # '{'name': 'search_match', 'defaultBidAmount': {'amount': '3.09', 'currency': 'USD'}}
+
   # NOTE pivot on token until v3 sunset
   if authToken is not None:
     headers = {

@@ -107,7 +107,8 @@ def getClientForLocalRun(orgId, emailToInternal):
             clientJSON.get('currency'),
             clientJSON.get('appName'),
             clientJSON.get('appID'),
-            clientJSON.get('auth')
+            clientJSON.get('auth'),
+            clientJSON.get('hasRegistered')
         )
     # serialize to json for mock lambda event, 
     # need to simulate how lamdba marshals a Client into json for the payload
