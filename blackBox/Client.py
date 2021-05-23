@@ -25,7 +25,6 @@ class Client:
         currency,
         appName,
         appID,
-        campaignName,
         auth
     ):  
         self._updatedBidsIsStale = False
@@ -58,7 +57,6 @@ class Client:
         self._currency = currency
         self._appName = appName
         self._appID = appID
-        self._campaignName = campaignName
         self._auth = auth
 
 
@@ -389,7 +387,6 @@ class Client:
             orgDetails.get('_currency'),
             orgDetails.get('_appName'),
             orgDetails.get('_appID'),
-            orgDetails.get('_campaignName'),
             orgDetails.get('_auth')
         )
 
@@ -421,7 +418,6 @@ class Client:
                         client.get("orgDetails").get("currency"),
                         client.get("orgDetails").get("appName"),
                         client.get("orgDetails").get("appID"),
-                        client.get("orgDetails").get("campaignName"),
                         client.get("orgDetails").get("auth")
                     )
                 )
