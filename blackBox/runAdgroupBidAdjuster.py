@@ -38,6 +38,7 @@ def initialize(clientEvent):
     global emailToG
     global dynamodb
     global logger
+    global authToken
 
     emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
@@ -52,6 +53,7 @@ def initialize(clientEvent):
             clientEvent['orgDetails']
         )
     )
+    authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(clientEvent['rootEvent']['env'])  
     logger.info("runAdgroupBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
@@ -63,6 +65,15 @@ def getAdgroupReportFromAppleHelper(url, cert, json, headers):
     cert=cert, 
     json=json, 
     headers=headers, 
+    timeout=config.HTTP_REQUEST_TIMEOUT
+  )
+
+@retry
+def getAdgroupReportByTokenHelper(url, json, headers):
+  return requests.post(
+    url,
+    json=json,
+    headers=headers,
     timeout=config.HTTP_REQUEST_TIMEOUT
   )
 
@@ -97,18 +108,33 @@ def getAdgroupReportFromApple(campaign):
     "returnRowTotals": True, 
     "returnRecordsWithNoMetrics": True
   }
-  url = config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
 
-  headers = { "Authorization": "orgId=%s" % clientG.orgId }
-  dprint("\nURL is '%s'." % url)
-  dprint("\nPayload is '%s'." % payload)
-  dprint ("\nHeaders are %s." % headers)
-  response = getAdgroupReportFromAppleHelper(
-    url,
-    cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
-    json=payload,
-    headers=headers
-  )
+  response = dict()
+
+  # NOTE pivot on token until v3 sunset
+  if authToken is not None:
+    url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
+    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+    dprint("\nURL is '%s'." % url)
+    dprint("\nPayload is '%s'." % payload)
+    dprint ("\nHeaders are %s." % headers)
+    response = getAdgroupReportByTokenHelper(
+      url,
+      json=payload,
+      headers=headers
+    )
+  else:
+    url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
+    headers = { "Authorization": "orgId=%s" % clientG.orgId }
+    dprint("\nURL is '%s'." % url)
+    dprint("\nPayload is '%s'." % payload)
+    dprint ("\nHeaders are %s." % headers)
+    response = getAdgroupReportFromAppleHelper(
+      url,
+      cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
+      json=payload,
+      headers=headers
+    )
 
   dprint ("\nResponse is %s." % response)
 
@@ -133,9 +159,6 @@ def createUpdatedAdGroupBids(data, campaign):
 
   ABP = clientG.adgroupBidParameters
   dprint("Using adgroup bid parameters %s." % ABP)
-  # if campaign['campaignType'] == "other":
-  #   HIGH_CPI_BID_DECREASE_THRESH = campaign['highCPIDecreaseThresh']
-  # else:
   HIGH_CPI_BID_DECREASE_THRESH = ABP["HIGH_CPI_BID_DECREASE_THRESH"]
 
   # compile data from json library and put into dataframe
@@ -143,7 +166,7 @@ def createUpdatedAdGroupBids(data, campaign):
   for row in rows:
       adGroup_info['adGroupName']            .append(row['metadata']['adGroupName'])
       adGroup_info['adGroupId']              .append(row['metadata']['adGroupId'])
-      adGroup_info['bid']                    .append(row['metadata']['defaultCpcBid']['amount'])
+      adGroup_info['bid']                    .append(row['metadata']['defaultBidAmount']['amount'])
       adGroup_info['impressions']            .append(row['total']['impressions'])
       adGroup_info['taps']                   .append(row['total']['taps'])
       adGroup_info['ttr']                    .append(row['total']['ttr'])
@@ -267,7 +290,7 @@ def createUpdatedAdGroupBids(data, campaign):
     'id',
     'campaignId',
     'name',
-    'defaultCPCBid'
+    'defaultBidAmount'
   ]
   
   #convert dataframe back to json file for updating
@@ -279,15 +302,19 @@ def createUpdatedAdGroupBids(data, campaign):
 def sendOneUpdatedBidToAppleHelper(url, cert, json, headers):
   return requests.put(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
+def sendOneUpdatedBidByTokenHelper(url, json, headers):
+  return requests.put(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+
 
 @debug
 def sendOneUpdatedBidToApple(adGroup, headers, currency):
-  campaignId, adGroupId, bid = adGroup["campaignId"], adGroup["id"], adGroup["defaultCPCBid"]
+  campaignId, adGroupId, bid = adGroup["campaignId"], adGroup["id"], adGroup["defaultBidAmount"]
   del adGroup["campaignId"]
   del adGroup["id"]
-  del adGroup["defaultCPCBid"]
-  adGroup["defaultCpcBid"] = {"amount": "%.2f" % bid, "currency": currency}
-  url = config.APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaignId, adGroupId)
+  del adGroup["defaultBidAmount"]
+  adGroup["defaultBidAmount"] = {"amount": "%.2f" % bid, "currency": currency}
+
+  url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaignId, adGroupId)
   dprint ("URL is '%s'." % url)
   dprint ("Payload is '%s'." % adGroup)
 
@@ -300,12 +327,20 @@ def sendOneUpdatedBidToApple(adGroup, headers, currency):
     return False
 
   if sendG:
-    response = sendOneUpdatedBidToAppleHelper(
-      url,
-      cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
-      json=adGroup,
-      headers=headers
-    ) 
+    if authToken is not None:
+      response = sendOneUpdatedBidByTokenHelper(
+        url,
+        json=adGroup,
+        headers=headers
+      )
+    else:
+      response = sendOneUpdatedBidToAppleHelper(
+        url,
+        cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
+        json=adGroup,
+        headers=headers
+      )
+
     if response.status_code != 200:
       email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
       date = time.strftime("%m/%d/%Y")
@@ -325,15 +360,25 @@ def sendUpdatedBidsToApple(adGroupFileToPost):
   #    { "id"            : 158698070, # That's the adgroup ID.
   #      "campaign_id"   : 158675458,
   #      "name"          : "exact_match",
-  #      "defaultCpcBid" : 0.28
+  #      "defaultBidAmount" : 0.28
   #    }
   #  ]
   #
-  headers = {
-    "Authorization": "orgId=%s" % clientG.orgId,
-    "Content-Type" : "application/json",
-    "Accept"       : "application/json",
-  }
+  
+  # NOTE pivot on token until v3 sunset
+  if authToken is not None:
+    headers = {
+      "Authorization": "Bearer %s" % authToken, 
+      "X-AP-Context": "orgId=%s" % clientG.orgId,
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    }
+  else:
+    headers = {
+      "Authorization": "orgId=%s" % clientG.orgId,
+      "Content-Type" : "application/json",
+      "Accept"       : "application/json",
+    }
 
   dprint ("Headers are %s." % headers)
   dprint ("PEM='%s'." % clientG.pemFilename)

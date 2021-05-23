@@ -19,7 +19,7 @@ from Client import Client
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 
-#SK: Configurable variable to go in clients.json--------------------------------------
+#SK: Configurable variable to go in clients.json
 cpi_bid_adjustment_poor_performer = 0.1
 
 #SK: Changed from 14 to 2 days
@@ -45,6 +45,7 @@ def initialize(clientEvent):
     global emailToG
     global dynamodb
     global logger
+    global authToken
     
     emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
@@ -59,15 +60,19 @@ def initialize(clientEvent):
             clientEvent['orgDetails']
         )
     )
+    authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(
         clientEvent['rootEvent']['env']
     )  
     logger.info(
-        "runBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent'])
+        "runBidAdjusterPoorPerformer:::initialize(), rootEvent='" + str(clientEvent['rootEvent'])
     )
 
 def getKeywordReportFromAppleHelper(url, cert, json, headers):
     return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+
+def getKeywordReportByTokenHelper(url,  json, headers):
+    return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
 
 def getKeywordReportFromApple(campaignId):
     payload = {
@@ -116,23 +121,40 @@ def getKeywordReportFromApple(campaignId):
         "returnRowTotals": True,
         "returnRecordsWithNoMetrics": True
     }
-    url = config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
-    headers = {"Authorization": "orgId=%s" % clientG.orgId}
-    dprint("\nURL is %s" % url)
-    dprint("\nPayload is %s" % payload)
-    dprint("\nHeaders are %s" % headers)
-    response = getKeywordReportFromAppleHelper(
-        url,
-        cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
-        json=payload,
-        headers=headers
-    )
+
+    response = dict()
+
+    # NOTE pivot on token until v3 sunset
+    if authToken is not None:
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        dprint("\nURL is %s" % url)
+        dprint("\nPayload is %s" % payload)
+        dprint("\nHeaders are %s" % headers)
+        response = getKeywordReportByTokenHelper(
+            url,
+            json=payload,
+            headers=headers
+        )
+    else:
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
+        headers = {"Authorization": "orgId=%s" % clientG.orgId}
+        dprint("\nURL is %s" % url)
+        dprint("\nPayload is %s" % payload)
+        dprint("\nHeaders are %s" % headers)
+        response = getKeywordReportFromAppleHelper(
+            url,
+            cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
+            json=payload,
+            headers=headers
+        )
+        
     dprint("Response is %s" % response)
 
     if response.status_code != 200:
         email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
+        subject ="%s - %d ERROR in runBidAdjusterPoorPerformer for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
         logger.error(subject)
         if sendG:
@@ -298,7 +320,7 @@ def getAppleKeywordsEndpoint(keyword_file_to_post):
     for item in keyword_file_to_post:
         adGroupId = item["adGroupId"]
         campaignIdForEndpoint = item["campaignId"]
-        url = config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignIdForEndpoint, adGroupId)
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignIdForEndpoint, adGroupId)
         break
     print("getAppleKeywordsEndpoint:::found url" + url)
     return url
@@ -313,14 +335,35 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
         timeout=config.HTTP_REQUEST_TIMEOUT
     )
 
+@retry
+def sendUpdatedBidsByTokenHelper(url, json, headers):
+    return requests.put(
+        url, 
+        json=json, 
+        headers=headers, 
+        timeout=config.HTTP_REQUEST_TIMEOUT
+    )
+
 def sendUpdatedBidsToApple(keywordFileToPost):
+    # TODO cleanup getAppleKeywordsEndpoint, pull campaign and adgroup ids from the apple campaign object
     url = getAppleKeywordsEndpoint(keywordFileToPost)
     payload = convertKeywordFileToApplePayload(keywordFileToPost, clientG.currency)
-    headers = {
-        "Authorization": "orgId=%s" % clientG.orgId,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+    
+    # NOTE pivot on token until v3 sunset
+    if authToken is not None:
+        headers = {
+            "Authorization": "Bearer %s" % authToken, 
+            "X-AP-Context": "orgId=%s" % clientG.orgId,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+    else:
+        headers = {
+            "Authorization": "orgId=%s" % clientG.orgId,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
     dprint("URL is '%s'." % url)
     dprint("Payload is '%s'." % payload)
     dprint("Headers are %s." % headers)
@@ -336,16 +379,24 @@ def sendUpdatedBidsToApple(keywordFileToPost):
         return False
 
     if sendG:
-        response = sendUpdatedBidsToAppleHelper(
-            url,
-            cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
-            json=payload,
-            headers=headers
-        )
+        if authToken is not None:
+            response = sendUpdatedBidsByTokenHelper(
+                url,
+                json=payload,
+                headers=headers
+            )
+        else:
+            response = sendUpdatedBidsToAppleHelper(
+                url,
+                cert=(S3Utils.getCert(clientG.pemFilename),S3Utils.getCert(clientG.keyFilename)),
+                json=payload,
+                headers=headers
+            )
+            
         if response.status_code != 200:
             email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
             date = time.strftime("%m/%d/%Y")
-            subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
+            subject ="%s:%d ERROR in runBidAdjusterPoorPerformer for %s" % (date, response.status_code, clientG.clientName)
             logger.warn(email)
             logger.error(subject)
             EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
@@ -377,11 +428,11 @@ def createEmailBody(data, sent):
 
 
 def emailSummaryReport(data, sent):
-    messageString = createEmailBody(data, sent);
+    messageString = createEmailBody(data, sent)
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString = "%s - Bid Adjuster summary for %s" % (clientG.clientName, dateString)
+    subjectString = "%s - Bid Adjuster Poor Performer summary for %s" % (clientG.clientName, dateString)
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 

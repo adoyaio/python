@@ -3,8 +3,13 @@ import botocore.config
 import logging
 import json
 import decimal
+import jwt
+import requests
+import datetime as dt
 from Client import Client
+from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
+from utils.debug import debug, dprint
 
 def getSendG(env):
     if env == "lcl":
@@ -73,11 +78,13 @@ def getBidParamsForJob(orgDetails, campaign, job):
         params.update(clientG.branchBidParameters)
         params.update(campaign.get('branchBidParameters',[]))
         return params
-    
+
+
+# build a mock clientEvent
 def getClientForLocalRun(orgId, emailToInternal):
     clientEvent = {}
     clientEvent['rootEvent'] = {
-        "env": "lcl",
+        "env": "lcl", # adjust here to run a prod run
         "dynamoEndpoint": "http://localhost:8000",
         "lambdaEndpoint": "http://host.docker.internal:3001",
         "emailToInternal": emailToInternal
@@ -86,21 +93,95 @@ def getClientForLocalRun(orgId, emailToInternal):
         clients = json.load(json_file, parse_float=decimal.Decimal)
         clientJSON = next(item for item in clients if item["orgId"] == orgId)
         client = Client(
-            clientJSON['orgId'],
-            clientJSON['clientName'],
-            clientJSON['emailAddresses'],
-            clientJSON['keyFilename'],
-            clientJSON['pemFilename'],
-            clientJSON['bidParameters'],
-            clientJSON['adgroupBidParameters'],
-            clientJSON['branchBidParameters'],
-            clientJSON['appleCampaigns'],
-            clientJSON['keywordAdderParameters'],
-            clientJSON['branchIntegrationParameters'],
-            clientJSON['currency'],
-            clientJSON['appName'],
-            clientJSON['appID'],
-            clientJSON['campaignName']
-        )     
+            clientJSON.get('orgId'),
+            clientJSON.get('clientName'),
+            clientJSON.get('emailAddresses'),
+            clientJSON.get('keyFilename'),
+            clientJSON.get('pemFilename'),
+            clientJSON.get('bidParameters'),
+            clientJSON.get('adgroupBidParameters'),
+            clientJSON.get('branchBidParameters'),
+            clientJSON.get('appleCampaigns'),
+            clientJSON.get('keywordAdderParameters'),
+            clientJSON.get('branchIntegrationParameters'),
+            clientJSON.get('currency'),
+            clientJSON.get('appName'),
+            clientJSON.get('appID'),
+            clientJSON.get('campaignName'),
+            clientJSON.get('auth')
+        )
+    # serialize to json for mock lambda event, 
+    # need to simulate how lamdba marshals a Client into json for the payload
     clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+
+    # handle auth token
+    if client.auth is None:
+        clientEvent['authToken'] = None
+        return clientEvent
+        
+    authToken = getAuthToken(clientJSON.get('auth'))
+    clientEvent['authToken'] = authToken
     return clientEvent
+
+
+# gets an oauth token from appleid.apple.com
+def getAuthToken(auth):
+    client_id = auth.get('clientId')
+    team_id = auth.get('teamId')
+    key_id = auth.get('keyId')
+
+    privateKey = auth.get('privateKey')
+    key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
+    audience = 'https://appleid.apple.com'
+    alg = 'ES256'
+
+    # Define issue timestamp.
+    issued_at_timestamp = int(dt.datetime.utcnow().timestamp())
+
+    # Define expiration timestamp. May not exceed 1 days from issue timestamp.
+    expiration_timestamp = issued_at_timestamp + 86400*1
+
+    # Define JWT headers.
+    headers = dict()
+    headers['alg'] = alg
+    headers['kid'] = key_id
+
+    # Define JWT payload.
+    payload = dict()
+    payload['sub'] = client_id
+    payload['aud'] = audience
+    payload['iat'] = issued_at_timestamp
+    payload['exp'] = expiration_timestamp
+    payload['iss'] = team_id 
+
+    dprint("\nPayload %s" % str(payload))
+    dprint("\nHeaders %s" % str(headers))
+    dprint("\nKey %s" % str(key))
+    
+    client_secret = jwt.encode(
+        payload=payload,  
+        headers=headers,
+        key=key,
+        algorithm=alg
+    )
+
+    # use client secret to get auth token
+    url = config.APPLE_AUTH_URL
+
+    headers = {
+        "Host": "appleid.apple.com", 
+        "Content-Type": "application/x-www-form-urlencoded"
+    }
+    params = {
+        "grant_type" : "client_credentials",
+        "client_id" : client_id,
+        "client_secret" : client_secret,
+        "scope" : "searchadsorg"
+    }
+    dprint("\nURL is %s" % url)
+    dprint("\nHeaders are %s" % headers)
+    dprint("\nParams are %s" % params)
+
+    response = requests.post(url, params=params, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+
+    return json.loads(response.text).get("access_token", None)

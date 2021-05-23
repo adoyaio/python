@@ -16,6 +16,7 @@ from utils.retry import retry
 from Client import Client
 from utils import DynamoUtils, EmailUtils, S3Utils, LambdaUtils
 from utils.DecimalEncoder import DecimalEncoder
+import sys
 
 BIDDING_LOOKBACK = 14  # days
 date = datetime.date
@@ -26,29 +27,33 @@ start_date = today - start_date_delta
 end_date = today - end_date_delta
 
 
-def initialize(env, dynamoEndpoint, emailToInternal):
+def initialize(clientEvent):
     global sendG
-    global clientsG
-    global dynamodb
+    global clientG
     global emailToG
+    global dynamodb
     global logger
+    global authToken
     
-    emailToG = emailToInternal
+    emailToG = clientEvent['rootEvent']['emailToInternal']
     sendG = LambdaUtils.getSendG(
-        env
+        clientEvent['rootEvent']['env']
     )
     dynamodb = LambdaUtils.getDynamoResource(
-        env, 
-        dynamoEndpoint
+        clientEvent['rootEvent']['env'],
+        clientEvent['rootEvent']['dynamoEndpoint']
+    ) 
+    clientG = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
     )
-    clientsG = Client.getClients(
-        dynamodb
-    )
+    authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(
-        env
+        clientEvent['rootEvent']['env']
     )
     logger.info(
-        "In runBranchBidAdjuster:::initialize(), sendG='%s', dynamoEndpoint='%s'" % (sendG, dynamoEndpoint)
+         "runBranchBidAdjuster:::initialize(), rootEvent='" + str(clientEvent['rootEvent'])
     )
 
 
@@ -236,7 +241,7 @@ def createJsonFromDataFrame(filtered_dataframe):
 
 # TODO rework this to use config
 def createPutRequestString(campaignId, adgroupId):
-    return "https://api.searchads.apple.com/api/v3/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
+    return "https://api.searchads.apple.com/api/v4/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
         campaignId, adgroupId)
 
 
@@ -288,94 +293,82 @@ def createDataFrame(items, campaign_id, adgroup_id):
 def process():
     summaryReportInfo = {}
 
-    for client in clientsG:
-        summaryReportInfo["%s (%s)" % (client.orgId, client.clientName)] = clientSummaryReportInfo = {}
-        keywordStatus = "ACTIVE"
-        adgroupDeleted = "False"
+    summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {}
+    keywordStatus = "ACTIVE"
+    adgroupDeleted = "False"
+    if not clientG.branchIntegrationParameters.get("branch_bid_adjuster_enabled",False):
+        return
 
-        if not client.branchIntegrationParameters.get("branch_bid_adjuster_enabled",False):
-            continue
-  
-        appleCampaigns = client.appleCampaigns
-        campaignsForBidAdjuster = list(
-            filter(
-                lambda campaign:(campaign.get("branchBidAdjusterEnabled",False) == True), appleCampaigns
-            )
+    appleCampaigns = clientG.appleCampaigns
+    campaignsForBidAdjuster = list(
+        filter(
+            lambda campaign:(campaign.get("branchBidAdjusterEnabled",False) == True), appleCampaigns
         )
-        for campaign in campaignsForBidAdjuster:
-            BBP = LambdaUtils.getBidParamsForJob(client.__dict__, campaign, "branchBidAdjuster")
-            print("bidParameters" + str(BBP))
-
-            min_apple_installs = BBP["min_apple_installs"]
-            branch_optimization_goal = BBP["branch_optimization_goal"]
-            branch_min_bid = BBP["branch_min_bid"]
-            branch_max_bid = BBP["branch_max_bid"]
-            branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
-            cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
-            revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
-            cost_per_purchase_threshold = BBP['cost_per_purchase_threshold']
-            revenue_over_ad_spend_threshold = BBP['revenue_over_ad_spend_threshold']
-
-            # get apple data
-            kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, campaign['adGroupId'], start_date, end_date)
-            print("querying" + campaign['adGroupId'] +  ":::with:::" + str(start_date) + " - " + str(end_date))
-            print("got back:::" + str(kwResponse["Count"]))
-
-            if (kwResponse["Count"] == 0):
-                print("skipping")
-                continue
-
-            # build dataframe
-            rawDataDf = createDataFrame(kwResponse.get('Items'), campaign['campaignId'], campaign['adGroupId'])
-            # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
-            # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
-            # rawDataDf.to_csv(campaign['adGroupId'] + 'rawDataDf' + ".csv")
-            # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", emailToG, [], config.EMAIL_FROM, fp.name)
-               
-            if rawDataDf.empty:
-                print("Error: There was an issue reading the data to a dataFrame")
-                continue
-
-            activeKeywords = returnActiveKeywordsDataFrame(
-                rawDataDf, 
-                min_apple_installs,
-                keywordStatus,
-                adgroupDeleted
-            )
+    )
+    for campaign in campaignsForBidAdjuster:
+        BBP = LambdaUtils.getBidParamsForJob(clientG.__dict__, campaign, "branchBidAdjuster")
+        print("bidParameters" + str(BBP))
+        min_apple_installs = BBP["min_apple_installs"]
+        branch_optimization_goal = BBP["branch_optimization_goal"]
+        branch_min_bid = BBP["branch_min_bid"]
+        branch_max_bid = BBP["branch_max_bid"]
+        branch_bid_adjustment = decimal.Decimal.from_float(float(BBP["branch_bid_adjustment"]))
+        cost_per_purchase_threshold_buffer = BBP["cost_per_purchase_threshold_buffer"]
+        revenue_over_ad_spend_threshold_buffer = BBP["revenue_over_ad_spend_threshold_buffer"]
+        cost_per_purchase_threshold = BBP['cost_per_purchase_threshold']
+        revenue_over_ad_spend_threshold = BBP['revenue_over_ad_spend_threshold']
+        # get apple data
+        kwResponse = DynamoUtils.getAppleKeywordData(dynamodb, campaign['adGroupId'], start_date, end_date)
+        print("querying" + campaign['adGroupId'] +  ":::with:::" + str(start_date) + " - " + str(end_date))
+        print("got back:::" + str(kwResponse["Count"]))
+        if (kwResponse["Count"] == 0):
+            print("skipping")
+            continue
+        # build dataframe
+        rawDataDf = createDataFrame(kwResponse.get('Items'), campaign['campaignId'], campaign['adGroupId'])
+        # fp = tempfile.NamedTemporaryFile(dir="/tmp", delete=False)
+        # fp = tempfile.NamedTemporaryFile(dir=".", delete=False)
+        # rawDataDf.to_csv(campaign['adGroupId'] + 'rawDataDf' + ".csv")
+        # EmailUtils.sendRawEmail("test", "runBrachBidAdjuster Debugging", emailToG, [], config.EMAIL_FROM, fp.name)
+           
+        if rawDataDf.empty:
+            print("Error: There was an issue reading the data to a dataFrame")
+            continue
+        activeKeywords = returnActiveKeywordsDataFrame(
+            rawDataDf, 
+            min_apple_installs,
+            keywordStatus,
+            adgroupDeleted
+        )
+            
+        if activeKeywords.empty:
+            print("There weren't any keywords that met the initial filtering criteria")
+            continue
+        print("There were keywords that met the initial filtering criteria")
+        adjustedBids = returnAdjustedBids(
+            branch_optimization_goal,
+            activeKeywords,
+            branch_min_bid,
+            branch_max_bid,
+            branch_bid_adjustment,
+            cost_per_purchase_threshold,
+            cost_per_purchase_threshold_buffer,
+            revenue_over_ad_spend_threshold,
+            revenue_over_ad_spend_threshold_buffer
+        )
+        if adjustedBids.empty:
+            print("There weren't any bids to adjust")
+            continue
                 
-            if activeKeywords.empty:
-                print("There weren't any keywords that met the initial filtering criteria")
-                continue
-
-            print("There were keywords that met the initial filtering criteria")
-
-            adjustedBids = returnAdjustedBids(
-                branch_optimization_goal,
-                activeKeywords,
-                branch_min_bid,
-                branch_max_bid,
-                branch_bid_adjustment,
-                cost_per_purchase_threshold,
-                cost_per_purchase_threshold_buffer,
-                revenue_over_ad_spend_threshold,
-                revenue_over_ad_spend_threshold_buffer
+        jsonData = createJsonFromDataFrame(adjustedBids)
+        clientSummaryReportInfo[campaign['campaignId']] = json.dumps(jsonData)
+        for adGroupId in jsonData.keys():
+            putRequestString = createPutRequestString(campaign['campaignId'], campaign['adGroupId'])
+            requestJson = jsonData[adGroupId]
+            sendUpdatedBidsToApple(
+                putRequestString, 
+                requestJson
             )
-
-            if adjustedBids.empty:
-                print("There weren't any bids to adjust")
-                continue
-                    
-            jsonData = createJsonFromDataFrame(adjustedBids)
-            clientSummaryReportInfo[campaign['campaignId']] = json.dumps(jsonData)
-            for adGroupId in jsonData.keys():
-                putRequestString = createPutRequestString(campaign['campaignId'], campaign['adGroupId'])
-                requestJson = jsonData[adGroupId]
-                sendUpdatedBidsToApple(
-                    client, 
-                    putRequestString, 
-                    requestJson
-                )
-
     emailSummaryReport(summaryReportInfo, sendG)
 
 @retry
@@ -388,25 +381,50 @@ def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
         timeout=config.HTTP_REQUEST_TIMEOUT
     )
 
+@retry
+def sendUpdatedBidsByTokenHelper(url, json, headers):
+    return requests.put(
+        url, 
+        json=json, 
+        headers=headers, 
+        timeout=config.HTTP_REQUEST_TIMEOUT
+    )
 
-def sendUpdatedBidsToApple(client, url, payload):
-    headers = {
-        "Authorization": "orgId=%s" % client.orgId,
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
+
+def sendUpdatedBidsToApple(url, payload):
+    if authToken is not None:
+        headers = {
+            "Authorization": "Bearer %s" % authToken, 
+            "X-AP-Context": "orgId=%s" % clientG.orgId,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+    else:
+        headers = {
+            "Authorization": "orgId=%s" % clientG.orgId,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
     dprint("\nURL is '%s'." % url)
     dprint("\nPayload is '%s'." % payload)
     dprint("\nHeaders are %s." % headers)
 
     if url and payload:
         if sendG:
-            response = sendUpdatedBidsToAppleHelper(
+            # NOTE pivot on token unt
+            if authToken is not None:
+                response = sendUpdatedBidsByTokenHelper(
                 url,
-                cert=(S3Utils.getCert(client.pemFilename), S3Utils.getCert(client.keyFilename)),
                 json=payload,
                 headers=headers
             )
+            else:
+                response = sendUpdatedBidsToAppleHelper(
+                    url,
+                    cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
+                    json=payload,
+                    headers=headers
+                )
         else:
             response = "Not actually sending anything to Apple."
         print("The result of sending the update to Apple: %s" % response)
@@ -435,13 +453,23 @@ def emailSummaryReport(data, sent):
 
 
 if __name__ == "__main__":
-    initialize('lcl', 'http://localhost:8000', ["james@adoya.io"])
+    clientEvent = LambdaUtils.getClientForLocalRun(
+        int(sys.argv[1]),
+        ['james@adoya.io']
+    )
+    initialize(clientEvent)
     process()
 
-def lambda_handler(event, context):
-    initialize(event['env'], event['dynamoEndpoint'], event['emailToInternal'])
-    process()
+def lambda_handler(clientEvent):
+    initialize(clientEvent)
+    try:
+        process()
+    except: 
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Run Branch Bid Adjuster Failed')
+        }
     return {
         'statusCode': 200,
-        'body': json.dumps('Run Branch Bid Adjuster Complete')
+        'body': json.dumps('Run Branch Bid Adjuster Complete for ' + clientG.clientName)
     }

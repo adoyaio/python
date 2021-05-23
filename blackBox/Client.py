@@ -25,7 +25,8 @@ class Client:
         currency,
         appName,
         appID,
-        campaignName
+        campaignName,
+        auth
     ):  
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
@@ -58,6 +59,7 @@ class Client:
         self._appName = appName
         self._appID = appID
         self._campaignName = campaignName
+        self._auth = auth
 
 
     def __str__(self):
@@ -122,6 +124,16 @@ class Client:
     @property
     def currency(self):
         return self._currency
+
+    @property
+    def auth(self):
+        if self._auth is None:
+            return None
+        return dict(self._auth)
+
+    @auth.setter
+    def auth(self, auth):
+        self._auth = auth  
 
     # bid adjusters should use this method for cpi
     def calculateCPI(self, spend, installs):
@@ -360,23 +372,25 @@ class Client:
         if len(response['Items']) > 0:
             return response['Items'][0]["keywords"]
 
+    # when client is serialized to JSON it writes internals with underscore
     def buildFromDictionary(orgDetails):
         return Client(
-            orgDetails['_orgId'],
-            orgDetails['_clientName'],
-            orgDetails['_emailAddresses'],
-            orgDetails['_keyFilename'],
-            orgDetails['_pemFilename'],
-            orgDetails['_bidParameters'],
-            orgDetails['_adgroupBidParameters'],
-            orgDetails['_branchBidParameters'],
-            orgDetails['_appleCampaigns'],
-            orgDetails['_keywordAdderParameters'],
-            orgDetails['_branchIntegrationParameters'],
-            orgDetails['_currency'],
-            orgDetails['_appName'],
-            orgDetails['_appID'],
-            orgDetails['_campaignName']
+            orgDetails.get('_orgId'),
+            orgDetails.get('_clientName'),
+            orgDetails.get('_emailAddresses'),
+            orgDetails.get('_keyFilename'),
+            orgDetails.get('_pemFilename'),
+            orgDetails.get('_bidParameters'),
+            orgDetails.get('_adgroupBidParameters'),
+            orgDetails.get('_branchBidParameters'),
+            orgDetails.get('_appleCampaigns'),
+            orgDetails.get('_keywordAdderParameters'),
+            orgDetails.get('_branchIntegrationParameters'),
+            orgDetails.get('_currency'),
+            orgDetails.get('_appName'),
+            orgDetails.get('_appID'),
+            orgDetails.get('_campaignName'),
+            orgDetails.get('_auth')
         )
 
     # initialize and return array of Client objects
@@ -393,21 +407,22 @@ class Client:
             for client in response.get('Items'):             
                 CLIENTS.append(
                     Client(
-                        client["orgDetails"]["orgId"],
-                        client["orgDetails"]["clientName"],
-                        client["orgDetails"]["emailAddresses"],
-                        client["orgDetails"]["keyFilename"],
-                        client["orgDetails"]["pemFilename"],
-                        client["orgDetails"]["bidParameters"],
-                        client["orgDetails"]["adgroupBidParameters"],
-                        client["orgDetails"]["branchBidParameters"],
-                        client["orgDetails"]["appleCampaigns"],
-                        client["orgDetails"]["keywordAdderParameters"],
-                        client["orgDetails"]["branchIntegrationParameters"],
-                        client["orgDetails"]["currency"],
-                        client["orgDetails"]["appName"],
-                        client["orgDetails"]["appID"],
-                        client["orgDetails"]["campaignName"]
+                        client.get("orgDetails").get("orgId"),
+                        client.get("orgDetails").get("clientName"),
+                        client.get("orgDetails").get("emailAddresses"),
+                        client.get("orgDetails").get("keyFilename"),
+                        client.get("orgDetails").get("pemFilename"),
+                        client.get("orgDetails").get("bidParameters"),
+                        client.get("orgDetails").get("adgroupBidParameters"),
+                        client.get("orgDetails").get("branchBidParameters"),
+                        client.get("orgDetails").get("appleCampaigns"),
+                        client.get("orgDetails").get("keywordAdderParameters"),
+                        client.get("orgDetails").get("branchIntegrationParameters"),
+                        client.get("orgDetails").get("currency"),
+                        client.get("orgDetails").get("appName"),
+                        client.get("orgDetails").get("appID"),
+                        client.get("orgDetails").get("campaignName"),
+                        client.get("orgDetails").get("auth")
                     )
                 )
             start_key = response.get('LastEvaluatedKey', None)

@@ -8,7 +8,9 @@ import runKeywordAdder
 import runAdGroupBidAdjusterPoorPerformer
 import runBidAdjusterPoorPerformer
 import runClientDailyReport
+import runBranchBidAdjuster
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
+from Client import Client
 
 
 def initialize(env, dynamoEndpoint, emailToInternal):
@@ -21,11 +23,26 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     sendG = LambdaUtils.getSendG(env)
     dynamoClient = LambdaUtils.getDynamoResource(env,dynamoEndpoint)
 
-
 def process(clientEvent, context):
     print("Lambda Request ID:", context.aws_request_id)
     print("Lambda function ARN:", context.invoked_function_arn)
+    
+    # get the list of jobs to run from the clientEvent
     jobDetails = clientEvent['jobDetails']
+
+    # get auth token and add to the clientEvent, default to None
+    clientEvent['authToken'] = None
+    
+    client = Client.buildFromDictionary(
+        json.loads(
+            clientEvent['orgDetails']
+        )
+    )
+    if client.auth is not None:
+        authToken = LambdaUtils.getAuthToken(client.auth)
+        
+        # add accesToken to the clientEvent
+        clientEvent["authToken"] = authToken
 
     if 'runAppleIntegrationKeyword' in jobDetails:
         appleIntegrationKeywordResponse = runAppleIntegrationKeyword.lambda_handler(clientEvent)
@@ -58,6 +75,10 @@ def process(clientEvent, context):
     if 'runKeywordAdder' in jobDetails:
         runKeywordAdderResponse = runKeywordAdder.lambda_handler(clientEvent)
         print(json.dumps(runKeywordAdderResponse))
+
+    if 'runBranchBidAdjuster' in jobDetails:
+        runBranchBidAdjusterResponse = runBranchBidAdjuster.lambda_handler(clientEvent)
+        print(json.dumps(runBranchBidAdjusterResponse))
 
     return True
 

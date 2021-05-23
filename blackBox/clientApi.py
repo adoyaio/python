@@ -4,15 +4,7 @@ import json
 import time
 from utils import DynamoUtils, ApiUtils, EmailUtils
 from configuration import config
-
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, decimal.Decimal):
-            if o % 1 > 0:
-                return float(o)
-            else:
-                return int(o)
-        return super(DecimalEncoder, self).default(o)
+from utils.DecimalEncoder import DecimalEncoder
 
 def postClientHandler(event, context):  
     print('Loading postClientHandler...')
