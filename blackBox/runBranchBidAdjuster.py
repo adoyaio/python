@@ -239,10 +239,11 @@ def createJsonFromDataFrame(filtered_dataframe):
                 })
     return output_adGroupId_dict
 
-# TODO rework this to use config
+
 def createPutRequestString(campaignId, adgroupId):
-    return "https://api.searchads.apple.com/api/v4/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
-        campaignId, adgroupId)
+    # return config."https://api.searchads.apple.com/api/v4/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
+    #     campaignId, adgroupId)
+    return config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignId, adgroupId)
 
 
 def createDataFrame(items, campaign_id, adgroup_id):
@@ -448,7 +449,7 @@ def emailSummaryReport(data, sent):
     dateString = time.strftime("%m/%d/%Y")
     if dateString.startswith("0"):
         dateString = dateString[1:]
-    subjectString = "Branch Bid Adjuster summary for %s" % dateString
+    subjectString = "%s - Branch Bid Adjuster summary for %s" % (clientG.clientName, dateString)
     EmailUtils.sendTextEmail(messageString, subjectString, emailToG, [], config.EMAIL_FROM)
 
 

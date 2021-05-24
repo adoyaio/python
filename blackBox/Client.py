@@ -25,8 +25,8 @@ class Client:
         currency,
         appName,
         appID,
-        campaignName,
-        auth
+        auth,
+        hasRegistered
     ):  
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
@@ -58,8 +58,8 @@ class Client:
         self._currency = currency
         self._appName = appName
         self._appID = appID
-        self._campaignName = campaignName
         self._auth = auth
+        self._hasRegistered = hasRegistered
 
 
     def __str__(self):
@@ -131,9 +131,10 @@ class Client:
             return None
         return dict(self._auth)
 
-    @auth.setter
-    def auth(self, auth):
-        self._auth = auth  
+    @property
+    def hasRegistered(self):
+       return self._hasRegistered
+
 
     # bid adjusters should use this method for cpi
     def calculateCPI(self, spend, installs):
@@ -389,8 +390,8 @@ class Client:
             orgDetails.get('_currency'),
             orgDetails.get('_appName'),
             orgDetails.get('_appID'),
-            orgDetails.get('_campaignName'),
-            orgDetails.get('_auth')
+            orgDetails.get('_auth'),
+            orgDetails.get('_hasRegistered')
         )
 
     # initialize and return array of Client objects
@@ -421,8 +422,8 @@ class Client:
                         client.get("orgDetails").get("currency"),
                         client.get("orgDetails").get("appName"),
                         client.get("orgDetails").get("appID"),
-                        client.get("orgDetails").get("campaignName"),
-                        client.get("orgDetails").get("auth")
+                        client.get("orgDetails").get("auth"),
+                        client.get("orgDetails").get("hasRegistered")
                     )
                 )
             start_key = response.get('LastEvaluatedKey', None)

@@ -218,13 +218,13 @@ def loadAppleAdGroupToDynamo(data, client, start_date, end_date, adgroup_table):
         #put the data into the table
         adgroup_table.put_item(
               Item={
-                  #TODO The original date is in format "2019-11-13T00:00:00.000", but the split("T") command is hacky
+                  # TODO The original date is in format "2019-11-13T00:00:00.000", but the split("T") command is hacky
                   'creation_date': rows[0]['metadata']['startTime'].split("T")[0],
                   'date' : str(rows[0]['granularity'][i]["date"]),
-                  #TODO all of these client fields should be read from the configuration script 
+                  # TODO all of these client fields should be read from the configuration script 
                   'app_name': client.appName,
                   'app_id': str(client.appID),
-                  'campaign_name': client.campaignName,
+                  # 'campaign_name': client.campaignName, # TODO remove from client level, need to address if needed in dynamo
                   'campaign_id': str(client.keywordAdderIds["campaignId"]["search"]),
                   'adgroup_name': rows[0]['metadata']['adGroupName'],
                   'adgroup_id': str(rows[0]['metadata']['adGroupId']),
@@ -256,8 +256,8 @@ def loadAppleAdGroupToDynamo(data, client, start_date, end_date, adgroup_table):
                   #TODO all of these client fields should be read from the configuration script 
                   'app_name': client.appName,
                   'app_id': str(client.appID),
-                  'campaign_name': client.campaignName,
-                  'campaign_id': str(client.keywordAdderIds["campaignId"]["search"]),
+                  # 'campaign_name': client.campaignName,
+                  # 'campaign_id': str(client.keywordAdderIds["campaignId"]["search"]),
                   'adgroup_name': rows[0]['metadata']['adGroupName'],
                   'adgroup_id': str(rows[0]['metadata']['adGroupId']),
                   'bid': decimal.Decimal(str(rows[0]['metadata']['defaultCpcBid']['amount'])),
@@ -337,7 +337,7 @@ def process():
     print(client.orgId)
     print(client.appName)
     print(client.appID)
-    print(client.campaignName)
+
 
     
 
