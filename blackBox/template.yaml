@@ -210,3 +210,25 @@ Resources:
             Method: ANY
             Auth:
               ApiKeyRequired: true
+  postAppleApps:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.postAppleApps
+      Runtime: python3.7
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "postAppleApps"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/apple/apps
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true

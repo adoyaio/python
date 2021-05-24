@@ -44,6 +44,28 @@ import requests
 #         'body': { 'privateKey': returnKey, 'publicKey': returnPem }
 #     }
 
+def postAppleApps(event, context):
+    print('Loading getAppleApps....')
+    print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + str(context))
+    print("Received context: " + str(context.client_context))
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+
+    # TODO implement end to end logic
+
+    
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'x-api-key'
+        },
+        'body': {})
+    }
+
+
 def getAppleApps(event, context):
     print('Loading getAppleApps....')
     print("Received event: " + json.dumps(event, indent=2))

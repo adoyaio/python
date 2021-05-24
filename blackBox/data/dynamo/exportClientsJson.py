@@ -44,7 +44,7 @@ def process():
     for client in (dynamodb.Table('clients').scan()["Items"]):
         data.append(client["orgDetails"])
     with open('clients.' + str(today) + '.json', 'w') as outfile:
-        json.dump(data, outfile, cls=DecimalEncoder, indent=4)
+        json.dump(data, outfile, cls=DecimalEncoder, indent=4, sort_keys=True)
 
 
 if __name__ == "__main__":
