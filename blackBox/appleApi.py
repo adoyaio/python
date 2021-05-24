@@ -62,7 +62,7 @@ def postAppleApps(event, context):
             'Access-Control-Allow-Methods': 'GET',
             'Access-Control-Allow-Headers': 'x-api-key'
         },
-        'body': {})
+        'body': {}
     }
 
 
