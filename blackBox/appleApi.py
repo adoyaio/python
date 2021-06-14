@@ -89,7 +89,7 @@ def postAppleCampaign(event, context):
     front_end_lifetime_budget = body["front_end_lifetime_budget"]
     front_end_daily_budget = body["front_end_daily_budget"]
     objective=body["objective"]
-    target_cost_per_install=body["target_cost_per_install"]
+    target_cost_per_install= body["target_cost_per_install"]
     gender_first_entry=body["gender_first_entry"]
     min_age_first_entry=body["min_age_first_entry"]
     targeted_keywords_first_entry_competitor=body["targeted_keywords_first_entry_competitor"]
@@ -220,7 +220,7 @@ def postAppleCampaign(event, context):
         },
         "adamId": adam_id,
         "countriesOrRegions": [str(campaign_target_country)],
-            "status": "ENABLED",
+        "status": "PAUSED" # TODO ENABLED
     }
 
     create_campaign_url = base_url + "campaigns"
