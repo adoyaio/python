@@ -58,29 +58,7 @@ Resources:
       Timeout: 900
       FunctionName: "runAdoyaWeekly"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-  postClient:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: clientApi.postClientHandler
-      Runtime: python3.7
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "postClient"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/post
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  postClientAdmin:
+    postClientAdmin:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: clientApi.postClientAdminHandler
@@ -100,16 +78,16 @@ Resources:
           Properties:
             Path: /api/client/admin
             Method: post
-  getClient:
+  getClientKeywordHistory:
     Type: "AWS::Serverless::Function"
     Properties:
-      Handler: clientApi.getClientHandler
+      Handler: clientApi.getClientKeywordHistoryHandler
       Runtime: python3.7
       CodeUri: .
       Description: ""
       MemorySize: 448
       Timeout: 60
-      FunctionName: "getClient"
+      FunctionName: "getClientKeywordHistory"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
       Environment:
         Variables:
@@ -118,7 +96,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /api/client/get
+            Path: /api/client/keyword/history/
             Method: GET
             Auth:
               ApiKeyRequired: true
@@ -144,28 +122,6 @@ Resources:
             Method: GET
             Auth:
               ApiKeyRequired: true
-  getClientKeywordHistory:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: clientApi.getClientKeywordHistoryHandler
-      Runtime: python3.7
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getClientKeywordHistory"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/keyword/history/
-            Method: GET
-            Auth:
-              ApiKeyRequired: true
   postSupportItem:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -185,6 +141,28 @@ Resources:
           Type: Api
           Properties:
             Path: /api/support/post
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+  postClient:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.postClientHandler
+      Runtime: python3.7
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "postClient"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/client/post
             Method: ANY
             Auth:
               ApiKeyRequired: true
@@ -210,6 +188,28 @@ Resources:
             Method: ANY
             Auth:
               ApiKeyRequired: true
+  getClient:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.getClientHandler
+      Runtime: python3.7
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getClient"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/client/get
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
   getAppleAcls:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -231,7 +231,7 @@ Resources:
             Path: /api/apple/acls
             Method: ANY
             Auth:
-              ApiKeyRequired: true
+              ApiKeyRequired: t
   postAppleCampaign:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -240,7 +240,7 @@ Resources:
       CodeUri: .
       Description: ""
       MemorySize: 448
-      Timeout: 60
+      Timeout: 900
       FunctionName: "postAppleCampaign"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
       Environment:

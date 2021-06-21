@@ -79,62 +79,102 @@ def postAppleCampaign(event, context):
         authToken = LambdaUtils.getAuthToken(auth)
 
 
-    # TODO implement end to end logic
-    # parse event data
-    body = json.loads(event["body"])
-    org_id = body["org_id"]
-    app_name = body["app_name"]
-    adam_id = body["adam_id"]
-    campaign_target_country = body["campaign_target_country"]
-    front_end_lifetime_budget = body["front_end_lifetime_budget"]
-    front_end_daily_budget = body["front_end_daily_budget"]
-    objective=body["objective"]
-    target_cost_per_install= body["target_cost_per_install"]
-    gender_first_entry=body["gender_first_entry"]
-    min_age_first_entry=body["min_age_first_entry"]
-    targeted_keywords_first_entry_competitor=body["targeted_keywords_first_entry_competitor"]
-    targeted_keywords_first_entry_category=body["targeted_keywords_first_entry_category"]
-    targeted_keywords_first_entry_brand=body["targeted_keywords_first_entry_brand"]
-    currency=body["currency"]
+    # call competitor function
+    campaignData = json.loads(event["body"])
+    competitorCreated: bool = createCompetitor(campaignData, authToken)
+
+    if not competitorCreated: 
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'x-api-key'
+            },
+            'body': {}
+        }
 
     # call competitor function
+    campaignData = json.loads(event["body"])
+    competitorCreated: bool = createCompetitor(campaignData, authToken)
 
-    #indicate campaign type
+    if not competitorCreated: 
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'x-api-key'
+            },
+            'body': {}
+        }
+
+
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST',
+            'Access-Control-Allow-Headers': 'x-api-key'
+        },
+        'body': {}
+    }
+
+def createCompetitor(campaignData, authToken):
+    
+    # parse event data
+    # application
+    org_id = campaignData["org_id"]
+    app_name = campaignData["app_name"]
+    adam_id = campaignData["adam_id"]
+
+    # campaign level 
+    campaign_target_country = campaignData["campaign_target_country"]
+    front_end_lifetime_budget = float(campaignData["front_end_lifetime_budget"])
+    front_end_daily_budget = float(campaignData["front_end_daily_budget"])
+    objective=campaignData["objective"]
+    target_cost_per_install= float(campaignData["target_cost_per_install"])
+    gender_first_entry=campaignData["gender_first_entry"]
+    min_age_first_entry=campaignData["min_age_first_entry"]
+    targeted_keywords_first_entry_competitor=campaignData["targeted_keywords_first_entry_competitor"]
+    targeted_keywords_first_entry_category=campaignData["targeted_keywords_first_entry_category"]
+    targeted_keywords_first_entry_brand=campaignData["targeted_keywords_first_entry_brand"]
+    currency=campaignData["currency"]
+
+    # indicate campaign type
     campaign_type = 'Competitor - Exact Match'
 
-    #set date and time to create campaign and ad group names
+    # set date and time to create campaign and ad group names
     now = datetime.datetime.now()
 
-    #name campaign and providing date and time prevents duplicative naming
+    # name campaign and providing date and time prevents duplicative naming
     campaign_name = app_name + ' - ' + campaign_target_country + ' - ' + campaign_type + ' - ' + str(now.strftime("%Y-%m-%d %H:%M:%S"))
 
-    #enter your campaign's total budget
-    lifetime_budget_first_entry = float(front_end_lifetime_budget) * 0.30
+    # enter your campaign's total budget
+    lifetime_budget = float(front_end_lifetime_budget) * 0.30
 
-    #enter your campaign's daily budget cap
+    # enter your campaign's daily budget cap
     daily_budget_amount = float(front_end_daily_budget) * 0.30
 
-    #name your ad group
+    # name your ad group
     ad_group_name = campaign_name
 
-    #would you like to target search match?
+    # would you like to target search match?
     search_match = False #options are True or False
 
-    #create null variable and assign it None as python doesn't have the concept of null
+    # create null variable and assign it None as python doesn't have the concept of null
     null = None
 
-    ##############################################################################################################################################
-    #3: targeted keyword creation
+    # 3: targeted keyword creation
 
     # relevant keywords
     targeted_keywords = [each_string.lower() for each_string in targeted_keywords_first_entry_competitor]  
-    #enter keyword match type 
-    targeted_keyword_match_type = 'EXACT' #options are 'EXACT' or 'BROAD'
+    # enter keyword match type 
+    targeted_keyword_match_type = 'EXACT' # options are 'EXACT' or 'BROAD'
 
-    #set current time as ad group start date
+    # set current time as ad group start date
     ad_group_start_date_time = str(datetime.datetime.now()).replace(' ','T')
 
-    #headers required as part of the payload submission
     headers = {
         "Authorization": "Bearer %s" % authToken, 
         "X-AP-Context": "orgId=%s" % org_id,
@@ -142,31 +182,37 @@ def postAppleCampaign(event, context):
         "Accept": "application/json"
     }
 
-    #base url for hitting apple's endpoint
-    # base_url = config.APPLE_SEARCHADS_URL_BASE_V4
+    # TODO base_url = config.APPLE_SEARCHADS_URL_BASE_V4
     base_url = "https://api.searchads.apple.com/api/v3/"
 
-
-    ##############################################################################################################################################
-    #5: error handling for values entered above in front end, putting them here to help with readability though they chronologically they could go above
+    # 5: error handling for values entered above in front end, putting them here to help with readability though they chronologically they could go above
 
     #logic to ensure daily cap doesn't exceed total budget, apple will cause this to fail anyway but better to address up front
-    if lifetime_budget_first_entry > daily_budget_amount:
-        lifetime_budget = lifetime_budget_first_entry
-    elif lifetime_budget_first_entry <= daily_budget_amount:
-        sys.exit('Lifetime Budget Must Be Greater Than Daily Budget')
+    if lifetime_budget > daily_budget_amount:
+         print('Lifetime Budget Valid')
+    elif lifetime_budget <= daily_budget_amount:
+        # TODO bubble error
+        print('Lifetime Budget Must Be Greater Than Daily Budget')
+        print(str(lifetime_budget))
+        print(str(daily_budget_amount))
+        return False
     else:
-        sys.exit("Invalid Lifetime Budget & Daily Cap Entry.")
+        print("Invalid Lifetime Budget & Daily Cap Entry.")
+        return False
 
-    #logic to ensure target CPI doesn't exceed daily budget cap, apple will cause this to fail anyway but better to address up front
+    # logic to ensure target CPI doesn't exceed daily budget cap, apple will cause this to fail anyway but better to address up front
     if daily_budget_amount > target_cost_per_install:
-        daily_budget_amount = daily_budget_amount
+        print('Daily Budget Valid')
     elif daily_budget_amount <= target_cost_per_install:
-        sys.exit('Daily Budget Cap Must Be Greater Than Target Cost Per Install')
+        print('Daily Budget Cap Must Be Greater Than Target Cost Per Install')
+        print(str(daily_budget_amount))
+        print(str(target_cost_per_install))
+        return False
     else:
-        sys.exit("Invalid Daily Cap & Max CPI Entry")
+        print("Invalid Daily Cap & Max CPI Entry")
+        return False
 
-    #logic to determine gender targeting this is done at the ad group level
+    # logic to determine gender targeting this is done at the ad group level
     if gender_first_entry == 'male':
         gender = ['M']
     elif gender_first_entry == 'female':
@@ -175,8 +221,9 @@ def postAppleCampaign(event, context):
         gender = ['M','F']
     else:
         print("Invalid Gender Targeting Entry.")
+        return False
 
-    #logic to determine min age targeting this is done at the ad group level
+    # logic to determine min age targeting this is done at the ad group level
     if min_age_first_entry == "18":
         min_age = 18
     elif min_age_first_entry == "21":
@@ -185,8 +232,9 @@ def postAppleCampaign(event, context):
         min_age = null
     else:
         print("Invalid Gender Targeting Entry.")
+        return False
 
-    #logic to ensure keywords are entered for non-search match campaigns
+    #l ogic to ensure keywords are entered for non-search match campaigns
     if (len(targeted_keywords) == 0) & (search_match == True):
         print('Search Match Campaign Enabled')
     elif (len(targeted_keywords) != 0) & (search_match == True):
@@ -194,17 +242,17 @@ def postAppleCampaign(event, context):
     elif (len(targeted_keywords) != 0) & (search_match == False):
         print('Keyword-Only Campaign Enabled')
     elif (len(targeted_keywords) == 0) & (search_match == False):
-        sys.exit('Keywords Required for Non-Search Match Campaigns')
+        print('Keywords Required for Non-Search Match Campaigns')
+        return False
     else:
-        sys.exit('Invalid Keyword Entry')
+        print('Invalid Keyword Entry')
+        return False
 
 
     # delay script briefly so apple api has enough time to update id in their system so our script can reference it
     time.sleep(5) 
 
     #part 1c: create a new campaign
-
-    #payload to send to apple
     create_campaign_payload = {
         "orgId": org_id,
         "adChannelType": "SEARCH",
@@ -233,11 +281,9 @@ def postAppleCampaign(event, context):
 
     print ("The result of POST campaign to Apple: %s" % create_campaign_response)
 
-    #part 2: create ad group
+    # part 2: create ad group
 
-    #part 2a: get the most recent campaign id
-
-    # json to send to apple
+    # part 2a: get the most recent campaign id
     get_campaigns_payload = {
         "fields":["id","name","adamId","budgetAmount","dailyBudgetAmount","status","servingStatus"],
         "conditions":[
@@ -349,7 +395,7 @@ def postAppleCampaign(event, context):
     all_ad_groups_list = ad_group_data_list[0][0:1000]
 
     #the following returns a list of all the ad groups the output could be shown on the front end
-    all_ad_group_names = [d['name'] for d in all_ad_groups_list]
+    # all_ad_group_names = [d['name'] for d in all_ad_groups_list]
 
     # delay script briefly so apple api has enough time to update id in their system so our script can reference it
     time.sleep(5)
@@ -373,16 +419,7 @@ def postAppleCampaign(event, context):
 
     print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response)
 
-    return {
-        'statusCode': 200,
-        'headers': {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'x-api-key'
-        },
-        'body': {}
-    }
-
+    return True
 
 
 def getAppleApps(event, context):
