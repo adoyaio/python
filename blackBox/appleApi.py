@@ -94,11 +94,10 @@ def postAppleCampaign(event, context):
             'body': {}
         }
 
-    # call competitor function
-    campaignData = json.loads(event["body"])
-    competitorCreated: bool = createCompetitor(campaignData, authToken)
+    # call brand function
+    brandCreated: bool = createBrand(campaignData, authToken)
 
-    if not competitorCreated: 
+    if not brandCreated: 
         return {
             'statusCode': 400,
             'headers': {
@@ -120,10 +119,32 @@ def postAppleCampaign(event, context):
         'body': {}
     }
 
-def createCompetitor(campaignData, authToken):
+def createBrand(campaignData, authToken):
+     # parse event data
+    org_id = campaignData["org_id"]
+    app_name = campaignData["app_name"]
+    adam_id = campaignData["adam_id"]
+
+    # campaign level 
+    campaign_target_country = campaignData["campaign_target_country"]
+    front_end_lifetime_budget = float(campaignData["front_end_lifetime_budget"])
+    front_end_daily_budget = float(campaignData["front_end_daily_budget"])
+    objective=campaignData["objective"]
+    target_cost_per_install= float(campaignData["target_cost_per_install"])
+    gender_first_entry=campaignData["gender_first_entry"]
+    min_age_first_entry=campaignData["min_age_first_entry"]
+    targeted_keywords_first_entry_competitor=campaignData["targeted_keywords_first_entry_competitor"]
+    targeted_keywords_first_entry_category=campaignData["targeted_keywords_first_entry_category"]
+    targeted_keywords_first_entry_brand=campaignData["targeted_keywords_first_entry_brand"]
+    currency=campaignData["currency"]
+
+    # TODO 
+
     
+    return True
+
+def createCompetitor(campaignData, authToken):
     # parse event data
-    # application
     org_id = campaignData["org_id"]
     app_name = campaignData["app_name"]
     adam_id = campaignData["adam_id"]
@@ -165,10 +186,12 @@ def createCompetitor(campaignData, authToken):
     # create null variable and assign it None as python doesn't have the concept of null
     null = None
 
-    # 3: targeted keyword creation
+
+    # 1. targeted keyword creation
 
     # relevant keywords
     targeted_keywords = [each_string.lower() for each_string in targeted_keywords_first_entry_competitor]  
+    
     # enter keyword match type 
     targeted_keyword_match_type = 'EXACT' # options are 'EXACT' or 'BROAD'
 
@@ -185,9 +208,7 @@ def createCompetitor(campaignData, authToken):
     # TODO base_url = config.APPLE_SEARCHADS_URL_BASE_V4
     base_url = "https://api.searchads.apple.com/api/v3/"
 
-    # 5: error handling for values entered above in front end, putting them here to help with readability though they chronologically they could go above
-
-    #logic to ensure daily cap doesn't exceed total budget, apple will cause this to fail anyway but better to address up front
+    # logic to ensure daily cap doesn't exceed total budget, apple will cause this to fail anyway but better to address up front
     if lifetime_budget > daily_budget_amount:
          print('Lifetime Budget Valid')
     elif lifetime_budget <= daily_budget_amount:
@@ -234,7 +255,7 @@ def createCompetitor(campaignData, authToken):
         print("Invalid Gender Targeting Entry.")
         return False
 
-    #l ogic to ensure keywords are entered for non-search match campaigns
+    # logic to ensure keywords are entered for non-search match campaigns
     if (len(targeted_keywords) == 0) & (search_match == True):
         print('Search Match Campaign Enabled')
     elif (len(targeted_keywords) != 0) & (search_match == True):
@@ -252,7 +273,7 @@ def createCompetitor(campaignData, authToken):
     # delay script briefly so apple api has enough time to update id in their system so our script can reference it
     time.sleep(5) 
 
-    #part 1c: create a new campaign
+    # create a new campaign
     create_campaign_payload = {
         "orgId": org_id,
         "adChannelType": "SEARCH",
@@ -268,24 +289,35 @@ def createCompetitor(campaignData, authToken):
         },
         "adamId": adam_id,
         "countriesOrRegions": [str(campaign_target_country)],
-        "status": "PAUSED" # TODO ENABLED
+        "status": "PAUSED" # TODO ENABLED, set via environment
     }
 
     create_campaign_url = base_url + "campaigns"
 
     print("Payload is '%s'." % create_campaign_payload)
     print("Url is '%s'." % create_campaign_url)
-    create_campaign_response = requests.post(create_campaign_url,  
-                                   json=create_campaign_payload,
-                                   headers=headers) 
+    create_campaign_response = requests.post(
+        create_campaign_url,  
+        json=create_campaign_payload,
+        headers=headers
+    ) 
 
     print ("The result of POST campaign to Apple: %s" % create_campaign_response)
 
-    # part 2: create ad group
+    # error handling
+    if create_campaign_response.status_code != 200:
+        return False
 
-    # part 2a: get the most recent campaign id
+    # 2. create ad group
+
+    # get the most recent campaign id
     get_campaigns_payload = {
-        "fields":["id","name","adamId","budgetAmount","dailyBudgetAmount","status","servingStatus"],
+        "fields":[
+            "id","name",
+             "adamId","budgetAmount",
+            "dailyBudgetAmount",
+            "status","servingStatus"
+        ],
         "conditions":[
             {
                 "field":"servingStatus",
@@ -293,7 +325,12 @@ def createCompetitor(campaignData, authToken):
                 "values":["NOT_RUNNING"]
             }
         ],
-        "orderBy":[{"field":"id","sortOrder":"DESCENDING"}],
+        "orderBy":[
+            {
+                "field":"id",
+                "sortOrder":"DESCENDING"
+            }
+        ],
         "pagination":{"offset":0,"limit":1000}
     }
 
@@ -302,13 +339,15 @@ def createCompetitor(campaignData, authToken):
     print ("url is '%s'." % get_campaigns_url)
     print ("Payload is '%s'." % get_campaigns_payload)
 
-    get_campaigns_response = requests.post(get_campaigns_url,
-                                   json=get_campaigns_payload,
-                                   headers=headers) 
+    get_campaigns_response = requests.post(
+        get_campaigns_url,
+        json=get_campaigns_payload,
+        headers=headers
+    ) 
 
     print ("The result of get campaigns from apple : %s" % get_campaigns_response)
 
-    #extract all the apps assignd to the apple search ads account
+    # extract all the apps assignd to the apple search ads account
     campaign_id_data = json.loads(get_campaigns_response.text) 
     campaign_id_list = [campaign_id_data[x] for x in campaign_id_data]
     all_campaigns_list = campaign_id_list[0][0:1000]
@@ -316,12 +355,10 @@ def createCompetitor(campaignData, authToken):
     # delay script briefly so apple api has enough time to update id in their system so our script can reference it
     time.sleep(5)
 
-    #get the adam id which then begins the campaign creation process
+    # get the adam id which then begins the campaign creation process
     new_campaign_id = [aDict['id'] for aDict in all_campaigns_list if aDict['name'] == campaign_name][0]
 
-    #part 2b: create an ad group in the new campaign
-
-    #payload to send to apple
+    # create an ad group in the new campaign
     create_ad_group_payload = {
             "name": str(ad_group_name),
             "startTime": ad_group_start_date_time,
@@ -355,17 +392,21 @@ def createCompetitor(campaignData, authToken):
 
     print ("Payload is '%s'." % create_ad_group_payload)
     print ("Url is '%s'." % create_ad_group_url)
-    create_ad_group_response = requests.post(create_ad_group_url,
-                                   json=create_ad_group_payload,
-                                   headers=headers) 
+    create_ad_group_response = requests.post(
+        create_ad_group_url,
+        json=create_ad_group_payload,
+        headers=headers
+    ) 
 
     print ("The result of POST adgroups to Apple: %s" % create_ad_group_response)
 
-    #part 3: create targeted keywords------------------------------------------------------------------
-    #--------------------------------------------------------------------------------------------------
+    # error handling
+    if create_ad_group_response.status_code != 200:
+        return False
 
-    #part 3a: get the most recent ad group id
-    # json to send to apple
+    # 3. create targeted keywords
+
+    # get the most recent ad group id
     get_adgroups_payload = {
         "fields":["id","name"],
         "conditions":[
@@ -375,26 +416,34 @@ def createCompetitor(campaignData, authToken):
                 "values":["NOT_RUNNING","RUNNING"]
             }
         ],
-           "orderBy":[{"field":"id","sortOrder":"DESCENDING"}],
-        "pagination":{"offset":0,"limit":1000}
+        "orderBy":[
+            {
+                "field":"id",
+                "sortOrder":"DESCENDING"
+            }
+        ],
+        "pagination":
+            {"offset":0,"limit":1000}
     }
 
     get_adgroups_url = base_url + "campaigns/%s/adgroups/find" % new_campaign_id
     print ("Url is '%s'." % get_adgroups_url)
     print ("Payload is '%s'." % get_adgroups_payload)
 
-    get_adgroups_response = requests.post(base_url + "campaigns/%s/adgroups/find" % new_campaign_id,
-                                   json=get_adgroups_payload,
-                                   headers=headers) 
+    get_adgroups_response = requests.post(
+        base_url + "campaigns/%s/adgroups/find" % new_campaign_id,
+        json=get_adgroups_payload,
+        headers=headers
+    ) 
 
     print ("The result of getting adgroups from Apple: %s" % get_adgroups_response)
 
-    #extract all the ad groups
+    # extract all the ad groups
     ad_group_data = json.loads(get_adgroups_response.text) 
     ad_group_data_list = [ad_group_data[x] for x in ad_group_data]
     all_ad_groups_list = ad_group_data_list[0][0:1000]
 
-    #the following returns a list of all the ad groups the output could be shown on the front end
+    # the following returns a list of all the ad groups the output could be shown on the front end
     # all_ad_group_names = [d['name'] for d in all_ad_groups_list]
 
     # delay script briefly so apple api has enough time to update id in their system so our script can reference it
@@ -403,21 +452,35 @@ def createCompetitor(campaignData, authToken):
     #get the ad group which begins the keyword adding process
     new_ad_group_id = [aDict['id'] for aDict in all_ad_groups_list if aDict['name'] == ad_group_name][0]
 
-    #SK------------------------------------------------------
-    #part 3b: create new keywords and add to newly-created campaign and ad group
-    
-    #pulls in keywords from list above
-    #targeted_keyword_file_to_post = [{'text': keyword} for keyword in targeted_keywords]
+    # create new keywords and add to newly-created campaign and ad group
+    # targeted_keyword_file_to_post = [{'text': keyword} for keyword in targeted_keywords]
 
-    targeted_keyword_payload = [{"text": item, "matchType": targeted_keyword_match_type, "bidAmount": {"currency": str(currency), "amount": str(round(target_cost_per_install * 0.50,2))}} for item in targeted_keywords]
+    targeted_keyword_payload = [
+        {
+            "text": item, 
+            "matchType": targeted_keyword_match_type,
+            "bidAmount": 
+                {
+                    "currency": str(currency), 
+                    "amount": str(round(target_cost_per_install * 0.50,2))
+                }
+        } 
+        for item in targeted_keywords
+    ]
     targeted_keyword_url = base_url + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
     print ("Url is '%s'." % targeted_keyword_url)
     print ("Payload is '%s'." % targeted_keyword_payload)
-    create_targeted_keyword_response = requests.post(targeted_keyword_url,
-                           json=targeted_keyword_payload,
-                           headers=headers)
+    create_targeted_keyword_response = requests.post(
+        targeted_keyword_url,
+        json=targeted_keyword_payload,
+        headers=headers
+    )
 
     print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response)
+
+    # error handling
+    if create_targeted_keyword_response.status_code != 200:
+        return False
 
     return True
 
@@ -483,10 +546,12 @@ def getAppleAcls(event, context):
     
     get_acls_response = requests.get(config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
         headers=headers
-    ) 
+    )
 
     #extract all the apps assignd to the apple search ads account
     get_acls_all_orgs_response = json.loads(get_acls_response.text)
+
+    print(str(get_acls_all_orgs_response))
     get_acls_all_orgs_list = [get_acls_all_orgs_response[x] for x in get_acls_all_orgs_response]
     get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
 
