@@ -79,9 +79,9 @@ def postAppleCampaign(event, context):
         authToken = LambdaUtils.getAuthToken(auth)
 
 
-    # call competitor function
+    # create competitor campaign
     campaignData = json.loads(event["body"])
-    competitorCreated: bool = createCompetitor(campaignData, authToken)
+    competitorCreated: bool = createCampaign('competitor', campaignData, authToken)
 
     if not competitorCreated: 
         return {
@@ -94,8 +94,8 @@ def postAppleCampaign(event, context):
             'body': {}
         }
 
-    # call brand function
-    brandCreated: bool = createBrand(campaignData, authToken)
+    # create brand campaign
+    brandCreated: bool = createCampaign('brand', campaignData, authToken)
 
     if not brandCreated: 
         return {
@@ -108,6 +108,19 @@ def postAppleCampaign(event, context):
             'body': {}
         }
 
+    # create category campaign
+    categoryCreated: bool = createCampaign('category', campaignData, authToken)
+
+    if not categoryCreated: 
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'x-api-key'
+            },
+            'body': {}
+        }
 
     return {
         'statusCode': 200,
@@ -119,31 +132,7 @@ def postAppleCampaign(event, context):
         'body': {}
     }
 
-def createBrand(campaignData, authToken):
-     # parse event data
-    org_id = campaignData["org_id"]
-    app_name = campaignData["app_name"]
-    adam_id = campaignData["adam_id"]
-
-    # campaign level 
-    campaign_target_country = campaignData["campaign_target_country"]
-    front_end_lifetime_budget = float(campaignData["front_end_lifetime_budget"])
-    front_end_daily_budget = float(campaignData["front_end_daily_budget"])
-    objective=campaignData["objective"]
-    target_cost_per_install= float(campaignData["target_cost_per_install"])
-    gender_first_entry=campaignData["gender_first_entry"]
-    min_age_first_entry=campaignData["min_age_first_entry"]
-    targeted_keywords_first_entry_competitor=campaignData["targeted_keywords_first_entry_competitor"]
-    targeted_keywords_first_entry_category=campaignData["targeted_keywords_first_entry_category"]
-    targeted_keywords_first_entry_brand=campaignData["targeted_keywords_first_entry_brand"]
-    currency=campaignData["currency"]
-
-    # TODO 
-
-    
-    return True
-
-def createCompetitor(campaignData, authToken):
+def createCampaign(campaignType, campaignData, authToken):
     # parse event data
     org_id = campaignData["org_id"]
     app_name = campaignData["app_name"]
@@ -153,17 +142,24 @@ def createCompetitor(campaignData, authToken):
     campaign_target_country = campaignData["campaign_target_country"]
     front_end_lifetime_budget = float(campaignData["front_end_lifetime_budget"])
     front_end_daily_budget = float(campaignData["front_end_daily_budget"])
-    objective=campaignData["objective"]
+    # TODO rm?
+    # objective=campaignData["objective"]
     target_cost_per_install= float(campaignData["target_cost_per_install"])
-    gender_first_entry=campaignData["gender_first_entry"]
-    min_age_first_entry=campaignData["min_age_first_entry"]
-    targeted_keywords_first_entry_competitor=campaignData["targeted_keywords_first_entry_competitor"]
-    targeted_keywords_first_entry_category=campaignData["targeted_keywords_first_entry_category"]
-    targeted_keywords_first_entry_brand=campaignData["targeted_keywords_first_entry_brand"]
+    gender=campaignData["gender"]
+    min_age=campaignData["min_age"]
+    targeted_keywords_competitor=campaignData["targeted_keywords_competitor"]
+    targeted_keywords_category=campaignData["targeted_keywords_category"]
+    targeted_keywords_brand=campaignData["targeted_keywords_brand"]
     currency=campaignData["currency"]
 
-    # indicate campaign type
-    campaign_type = 'Competitor - Exact Match'
+    # indicate campaign type 
+    # pivot on campaign type competitor, brand, category
+    if campaignType == 'competitor':
+        campaign_type = 'Competitor - Exact Match'
+    elif campaignType == 'category':
+        campaign_type = 'Category - Exact Match'
+    elif campaignType == 'brand':
+        campaign_type = 'Brand - Exact Match'    
 
     # set date and time to create campaign and ad group names
     now = datetime.datetime.now()
@@ -171,11 +167,17 @@ def createCompetitor(campaignData, authToken):
     # name campaign and providing date and time prevents duplicative naming
     campaign_name = app_name + ' - ' + campaign_target_country + ' - ' + campaign_type + ' - ' + str(now.strftime("%Y-%m-%d %H:%M:%S"))
 
-    # enter your campaign's total budget
-    lifetime_budget = float(front_end_lifetime_budget) * 0.30
-
-    # enter your campaign's daily budget cap
-    daily_budget_amount = float(front_end_daily_budget) * 0.30
+    # budget
+    # pivot on campaign type competitor, brand, category
+    if campaignType == 'competitor':
+        lifetime_budget = float(front_end_lifetime_budget) * 0.30
+        daily_budget_amount = float(front_end_daily_budget) * 0.30
+    elif campaignType == 'category':
+        lifetime_budget = float(front_end_lifetime_budget) * 0.30
+        daily_budget_amount = float(front_end_daily_budget) * 0.30
+    elif campaignType == 'brand':
+        lifetime_budget = float(front_end_lifetime_budget) * 0.15
+        daily_budget_amount = float(front_end_daily_budget) * 0.15
 
     # name your ad group
     ad_group_name = campaign_name
@@ -186,11 +188,17 @@ def createCompetitor(campaignData, authToken):
     # create null variable and assign it None as python doesn't have the concept of null
     null = None
 
-
     # 1. targeted keyword creation
 
     # relevant keywords
-    targeted_keywords = [each_string.lower() for each_string in targeted_keywords_first_entry_competitor]  
+    # pivot on campaign type competitor, brand, category
+    if campaignType == 'competitor':
+        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_competitor] 
+    elif campaignType == 'category':
+        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_category] 
+    elif campaignType == 'brand':
+        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_brand] 
+     
     
     # enter keyword match type 
     targeted_keyword_match_type = 'EXACT' # options are 'EXACT' or 'BROAD'
@@ -234,22 +242,22 @@ def createCompetitor(campaignData, authToken):
         return False
 
     # logic to determine gender targeting this is done at the ad group level
-    if gender_first_entry == 'male':
+    if gender == 'male':
         gender = ['M']
-    elif gender_first_entry == 'female':
+    elif gender == 'female':
         gender = ['F']
-    elif gender_first_entry == 'all':
+    elif gender == 'all':
         gender = ['M','F']
     else:
         print("Invalid Gender Targeting Entry.")
         return False
 
     # logic to determine min age targeting this is done at the ad group level
-    if min_age_first_entry == "18":
+    if min_age == "18":
         min_age = 18
-    elif min_age_first_entry == "21":
+    elif min_age == "21":
         min_age = 21
-    elif min_age_first_entry == 'all':
+    elif min_age == 'all':
         min_age = null
     else:
         print("Invalid Gender Targeting Entry.")
@@ -489,7 +497,6 @@ def getAppleApps(event, context):
     print('Loading getAppleApps....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
-    print("Received context: " + str(context.client_context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
 
