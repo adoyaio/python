@@ -122,6 +122,48 @@ def postAppleCampaign(event, context):
             'body': {}
         }
 
+    # create exact discover campaign
+    exactDiscoveryCreated: bool = createCampaign('exact_discovery', campaignData, authToken)
+
+    if not exactDiscoveryCreated: 
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'x-api-key'
+            },
+            'body': {}
+        }
+
+    # create broad discover campaign
+    broadDiscoveryCreated: bool = createCampaign('broad_discovery', campaignData, authToken)
+
+    if not broadDiscoveryCreated: 
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'x-api-key'
+            },
+            'body': {}
+        }
+
+    # create search discover campaign
+    searchDiscoveryCreated: bool = createCampaign('search_discovery', campaignData, authToken)
+
+    if not searchDiscoveryCreated: 
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'x-api-key'
+            },
+            'body': {}
+        }
+
     return {
         'statusCode': 200,
         'headers': {
@@ -142,8 +184,6 @@ def createCampaign(campaignType, campaignData, authToken):
     campaign_target_country = campaignData["campaign_target_country"]
     front_end_lifetime_budget = float(campaignData["front_end_lifetime_budget"])
     front_end_daily_budget = float(campaignData["front_end_daily_budget"])
-    # TODO rm?
-    # objective=campaignData["objective"]
     target_cost_per_install= float(campaignData["target_cost_per_install"])
     gender=campaignData["gender"]
     min_age=campaignData["min_age"]
@@ -152,14 +192,26 @@ def createCampaign(campaignType, campaignData, authToken):
     targeted_keywords_brand=campaignData["targeted_keywords_brand"]
     currency=campaignData["currency"]
 
-    # indicate campaign type 
-    # pivot on campaign type competitor, brand, category
+    print("---------------------------------------------------")
+    print("Processing createCampaign for campaignType " +  campaignType)
+    print("---------------------------------------------------")
+
+    # pivot on campaign type to readable campaign type
     if campaignType == 'competitor':
         campaign_type = 'Competitor - Exact Match'
     elif campaignType == 'category':
         campaign_type = 'Category - Exact Match'
     elif campaignType == 'brand':
-        campaign_type = 'Brand - Exact Match'    
+        campaign_type = 'Brand - Exact Match'
+    elif campaignType == 'exact_discovery':
+        campaign_type = 'Discovery - Exact Match'
+    elif campaignType == 'broad_discovery':
+        campaign_type = 'Discovery - Broad Match'
+    elif campaignType == 'search_discovery':
+        campaign_type = 'Discovery - Search Match'
+    else:
+        print("Invalid campaignType")
+        return False
 
     # set date and time to create campaign and ad group names
     now = datetime.datetime.now()
@@ -167,8 +219,7 @@ def createCampaign(campaignType, campaignData, authToken):
     # name campaign and providing date and time prevents duplicative naming
     campaign_name = app_name + ' - ' + campaign_target_country + ' - ' + campaign_type + ' - ' + str(now.strftime("%Y-%m-%d %H:%M:%S"))
 
-    # budget
-    # pivot on campaign type competitor, brand, category
+    # budget; pivot on campaign type
     if campaignType == 'competitor':
         lifetime_budget = float(front_end_lifetime_budget) * 0.30
         daily_budget_amount = float(front_end_daily_budget) * 0.30
@@ -178,30 +229,64 @@ def createCampaign(campaignType, campaignData, authToken):
     elif campaignType == 'brand':
         lifetime_budget = float(front_end_lifetime_budget) * 0.15
         daily_budget_amount = float(front_end_daily_budget) * 0.15
+    elif campaignType == 'exact_discovery':
+        lifetime_budget = float(front_end_lifetime_budget) * 0.05
+        daily_budget_amount = float(front_end_daily_budget) * 0.05
+    elif campaignType == 'broad_discovery':
+        lifetime_budget = float(front_end_lifetime_budget) * 0.10
+        daily_budget_amount = float(front_end_daily_budget) * 0.10
+    elif campaignType == 'search_discovery':
+        lifetime_budget = float(front_end_lifetime_budget) * 0.10
+        daily_budget_amount = float(front_end_daily_budget) * 0.10
+    else:
+        print("Invalid campaignType")
+        return False
 
     # name your ad group
     ad_group_name = campaign_name
 
-    # would you like to target search match?
-    search_match = False #options are True or False
+    # search match; pivot on campaign type
+    if campaignType == 'search_discovery':
+        search_match = True
+    else:
+        search_match = False
 
     # create null variable and assign it None as python doesn't have the concept of null
     null = None
 
     # 1. targeted keyword creation
 
-    # relevant keywords
-    # pivot on campaign type competitor, brand, category
+    # relevant keywords; pivot on campaign type
     if campaignType == 'competitor':
-        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_competitor] 
+        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_competitor]
     elif campaignType == 'category':
-        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_category] 
+        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_category]
     elif campaignType == 'brand':
-        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_brand] 
-     
+        targeted_keywords = [each_string.lower() for each_string in targeted_keywords_brand]
+    elif campaignType == 'exact_discovery':
+        targeted_keywords = []
+    elif campaignType:
+        targeted_keywords = []
+        targeted_keywords.extend(
+            [each_string.lower() for each_string in targeted_keywords_competitor]
+        )
+        targeted_keywords.extend(
+            [each_string.lower() for each_string in targeted_keywords_category if each_string not in targeted_keywords]
+        )
+        targeted_keywords.extend(
+            [each_string.lower() for each_string in targeted_keywords_brand if each_string not in targeted_keywords]
+        )
+
     
     # enter keyword match type 
-    targeted_keyword_match_type = 'EXACT' # options are 'EXACT' or 'BROAD'
+    if campaignType == 'broad_discovery':
+        targeted_keyword_match_type = 'BROAD'
+    else:
+        targeted_keyword_match_type = 'EXACT'
+
+
+    # negative kw match type, always EXACT
+    negative_ad_group_match_type = 'EXACT'
 
     # set current time as ad group start date
     ad_group_start_date_time = str(datetime.datetime.now()).replace(' ','T')
@@ -213,8 +298,9 @@ def createCampaign(campaignType, campaignData, authToken):
         "Accept": "application/json"
     }
 
-    # TODO base_url = config.APPLE_SEARCHADS_URL_BASE_V4
+    base_url_4 = config.APPLE_SEARCHADS_URL_BASE_V4
     base_url = "https://api.searchads.apple.com/api/v3/"
+
 
     # logic to ensure daily cap doesn't exceed total budget, apple will cause this to fail anyway but better to address up front
     if lifetime_budget > daily_budget_amount:
@@ -263,18 +349,9 @@ def createCampaign(campaignType, campaignData, authToken):
         print("Invalid Gender Targeting Entry.")
         return False
 
-    # logic to ensure keywords are entered for non-search match campaigns
-    if (len(targeted_keywords) == 0) & (search_match == True):
-        print('Search Match Campaign Enabled')
-    elif (len(targeted_keywords) != 0) & (search_match == True):
-        print('Search Match Campaign Enabled')
-    elif (len(targeted_keywords) != 0) & (search_match == False):
-        print('Keyword-Only Campaign Enabled')
-    elif (len(targeted_keywords) == 0) & (search_match == False):
-        print('Keywords Required for Non-Search Match Campaigns')
-        return False
-    else:
-        print('Invalid Keyword Entry')
+    # logic to ensure keywords are entered for all but exact_discovery
+    if (len(targeted_keywords) == 0) & (campaignType != 'exact_discovery'):
+        print('Keywords required for all campaigns other than exact_discovery')
         return False
 
 
@@ -460,35 +537,65 @@ def createCampaign(campaignType, campaignData, authToken):
     #get the ad group which begins the keyword adding process
     new_ad_group_id = [aDict['id'] for aDict in all_ad_groups_list if aDict['name'] == ad_group_name][0]
 
+    print("Created adgroup " + str(new_ad_group_id))
+
+    if campaignType == 'exact_discovery':
+        print("EXACT DISCOVERY campaign, skipping keywords")
+        return True
+    
     # create new keywords and add to newly-created campaign and ad group
-    # targeted_keyword_file_to_post = [{'text': keyword} for keyword in targeted_keywords]
+    if campaignType != 'search_discovery':
+        targeted_keyword_payload = [
+            {
+                "text": item, 
+                "matchType": targeted_keyword_match_type,
+                "bidAmount": 
+                    {
+                        "currency": str(currency), 
+                        "amount": str(round(target_cost_per_install * 0.50,2))
+                    }
+            } 
+            for item in targeted_keywords
+        ]
+        targeted_keyword_url = base_url + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
+        print ("Url is '%s'." % targeted_keyword_url)
+        print ("Payload is '%s'." % targeted_keyword_payload)
+        create_targeted_keyword_response = requests.post(
+            targeted_keyword_url,
+            json=targeted_keyword_payload,
+            headers=headers
+        )
 
-    targeted_keyword_payload = [
-        {
-            "text": item, 
-            "matchType": targeted_keyword_match_type,
-            "bidAmount": 
-                {
-                    "currency": str(currency), 
-                    "amount": str(round(target_cost_per_install * 0.50,2))
-                }
-        } 
-        for item in targeted_keywords
-    ]
-    targeted_keyword_url = base_url + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
-    print ("Url is '%s'." % targeted_keyword_url)
-    print ("Payload is '%s'." % targeted_keyword_payload)
-    create_targeted_keyword_response = requests.post(
-        targeted_keyword_url,
-        json=targeted_keyword_payload,
-        headers=headers
-    )
+        print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response)
 
-    print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response)
+        # error handling
+        if create_targeted_keyword_response.status_code != 200:
+            return False
 
-    # error handling
-    if create_targeted_keyword_response.status_code != 200:
-        return False
+
+    # create NEGATIVE keywords
+    if campaignType == 'broad_discovery' or campaignType == 'search_discovery':
+        negative_keyword_payload = [
+            {
+                "text": item, 
+                "matchType": targeted_keyword_match_type # negative_ad_group_match_type
+            } 
+            for item in targeted_keywords
+        ]
+        negative_keyword_url = base_url_4 + "campaigns/%s/adgroups/%s/negativekeywords/bulk" % (new_campaign_id, new_ad_group_id)
+        print ("Url is '%s'." % negative_keyword_url)
+        print ("Payload is '%s'." % negative_keyword_payload)
+        create_negative_keyword_response = requests.post(
+            negative_keyword_url,
+            json=negative_keyword_url,
+            headers=headers
+        )
+
+        print ("The result of posting NEGATIVE keywords to Apple: %s" % create_negative_keyword_response)
+
+        # error handling
+        if create_negative_keyword_response.status_code != 200:
+            return False
 
     return True
 
