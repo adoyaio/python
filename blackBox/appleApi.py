@@ -356,7 +356,7 @@ def createCampaign(campaignType, campaignData, authToken):
 
 
     # delay script briefly so apple api has enough time to update id in their system so our script can reference it
-    time.sleep(5) 
+    time.sleep(5)
 
     # create a new campaign
     create_campaign_payload = {
@@ -374,7 +374,7 @@ def createCampaign(campaignType, campaignData, authToken):
         },
         "adamId": adam_id,
         "countriesOrRegions": [str(campaign_target_country)],
-        "status": "PAUSED" # TODO ENABLED, set via environment
+        "status": "PAUSED" # TODO ENABLED, set via environment 
     }
 
     create_campaign_url = base_url + "campaigns"
@@ -385,7 +385,7 @@ def createCampaign(campaignType, campaignData, authToken):
         create_campaign_url,  
         json=create_campaign_payload,
         headers=headers
-    ) 
+    )
 
     print ("The result of POST campaign to Apple: %s" % create_campaign_response)
 
@@ -542,9 +542,41 @@ def createCampaign(campaignType, campaignData, authToken):
     if campaignType == 'exact_discovery':
         print("EXACT DISCOVERY campaign, skipping keywords")
         return True
+
+    # create NEGATIVE keywords
+    if campaignType == 'broad_discovery' or campaignType == 'search_discovery':
+        time.sleep(20)
+        negative_keyword_payload = [
+            {
+                "text": item, 
+                "matchType": negative_ad_group_match_type
+            } 
+            for item in targeted_keywords
+        ]
+        negative_keyword_url = base_url_4 + "campaigns/%s/adgroups/%s/negativekeywords/bulk" % (new_campaign_id, new_ad_group_id)
+        print ("Url is '%s'." % negative_keyword_url)
+        print ("Payload is '%s'." % negative_keyword_payload)
+
+        create_negative_keyword_response = requests.post(
+            negative_keyword_url,
+            json=negative_keyword_payload,
+            headers=headers
+        )
+
+        print("Headers are" + str(headers))
+        print("Response headers" + str(create_negative_keyword_response.headers))
+        print("Response is" + str(create_negative_keyword_response))
+        print("Response text is" + str(create_negative_keyword_response.reason))
+        print("The result of posting NEGATIVE keywords to Apple: %s" % create_negative_keyword_response)
+
+        # error handling
+        if create_negative_keyword_response.status_code != 200:
+           return False
+
     
     # create new keywords and add to newly-created campaign and ad group
     if campaignType != 'search_discovery':
+        time.sleep(10)
         targeted_keyword_payload = [
             {
                 "text": item, 
@@ -572,30 +604,6 @@ def createCampaign(campaignType, campaignData, authToken):
         if create_targeted_keyword_response.status_code != 200:
             return False
 
-
-    # create NEGATIVE keywords
-    if campaignType == 'broad_discovery' or campaignType == 'search_discovery':
-        negative_keyword_payload = [
-            {
-                "text": item, 
-                "matchType": targeted_keyword_match_type # negative_ad_group_match_type
-            } 
-            for item in targeted_keywords
-        ]
-        negative_keyword_url = base_url_4 + "campaigns/%s/adgroups/%s/negativekeywords/bulk" % (new_campaign_id, new_ad_group_id)
-        print ("Url is '%s'." % negative_keyword_url)
-        print ("Payload is '%s'." % negative_keyword_payload)
-        create_negative_keyword_response = requests.post(
-            negative_keyword_url,
-            json=negative_keyword_url,
-            headers=headers
-        )
-
-        print ("The result of posting NEGATIVE keywords to Apple: %s" % create_negative_keyword_response)
-
-        # error handling
-        if create_negative_keyword_response.status_code != 200:
-            return False
 
     return True
 
