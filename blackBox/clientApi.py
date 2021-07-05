@@ -2,7 +2,7 @@ import decimal
 import boto3
 import json
 import time
-from utils import DynamoUtils, ApiUtils, EmailUtils
+from utils import DynamoUtils, LambdaUtils, EmailUtils
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 
@@ -16,8 +16,8 @@ def postClientHandler(event, context):
     tableName = body["tableName"]
 
     # init dynamo 
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
-    send = ApiUtils.getDynamoHost(event).get('send')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    send = LambdaUtils.getApiEnvironmentDetails(event).get('send')
     table = dynamodb.Table(tableName)
 
     # operation to callback mapping TODO error on invalid
@@ -66,8 +66,8 @@ def postClientAdminHandler(event, context):
     payload = body["payload"]
     tableName = body["tableName"]
 
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
-    send = ApiUtils.getDynamoHost(event).get('send')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    send = LambdaUtils.getApiEnvironmentDetails(event).get('send')
     table = dynamodb.Table(tableName)
 
     operations = {
@@ -100,7 +100,7 @@ def getClientHandler(event, context):
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
 
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     client = DynamoUtils.getClient(dynamodb, org_id)
 
     return {
@@ -119,7 +119,7 @@ def getClientCostHistoryHandler(event, context):
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
 
     query_by_time = False
     try:
@@ -151,7 +151,7 @@ def getClientKeywordHistoryHandler(event, context):
     
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
 
     offset = {
         "org_id": queryStringParameters.get("offsetOrgId"),

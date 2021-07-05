@@ -11,6 +11,28 @@ from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 from utils.debug import debug, dprint
 
+# TODO reevaluate this approach
+def getApiEnvironmentDetails(event):
+    headers = event["headers"]
+    host = "prod"
+    if headers is not None:
+        try:
+            host = headers["Host"]
+        except KeyError as error:
+            host = "prod"
+
+    if host == "localhost:3000" or host == "127.0.0.1:3000":
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1', endpoint_url='http://dynamodb:8000')
+        returnValue = { 'dynamodb': dynamodb, 'send': False}
+        print("LambdaUtils.getDynamoHost:::LOCALHOST") 
+    else:
+        dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+        returnValue = { 'dynamodb': dynamodb, 'send': True }
+        print("LambdaUtils.getDynamoHost:::PROD")
+
+    return returnValue
+
+
 def getSendG(env):
     if env == "lcl":
         return False

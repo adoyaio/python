@@ -55,7 +55,7 @@ def initialize(env, dynamoEndpoint, emailToInternal):
     
     EMAIL_TO = emailToInternal
     sendG = LambdaUtils.getSendG(env)
-    dynamodb = LambdaUtils.getDynamoHost(dynamoEndpoint, env)
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(dynamoEndpoint, env).get('dynamodb')
     clientsG = Client.getClients(dynamodb)
 
     logger = LambdaUtils.getLogger(env)

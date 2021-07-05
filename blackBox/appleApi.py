@@ -5,7 +5,7 @@ import time
 import datetime
 import sys
 from utils.debug import debug, dprint
-from utils import DynamoUtils, ApiUtils, EmailUtils, LambdaUtils
+from utils import DynamoUtils, EmailUtils, LambdaUtils
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 from cryptography.hazmat.backends import default_backend
@@ -23,7 +23,7 @@ import requests
 #     # queryStringParameters = event["queryStringParameters"]
 #     # org_id = queryStringParameters["org_id"]
 
-#     # dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+#     # dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
 #     # client = DynamoUtils.getClient(dynamodb, org_id)
 #     private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
 #     public_key = private_key.public_key()
@@ -50,13 +50,19 @@ def postAppleCampaign(event, context):
     print('Loading postAppleCampaign....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
-    print("Received context: " + str(context.client_context))
+    print("Received identiry: " + str(context.identity))
+
+    # environment details
+    if LambdaUtils.getApiEnvironmentDetails(event).get('send'):
+        campaignStatus = "ENABLED"
+    else:
+        campaignStatus = "PAUSED"
 
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
     
     # get token 
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     client = DynamoUtils.getClient(dynamodb, org_id)
 
     # handle auth token
@@ -78,12 +84,12 @@ def postAppleCampaign(event, context):
         print("found auth values in client " + str(auth))
         authToken = LambdaUtils.getAuthToken(auth)
 
+    campaignData = json.loads(event["body"])
+
 
     # create competitor campaign
-    campaignData = json.loads(event["body"])
-    competitorCreated: bool = createCampaign('competitor', campaignData, authToken)
-
-    if not competitorCreated: 
+    competitorCampaign: any | bool = createCampaign('competitor', campaignData, campaignStatus, authToken)
+    if not competitorCampaign: 
         return {
             'statusCode': 400,
             'headers': {
@@ -95,9 +101,8 @@ def postAppleCampaign(event, context):
         }
 
     # create brand campaign
-    brandCreated: bool = createCampaign('brand', campaignData, authToken)
-
-    if not brandCreated: 
+    brandCampaign: any | bool = createCampaign('brand', campaignData, campaignStatus, authToken)
+    if not brandCampaign: 
         return {
             'statusCode': 400,
             'headers': {
@@ -109,9 +114,9 @@ def postAppleCampaign(event, context):
         }
 
     # create category campaign
-    categoryCreated: bool = createCampaign('category', campaignData, authToken)
+    categoryCampaign: any | bool = createCampaign('category', campaignData, campaignStatus, authToken)
 
-    if not categoryCreated: 
+    if not categoryCampaign: 
         return {
             'statusCode': 400,
             'headers': {
@@ -123,9 +128,9 @@ def postAppleCampaign(event, context):
         }
 
     # create exact discover campaign
-    exactDiscoveryCreated: bool = createCampaign('exact_discovery', campaignData, authToken)
+    exactDiscoveryCampaign: any | bool = createCampaign('exact_discovery', campaignData, campaignStatus, authToken)
 
-    if not exactDiscoveryCreated: 
+    if not exactDiscoveryCampaign: 
         return {
             'statusCode': 400,
             'headers': {
@@ -137,9 +142,9 @@ def postAppleCampaign(event, context):
         }
 
     # create broad discover campaign
-    broadDiscoveryCreated: bool = createCampaign('broad_discovery', campaignData, authToken)
+    broadDiscoveryCampaign: any | bool = createCampaign('broad_discovery', campaignData, campaignStatus, authToken)
 
-    if not broadDiscoveryCreated: 
+    if not broadDiscoveryCampaign: 
         return {
             'statusCode': 400,
             'headers': {
@@ -151,9 +156,9 @@ def postAppleCampaign(event, context):
         }
 
     # create search discover campaign
-    searchDiscoveryCreated: bool = createCampaign('search_discovery', campaignData, authToken)
+    searchDiscoveryCampaign: any = createCampaign('search_discovery', campaignData, campaignStatus, authToken)
 
-    if not searchDiscoveryCreated: 
+    if not searchDiscoveryCampaign: 
         return {
             'statusCode': 400,
             'headers': {
@@ -171,14 +176,28 @@ def postAppleCampaign(event, context):
             'Access-Control-Allow-Methods': 'POST',
             'Access-Control-Allow-Headers': 'x-api-key'
         },
-        'body': {}
+        'body': json.dumps(
+            {
+                'campaigns':[
+                    searchDiscoveryCampaign, 
+                    broadDiscoveryCampaign, 
+                    exactDiscoveryCampaign, 
+                    categoryCampaign, 
+                    brandCampaign,
+                    competitorCampaign
+                ]
+            }
+        )
     }
 
-def createCampaign(campaignType, campaignData, authToken):
+def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     # parse event data
     org_id = campaignData["org_id"]
     app_name = campaignData["app_name"]
     adam_id = campaignData["adam_id"]
+
+    lifetime_budget: float = 0.0000
+    daily_budget_amount: float = 0.0000
 
     # campaign level 
     campaign_target_country = campaignData["campaign_target_country"]
@@ -221,23 +240,26 @@ def createCampaign(campaignType, campaignData, authToken):
 
     # budget; pivot on campaign type
     if campaignType == 'competitor':
-        lifetime_budget = float(front_end_lifetime_budget) * 0.30
-        daily_budget_amount = float(front_end_daily_budget) * 0.30
+        lifetime_budget: float = front_end_lifetime_budget * 0.30
+        daily_budget_amount: float = front_end_daily_budget * 0.30
     elif campaignType == 'category':
-        lifetime_budget = float(front_end_lifetime_budget) * 0.30
-        daily_budget_amount = float(front_end_daily_budget) * 0.30
+        lifetime_budget: float = front_end_lifetime_budget * .30
+        daily_budget_amount:float = front_end_daily_budget * .30
     elif campaignType == 'brand':
-        lifetime_budget = float(front_end_lifetime_budget) * 0.15
-        daily_budget_amount = float(front_end_daily_budget) * 0.15
+        lifetime_budget:float = front_end_lifetime_budget * .15
+        daily_budget_amount:float = front_end_daily_budget * .15
     elif campaignType == 'exact_discovery':
-        lifetime_budget = float(front_end_lifetime_budget) * 0.05
-        daily_budget_amount = float(front_end_daily_budget) * 0.05
+        lifetime_budget:float = front_end_lifetime_budget * .05
+        daily_budget_amount:float = front_end_daily_budget * .05
+        print("exact_discovery")
+        print(lifetime_budget)
+        print(daily_budget_amount)
     elif campaignType == 'broad_discovery':
-        lifetime_budget = float(front_end_lifetime_budget) * 0.10
-        daily_budget_amount = float(front_end_daily_budget) * 0.10
+        lifetime_budget:float = front_end_lifetime_budget * .10
+        daily_budget_amount:float = front_end_daily_budget * .10
     elif campaignType == 'search_discovery':
-        lifetime_budget = float(front_end_lifetime_budget) * 0.10
-        daily_budget_amount = float(front_end_daily_budget) * 0.10
+        lifetime_budget:float = front_end_lifetime_budget * 0.10
+        daily_budget_amount:float = front_end_daily_budget * 0.10
     else:
         print("Invalid campaignType")
         return False
@@ -299,32 +321,27 @@ def createCampaign(campaignType, campaignData, authToken):
     }
 
     base_url_4 = config.APPLE_SEARCHADS_URL_BASE_V4
-    base_url = "https://api.searchads.apple.com/api/v3/"
+    base_url = config.APPLE_SEARCHADS_URL_BASE_V3
 
 
-    # logic to ensure daily cap doesn't exceed total budget, apple will cause this to fail anyway but better to address up front
+    # daily cap may not exceed total budget
     if lifetime_budget > daily_budget_amount:
          print('Lifetime Budget Valid')
-    elif lifetime_budget <= daily_budget_amount:
-        # TODO bubble error
-        print('Lifetime Budget Must Be Greater Than Daily Budget')
-        print(str(lifetime_budget))
-        print(str(daily_budget_amount))
-        return False
     else:
         print("Invalid Lifetime Budget & Daily Cap Entry.")
+        print(lifetime_budget)
+        print(daily_budget_amount)
         return False
 
-    # logic to ensure target CPI doesn't exceed daily budget cap, apple will cause this to fail anyway but better to address up front
-    if daily_budget_amount > target_cost_per_install:
+    # target CPI must not exceed daily budget cap
+    # NOTE 20x front_end_daily_budget should be 20x CPI, therefore .05 (for exact_discovery) * front_end_daily_budget should be >= CPI
+    # NOTE consider updating validation check to match f/e check  
+    if daily_budget_amount >= target_cost_per_install:
         print('Daily Budget Valid')
-    elif daily_budget_amount <= target_cost_per_install:
-        print('Daily Budget Cap Must Be Greater Than Target Cost Per Install')
-        print(str(daily_budget_amount))
-        print(str(target_cost_per_install))
-        return False
     else:
         print("Invalid Daily Cap & Max CPI Entry")
+        print(daily_budget_amount)
+        print(target_cost_per_install)
         return False
 
     # logic to determine gender targeting this is done at the ad group level
@@ -374,7 +391,7 @@ def createCampaign(campaignType, campaignData, authToken):
         },
         "adamId": adam_id,
         "countriesOrRegions": [str(campaign_target_country)],
-        "status": "PAUSED" # TODO ENABLED, set via environment 
+        "status": campaignStatus # ENABLED or PAUSED, set per env via LambdaUtils  
     }
 
     create_campaign_url = base_url + "campaigns"
@@ -539,13 +556,9 @@ def createCampaign(campaignType, campaignData, authToken):
 
     print("Created adgroup " + str(new_ad_group_id))
 
-    if campaignType == 'exact_discovery':
-        print("EXACT DISCOVERY campaign, skipping keywords")
-        return True
-
-    # create NEGATIVE keywords
+    # create NEGATIVE keywords, only broad and search
     if campaignType == 'broad_discovery' or campaignType == 'search_discovery':
-        time.sleep(20)
+        time.sleep(5)
         negative_keyword_payload = [
             {
                 "text": item, 
@@ -574,9 +587,9 @@ def createCampaign(campaignType, campaignData, authToken):
            return False
 
     
-    # create new keywords and add to newly-created campaign and ad group
-    if campaignType != 'search_discovery':
-        time.sleep(10)
+    # create TARGETED keywords, all campaigns OTHER than search and exact
+    if campaignType != 'search_discovery' and campaignType != 'exact_discovery':
+        time.sleep(5)
         targeted_keyword_payload = [
             {
                 "text": item, 
@@ -604,9 +617,32 @@ def createCampaign(campaignType, campaignData, authToken):
         if create_targeted_keyword_response.status_code != 200:
             return False
 
+    # common campaign values
+    returnVal = {
+        "adGroupId": new_ad_group_id,
+        "adGroupName": ad_group_name,
+        "campaignId": new_campaign_id,
+        "campaignName": campaign_name,
+        "campaignType": campaignType,
+        "budgetLifetime": lifetime_budget,
+		"dailyBudget": daily_budget_amount,
+		"gender": gender,
+		"minAge": min_age,
+        "bidParameters": {},
+        "branchBidParameters": {}
+    }
 
-    return True
+    # handle return logic by campaign type
+    if campaignType == 'search_discovery':
+        returnVal["keywordIntegrationEnabled"] = False
+        returnVal["bidAdjusterEnabled"] = False
+        returnVal["adgroupBidAdjusterEnabled"] = True
+    else:
+        returnVal["keywordIntegrationEnabled"] = True
+        returnVal["bidAdjusterEnabled"] = True
+        returnVal["adgroupBidAdjusterEnabled"] = False
 
+    return returnVal
 
 def getAppleApps(event, context):
     print('Loading getAppleApps....')
@@ -615,7 +651,7 @@ def getAppleApps(event, context):
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
 
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     client = DynamoUtils.getClient(dynamodb, org_id)
 
     # handle auth token
@@ -654,7 +690,7 @@ def getAppleAcls(event, context):
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
 
-    dynamodb = ApiUtils.getDynamoHost(event).get('dynamodb')
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     client = DynamoUtils.getClient(dynamodb, org_id)
 
     # handle auth token

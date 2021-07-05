@@ -2,7 +2,7 @@ import decimal
 import boto3
 import json
 import time
-from utils import DynamoUtils, ApiUtils, EmailUtils
+from utils import DynamoUtils, LambdaUtils, EmailUtils
 from configuration import config
 
 def postSupportItemHandler(event, context):  
@@ -13,7 +13,7 @@ def postSupportItemHandler(event, context):
     payload = body["payload"]
 
     # init dynamo 
-    send = ApiUtils.getDynamoHost(event).get('send')
+    send = LambdaUtils.getApiEnvironmentDetails(event).get('send')
  
     # parse decimals to float for email
     subjectString = payload.get("subject", "error retrieving subject")
