@@ -56,36 +56,13 @@ def postAppleCampaign(event, context):
     # environment details
     if LambdaUtils.getApiEnvironmentDetails(event).get('send'):
         campaignStatus = "PAUSED"
-        # campaignStatus = "ENABLED"
+        # TODO campaignStatus = "ENABLED"
     else:
         campaignStatus = "PAUSED"
 
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
     
-    # get token 
-    # dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-    # client = DynamoUtils.getClient(dynamodb, org_id)
-
-    # # handle auth token
-    # print(str(client))
-    # auth = client[0].get('orgDetails').get('auth', None)
-
-    # if auth is None:
-    #     return {
-    #     'statusCode': 400,
-    #     'headers': {
-    #         'Access-Control-Allow-Origin': '*',
-    #         'Access-Control-Allow-Methods': 'POST',
-    #         'Access-Control-Allow-Headers': 'x-api-key'
-    #     },
-    #     'body': {}
-    # }
-
-    # if auth is not None:
-    #     print("found auth values in client " + str(auth))
-    #     authToken = LambdaUtils.getAuthToken(auth)
-
     campaignData: dict = json.loads(event["body"])
     campaignType: str = campaignData.get('campaignType')
     authToken = campaignData.get('authToken')
