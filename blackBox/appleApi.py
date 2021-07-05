@@ -52,9 +52,11 @@ def postAppleCampaign(event, context):
     print("Received context: " + str(context))
     print("Received identiry: " + str(context.identity))
 
+
     # environment details
     if LambdaUtils.getApiEnvironmentDetails(event).get('send'):
-        campaignStatus = "ENABLED"
+        campaignStatus = "PAUSED"
+        # campaignStatus = "ENABLED"
     else:
         campaignStatus = "PAUSED"
 
@@ -62,34 +64,40 @@ def postAppleCampaign(event, context):
     org_id = queryStringParameters["org_id"]
     
     # get token 
-    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-    client = DynamoUtils.getClient(dynamodb, org_id)
+    # dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    # client = DynamoUtils.getClient(dynamodb, org_id)
 
-    # handle auth token
-    print(str(client))
-    auth = client[0].get('orgDetails').get('auth', None)
+    # # handle auth token
+    # print(str(client))
+    # auth = client[0].get('orgDetails').get('auth', None)
 
-    if auth is None:
-        return {
-        'statusCode': 400,
-        'headers': {
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'x-api-key'
-        },
-        'body': {}
-    }
+    # if auth is None:
+    #     return {
+    #     'statusCode': 400,
+    #     'headers': {
+    #         'Access-Control-Allow-Origin': '*',
+    #         'Access-Control-Allow-Methods': 'POST',
+    #         'Access-Control-Allow-Headers': 'x-api-key'
+    #     },
+    #     'body': {}
+    # }
 
-    if auth is not None:
-        print("found auth values in client " + str(auth))
-        authToken = LambdaUtils.getAuthToken(auth)
+    # if auth is not None:
+    #     print("found auth values in client " + str(auth))
+    #     authToken = LambdaUtils.getAuthToken(auth)
 
-    campaignData = json.loads(event["body"])
+    campaignData: dict = json.loads(event["body"])
+    campaignType: str = campaignData.get('campaignType')
+    authToken = campaignData.get('authToken')
+
+    print("---------------------------------------------------")
+    print("Processing createCampaign for campaignType " +  campaignType)
+    print("---------------------------------------------------")
 
 
     # create competitor campaign
-    competitorCampaign: any | bool = createCampaign('competitor', campaignData, campaignStatus, authToken)
-    if not competitorCampaign: 
+    campaign: any | bool = createCampaign(campaignType, campaignData, campaignStatus, authToken)
+    if not campaign: 
         return {
             'statusCode': 400,
             'headers': {
@@ -99,76 +107,6 @@ def postAppleCampaign(event, context):
             },
             'body': {}
         }
-
-    # create brand campaign
-    brandCampaign: any | bool = createCampaign('brand', campaignData, campaignStatus, authToken)
-    if not brandCampaign: 
-        return {
-            'statusCode': 400,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'x-api-key'
-            },
-            'body': {}
-        }
-
-    # create category campaign
-    categoryCampaign: any | bool = createCampaign('category', campaignData, campaignStatus, authToken)
-
-    if not categoryCampaign: 
-        return {
-            'statusCode': 400,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'x-api-key'
-            },
-            'body': {}
-        }
-
-    # create exact discover campaign
-    exactDiscoveryCampaign: any | bool = createCampaign('exact_discovery', campaignData, campaignStatus, authToken)
-
-    if not exactDiscoveryCampaign: 
-        return {
-            'statusCode': 400,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'x-api-key'
-            },
-            'body': {}
-        }
-
-    # create broad discover campaign
-    broadDiscoveryCampaign: any | bool = createCampaign('broad_discovery', campaignData, campaignStatus, authToken)
-
-    if not broadDiscoveryCampaign: 
-        return {
-            'statusCode': 400,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'x-api-key'
-            },
-            'body': {}
-        }
-
-    # create search discover campaign
-    searchDiscoveryCampaign: any = createCampaign('search_discovery', campaignData, campaignStatus, authToken)
-
-    if not searchDiscoveryCampaign: 
-        return {
-            'statusCode': 400,
-            'headers': {
-                'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'x-api-key'
-            },
-            'body': {}
-        }
-
     return {
         'statusCode': 200,
         'headers': {
@@ -177,16 +115,7 @@ def postAppleCampaign(event, context):
             'Access-Control-Allow-Headers': 'x-api-key'
         },
         'body': json.dumps(
-            {
-                'campaigns':[
-                    searchDiscoveryCampaign, 
-                    broadDiscoveryCampaign, 
-                    exactDiscoveryCampaign, 
-                    categoryCampaign, 
-                    brandCampaign,
-                    competitorCampaign
-                ]
-            }
+            {'campaign': campaign }
         )
     }
 
@@ -372,9 +301,6 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         return False
 
 
-    # delay script briefly so apple api has enough time to update id in their system so our script can reference it
-    time.sleep(5)
-
     # create a new campaign
     create_campaign_payload = {
         "orgId": org_id,
@@ -558,7 +484,6 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
 
     # create NEGATIVE keywords, only broad and search
     if campaignType == 'broad_discovery' or campaignType == 'search_discovery':
-        time.sleep(5)
         negative_keyword_payload = [
             {
                 "text": item, 
@@ -589,7 +514,6 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     
     # create TARGETED keywords, all campaigns OTHER than search and exact
     if campaignType != 'search_discovery' and campaignType != 'exact_discovery':
-        time.sleep(5)
         targeted_keyword_payload = [
             {
                 "text": item, 
@@ -624,12 +548,13 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         "campaignId": new_campaign_id,
         "campaignName": campaign_name,
         "campaignType": campaignType,
-        "budgetLifetime": lifetime_budget,
+        "lifetimeBudget": lifetime_budget,
 		"dailyBudget": daily_budget_amount,
 		"gender": gender,
 		"minAge": min_age,
         "bidParameters": {},
-        "branchBidParameters": {}
+        "branchBidParameters": {},
+        "active": True
     }
 
     # handle return logic by campaign type
@@ -686,7 +611,6 @@ def getAppleAcls(event, context):
     print('Loading getAppleAcls....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
-    print("Received context: " + str(context.client_context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
 
@@ -727,4 +651,31 @@ def getAppleAcls(event, context):
             'Access-Control-Allow-Headers': 'x-api-key'
         },
         'body': json.dumps(acls_response)
+    }
+
+def getAppleAuth(event, context):
+    print('Loading getAppleAuth....')
+    print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + str(context))
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    client = DynamoUtils.getClient(dynamodb, org_id)
+
+    # handle auth token
+    print(str(client))
+    auth = client[0].get('orgDetails').get('auth', None)
+    if auth is not None:
+        print("found auth values in client " + str(auth))
+        authToken = LambdaUtils.getAuthToken(auth)
+        
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'x-api-key'
+        },
+        'body': json.dumps(authToken)
     }

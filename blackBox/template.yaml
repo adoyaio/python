@@ -7,7 +7,7 @@ Globals:
     # to a particular domain name, e.g. "'www.example.com'"
     Cors:
       AllowMethods: "'*'"
-      AllowHeaders: "'x-api-key,Content-Type'"
+      AllowHeaders: "'x-api-key,Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization'"
       AllowOrigin: "'*'"
 Resources:
   runAdoyaNightly:
@@ -229,6 +229,28 @@ Resources:
           Type: Api
           Properties:
             Path: /api/apple/acls
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+  getAppleAuth:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.getAppleAuth
+      Runtime: python3.7
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getAppleAuth"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/apple/auth
             Method: ANY
             Auth:
               ApiKeyRequired: true
