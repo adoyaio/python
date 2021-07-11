@@ -14,6 +14,7 @@ APPLE_KEYWORD_REPORTING_URL_TEMPLATE = "reports/campaigns/%s/keywords"
 APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE = "reports/campaigns/%s/searchterms"
 APPLE_ADGROUP_REPORTING_URL_TEMPLATE = "reports/campaigns/%s/adgroups" # POST
 APPLE_ADGROUP_UPDATE_URL_TEMPLATE = "campaigns/%s/adgroups/%s" # PUT
+APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE = "campaigns/%s" # PUT
 
 APPLE_GET_APPS_URL = "search/apps?returnOwnedApps=true&limit=100"
 

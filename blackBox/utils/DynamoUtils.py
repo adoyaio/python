@@ -7,6 +7,7 @@ from boto3.dynamodb.conditions import Key, Attr
 import logging
 import decimal
 import json
+from Client import Client
 
 dashG = "-"
 
@@ -103,7 +104,15 @@ def getClient(dynamoResource, org_id):
     response = table.query(
         KeyConditionExpression=Key('orgId').eq(int(org_id))
     )
-    return response['Items']
+    # return response['Items']
+    # clientDict = json.loads(response['Items'][0],cls=DecimalEncoder)
+    clientDict = response['Items'][0]
+    # client = Client.buildFromDictionary(clientDict)
+    parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
+    print(str(parsed))
+    client = Client.buildFromDictionary(parsed)
+    return client
+
 
 
 def getClientHistory(dynamoResource, org_id):

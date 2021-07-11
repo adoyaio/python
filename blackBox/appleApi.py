@@ -46,22 +46,120 @@ import requests
 #         'body': { 'privateKey': returnKey, 'publicKey': returnPem }
 #     }
 
+def patchAppleCampaign(event, context):
+    print('Loading postAppleCampaign....')
+    print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + str(context))
+    print("Received identity: " + str(context.identity))
+
+    updateCampaignData: list = json.loads(event["body"])
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    table = dynamodb.Table('clients')
+
+    clientDict = DynamoUtils.getClient(dynamodb, org_id)
+    client: Client = Client.buildFromDictionary(clientDict[0].get('orgDetails'))
+
+    # go thru each campaign in the payload and update 
+    existingCampaigns = client.appleCampaigns
+
+    for newCampaignValues in updateCampaignData:
+        adoyaCampaign = next(filter(lambda x: x["campaignId"] == str(newCampaignValues.campaignId), existingCampaigns), None)
+        adoyaCampaign['status'] = newCampaignValues['status']
+        adoyaCampaign['lifetimeBudget'] = newCampaignValues['lifetimeBudget']
+        adoyaCampaign['dailyBudget'] = newCampaignValues['dailyBudget']
+
+    # parse floats to decimal
+    table.put_item(
+         json.loads(
+            json.dumps(
+                 client.__dict__
+            ), 
+            parse_float=decimal.Decimal
+        )
+    )
+
+    # handle auth token
+    print("dict")
+    print(str(clientDict))
+
+    print("obj")
+    print(str(client))
+
+    # auth = clientDict[0].get('orgDetails').get('auth', None)
+    if client.auth is None:
+        return {
+            'statusCode': 400,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST',
+                'Access-Control-Allow-Headers': 'x-api-key'
+            },
+            'body': {}
+        }
+
+    print("found auth values in client " + str(client.auth))
+    authToken = LambdaUtils.getAuthToken(client.auth)
+    url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE
+    headers = {
+        "Authorization": "Bearer %s" % authToken, 
+        "X-AP-Context": "orgId=%s" % org_id,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+    payload = {
+        "campaign": {
+             "budgetAmount": {
+                "amount": str(updateCampaignData['budget_amount']),
+                "currency": str(updateCampaignData['currency'])
+            },
+            "dailyBudgetAmount": {
+                "amount": str(updateCampaignData['daily_budget_amount']),
+                "currency": str(updateCampaignData['currency'])
+            },
+            "status": str(updateCampaignData['status']),
+        }
+    }
+    print("Apple URL is" + url)
+    print("Headers are" + str(headers))
+    print("Payload is '%s'." % payload)
+    response = requests.put(
+        url,
+        json=payload,
+        headers=headers,
+        timeout=config.HTTP_REQUEST_TIMEOUT
+    )
+    print(str(response.text))
+    print("The result of PUT campaign to Apple: %s" % response)
+
+
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'x-api-key'
+        },
+        'body': response.text
+    }
+
+
 def postAppleCampaign(event, context):
     print('Loading postAppleCampaign....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
-    print("Received identiry: " + str(context.identity))
-
+    print("Received identity: " + str(context.identity))
 
     # environment details
     if LambdaUtils.getApiEnvironmentDetails(event).get('send'):
-        campaignStatus = "PAUSED"
-        # TODO campaignStatus = "ENABLED"
+        campaignStatus = "ENABLED"
     else:
         campaignStatus = "PAUSED"
 
-    queryStringParameters = event["queryStringParameters"]
-    org_id = queryStringParameters["org_id"]
+    # queryStringParameters = event["queryStringParameters"]
+    # org_id = queryStringParameters["org_id"]
     
     campaignData: dict = json.loads(event["body"])
     campaignType: str = campaignData.get('campaignType')
@@ -107,8 +205,8 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
 
     # campaign level 
     campaign_target_country = campaignData["campaign_target_country"]
-    front_end_lifetime_budget = float(campaignData["front_end_lifetime_budget"])
-    front_end_daily_budget = float(campaignData["front_end_daily_budget"])
+    front_end_lifetime_budget = float(campaignData["lifetime_budget"])
+    front_end_daily_budget = float(campaignData["daily_budget"])
     target_cost_per_install= float(campaignData["target_cost_per_install"])
     gender=campaignData["gender"]
     min_age=campaignData["min_age"]
@@ -448,9 +546,6 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     ad_group_data_list = [ad_group_data[x] for x in ad_group_data]
     all_ad_groups_list = ad_group_data_list[0][0:1000]
 
-    # the following returns a list of all the ad groups the output could be shown on the front end
-    # all_ad_group_names = [d['name'] for d in all_ad_groups_list]
-
     # delay script briefly so apple api has enough time to update id in their system so our script can reference it
     time.sleep(5)
 
@@ -531,7 +626,7 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
 		"minAge": min_age,
         "bidParameters": {},
         "branchBidParameters": {},
-        "active": True
+        "status": campaignStatus
     }
 
     # handle return logic by campaign type
@@ -554,14 +649,18 @@ def getAppleApps(event, context):
     org_id = queryStringParameters["org_id"]
 
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-    client = DynamoUtils.getClient(dynamodb, org_id)
+    # client = DynamoUtils.getClient(dynamodb, org_id)
 
     # handle auth token
-    print(str(client))
-    auth = client[0].get('orgDetails').get('auth', None)
-    if auth is not None:
-        print("found auth values in client " + str(auth))
-        authToken = LambdaUtils.getAuthToken(auth)
+    # clientDict = DynamoUtils.getClient(dynamodb, org_id)
+    # client: Client = Client.buildFromDictionary(clientDict[0].get('orgDetails'))
+    client : Client = DynamoUtils.getClient(dynamodb, org_id)
+
+    # auth = client[0].get('orgDetails').get('auth', None)
+
+    if client.auth is not None:
+        print("found auth values in client " + str(client.auth))
+        authToken = LambdaUtils.getAuthToken(client.auth)
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_GET_APPS_URL
         headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % org_id}
         print("URL is" + url)
@@ -592,14 +691,19 @@ def getAppleAcls(event, context):
     org_id = queryStringParameters["org_id"]
 
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-    client = DynamoUtils.getClient(dynamodb, org_id)
+    client: Client = DynamoUtils.getClient(dynamodb, org_id)
 
     # handle auth token
-    print(str(client))
-    auth = client[0].get('orgDetails').get('auth', None)
-    if auth is not None:
-        print("found auth values in client " + str(auth))
-        authToken = LambdaUtils.getAuthToken(auth)
+    print(str(client.__dict__))
+    
+    # handle auth token
+    # clientDict = DynamoUtils.getClient(dynamodb, org_id)[0]
+    # client = Client.buildFromDictionary(json.loads(clientDict[0].get('orgDetails')))
+
+    # auth = client[0].get('orgDetails').get('auth', None)
+    if client.auth is not None:
+        print("found auth values in client " + str(client.auth))
+        authToken = LambdaUtils.getAuthToken(client.auth)
 
     headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % org_id}
     
@@ -638,14 +742,16 @@ def getAppleAuth(event, context):
     org_id = queryStringParameters["org_id"]
 
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-    client = DynamoUtils.getClient(dynamodb, org_id)
+    # client = DynamoUtils.getClient(dynamodb, org_id)
 
-    # handle auth token
-    print(str(client))
-    auth = client[0].get('orgDetails').get('auth', None)
-    if auth is not None:
-        print("found auth values in client " + str(auth))
-        authToken = LambdaUtils.getAuthToken(auth)
+    # clientDict = DynamoUtils.getClient(dynamodb, org_id)
+    # client: Client = Client.buildFromDictionary(clientDict[0].get('orgDetails'))
+    
+    # auth = client[0].get('orgDetails').get('auth', None)
+    client: Client = DynamoUtils.getClient(dynamodb, org_id)
+    if client.auth is not None:
+        print("found auth values in client " + str(client.auth))
+        authToken = LambdaUtils.getAuthToken(client.auth)
         
     return {
         'statusCode': 200,

@@ -102,6 +102,7 @@ def getClientHandler(event, context):
 
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     client = DynamoUtils.getClient(dynamodb, org_id)
+    clientJSON = client.toJSON()
 
     return {
         'statusCode': 200,
@@ -110,7 +111,7 @@ def getClientHandler(event, context):
             'Access-Control-Allow-Methods': 'GET',
             'Access-Control-Allow-Headers': 'x-api-key'
         },
-        'body': json.dumps(client, cls=DecimalEncoder)
+        'body': clientJSON
     }
 
 def getClientCostHistoryHandler(event, context):

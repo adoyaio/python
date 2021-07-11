@@ -113,24 +113,28 @@ def getClientForLocalRun(orgId, emailToInternal):
     }
     with open("./data/dynamo/clients.json") as json_file:
         clients = json.load(json_file, parse_float=decimal.Decimal)
-        clientJSON = next(item for item in clients if item["orgId"] == orgId)
-        client = Client(
-            clientJSON.get('orgId'),
-            clientJSON.get('clientName'),
-            clientJSON.get('emailAddresses'),
-            clientJSON.get('keyFilename'),
-            clientJSON.get('pemFilename'),
-            clientJSON.get('bidParameters'),
-            clientJSON.get('adgroupBidParameters'),
-            clientJSON.get('branchBidParameters'),
-            clientJSON.get('appleCampaigns'),
-            clientJSON.get('keywordAdderParameters'),
-            clientJSON.get('branchIntegrationParameters'),
-            clientJSON.get('currency'),
-            clientJSON.get('appName'),
-            clientJSON.get('appID'),
-            clientJSON.get('auth'),
-            clientJSON.get('hasRegistered')
+        clientDict = next(item for item in clients if item["orgId"] == orgId)
+        # TODO add biuld from json
+        # client = Client(
+        #     clientDict.get('orgId'),
+        #     clientDict.get('clientName'),
+        #     clientDict.get('emailAddresses'),
+        #     clientDict.get('keyFilename'),
+        #     clientDict.get('pemFilename'),
+        #     clientDict.get('bidParameters'),
+        #     clientDict.get('adgroupBidParameters'),
+        #     clientDict.get('branchBidParameters'),
+        #     clientDict.get('appleCampaigns'),
+        #     clientDict.get('keywordAdderParameters'),
+        #     clientDict.get('branchIntegrationParameters'),
+        #     clientDict.get('currency'),
+        #     clientDict.get('appName'),
+        #     clientDict.get('appID'),
+        #     clientDict.get('auth'),
+        #     clientDict.get('hasRegistered')
+        # )
+        client = Client.buildFromDictionary(
+            clientDict
         )
     # serialize to json for mock lambda event, 
     # need to simulate how lamdba marshals a Client into json for the payload
@@ -141,7 +145,7 @@ def getClientForLocalRun(orgId, emailToInternal):
         clientEvent['authToken'] = None
         return clientEvent
         
-    authToken = getAuthToken(clientJSON.get('auth'))
+    authToken = getAuthToken(client.auth)
     clientEvent['authToken'] = authToken
     return clientEvent
 

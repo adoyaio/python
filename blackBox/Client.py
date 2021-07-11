@@ -65,6 +65,29 @@ class Client:
     def __str__(self):
         return "Client '%s (#%d)" % (self.clientName, self.orgId)
 
+    def toJSON(self):
+        return json.dumps(
+            {
+                'orgId': self._orgId,
+                'clientName': self._clientName,
+                'emailAddresses': self._emailAddresses,
+                'keyFilename': self._keyFilename,
+                'pemFilename': self._pemFilename,
+                'bidParameters': self._bidParameters,
+                'adgroupBidParameters': self._adgroupBidParameters,
+                'branchBidParameters': self._branchBidParameters,
+                'appleCampaigns': self._appleCampaigns,
+                'keywordAdderParameters': self._keywordAdderParameters,
+                'branchIntegrationParameters': self._branchIntegrationParameters,
+                'currency': self._currency,
+                'appName' : self._appName,
+                'appID' : self._appID,
+                'auth' : self._auth,
+                'hasRegistered' : self._hasRegistered
+            }
+        )
+
+
     @property
     def orgId(self):
         return self._orgId
@@ -374,24 +397,44 @@ class Client:
             return response['Items'][0]["keywords"]
 
     # when client is serialized to JSON it writes internals with underscore
+    # def buildFromDictionary(orgDetails):
+    #     return Client(
+    #         orgDetails.get('_orgId'),
+    #         orgDetails.get('_clientName'),
+    #         orgDetails.get('_emailAddresses'),
+    #         orgDetails.get('_keyFilename'),
+    #         orgDetails.get('_pemFilename'),
+    #         orgDetails.get('_bidParameters'),
+    #         orgDetails.get('_adgroupBidParameters'),
+    #         orgDetails.get('_branchBidParameters'),
+    #         orgDetails.get('_appleCampaigns'),
+    #         orgDetails.get('_keywordAdderParameters'),
+    #         orgDetails.get('_branchIntegrationParameters'),
+    #         orgDetails.get('_currency'),
+    #         orgDetails.get('_appName'),
+    #         orgDetails.get('_appID'),
+    #         orgDetails.get('_auth'),
+    #         orgDetails.get('_hasRegistered')
+    #     )
+
     def buildFromDictionary(orgDetails):
         return Client(
-            orgDetails.get('_orgId'),
-            orgDetails.get('_clientName'),
-            orgDetails.get('_emailAddresses'),
-            orgDetails.get('_keyFilename'),
-            orgDetails.get('_pemFilename'),
-            orgDetails.get('_bidParameters'),
-            orgDetails.get('_adgroupBidParameters'),
-            orgDetails.get('_branchBidParameters'),
-            orgDetails.get('_appleCampaigns'),
-            orgDetails.get('_keywordAdderParameters'),
-            orgDetails.get('_branchIntegrationParameters'),
-            orgDetails.get('_currency'),
-            orgDetails.get('_appName'),
-            orgDetails.get('_appID'),
-            orgDetails.get('_auth'),
-            orgDetails.get('_hasRegistered')
+            orgDetails.get('orgId', "orgId"),
+            orgDetails.get('clientName', "clientName"),
+            orgDetails.get('emailAddresses', []),
+            orgDetails.get('keyFilename', 'keyFilename'),
+            orgDetails.get('pemFilename', 'pemFilename'),
+            orgDetails.get('bidParameters', {}),
+            orgDetails.get('adgroupBidParameters', {}),
+            orgDetails.get('branchBidParameters', {}),
+            orgDetails.get('appleCampaigns', []),
+            orgDetails.get('keywordAdderParameters', {}),
+            orgDetails.get('branchIntegrationParameters', {}),
+            orgDetails.get('currency', 'USD'),
+            orgDetails.get('appName', "appName"),
+            orgDetails.get('appId', 'appId'),
+            orgDetails.get('auth', {}),
+            orgDetails.get('hasRegistered', False)
         )
 
     # initialize and return array of Client objects
