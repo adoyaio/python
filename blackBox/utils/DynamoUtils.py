@@ -104,12 +104,9 @@ def getClient(dynamoResource, org_id):
     response = table.query(
         KeyConditionExpression=Key('orgId').eq(int(org_id))
     )
-    # return response['Items']
-    # clientDict = json.loads(response['Items'][0],cls=DecimalEncoder)
     clientDict = response['Items'][0]
-    # client = Client.buildFromDictionary(clientDict)
     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
-    print(str(parsed))
+    # print(str(parsed))
     client = Client.buildFromDictionary(parsed)
     return client
 

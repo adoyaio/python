@@ -59,32 +59,37 @@ def patchAppleCampaign(event, context):
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     table = dynamodb.Table('clients')
 
-    clientDict = DynamoUtils.getClient(dynamodb, org_id)
-    client: Client = Client.buildFromDictionary(clientDict[0].get('orgDetails'))
+    client: Client = DynamoUtils.getClient(dynamodb, org_id)
+
+    # clientDict = DynamoUtils.getClient(dynamodb, org_id)
+    # client: Client = Client.buildFromDictionary(clientDict[0].get('orgDetails'))
+
+    print(str(updateCampaignData))
 
     # go thru each campaign in the payload and update 
     existingCampaigns = client.appleCampaigns
 
     for newCampaignValues in updateCampaignData:
-        adoyaCampaign = next(filter(lambda x: x["campaignId"] == str(newCampaignValues.campaignId), existingCampaigns), None)
-        adoyaCampaign['status'] = newCampaignValues['status']
-        adoyaCampaign['lifetimeBudget'] = newCampaignValues['lifetimeBudget']
-        adoyaCampaign['dailyBudget'] = newCampaignValues['dailyBudget']
+        adoyaCampaign = next(filter(lambda x: x['campaignId'] == newCampaignValues['campaignId'], existingCampaigns), None)
+        if adoyaCampaign is not None:
+            adoyaCampaign['status'] = newCampaignValues['status']
+            adoyaCampaign['lifetimeBudget'] = newCampaignValues['lifetimeBudget']
+            adoyaCampaign['dailyBudget'] = newCampaignValues['dailyBudget']
 
     # parse floats to decimal
+    # table.put_item(
+    #      json.loads(
+    #         json.dumps(
+    #              client.__dict__
+    #         ), 
+    #         parse_float=decimal.Decimal
+    #     )
+    # )
     table.put_item(
-         json.loads(
-            json.dumps(
-                 client.__dict__
-            ), 
-            parse_float=decimal.Decimal
-        )
+        Item=client
     )
 
     # handle auth token
-    print("dict")
-    print(str(clientDict))
-
     print("obj")
     print(str(client))
 
