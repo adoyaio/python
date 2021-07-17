@@ -124,7 +124,7 @@ def patchAppleCampaign(event, context):
     # write to db
     table.put_item(
         Item = {
-                'orgId': org_id,
+                'orgId': int(org_id),
                 'orgDetails': updated
             }
     )
