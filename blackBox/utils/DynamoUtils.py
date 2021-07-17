@@ -106,7 +106,6 @@ def getClient(dynamoResource, org_id):
     )
     clientDict = response['Items'][0]
     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
-    # print(str(parsed))
     client = Client.buildFromDictionary(parsed)
     return client
 
