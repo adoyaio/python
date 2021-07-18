@@ -9,6 +9,7 @@ import boto3
 import numpy as np
 import pandas as pd
 import requests
+import traceback
 import sys
 from configuration import config
 from utils.debug import debug, dprint
@@ -445,10 +446,10 @@ def lambda_handler(clientEvent):
     initialize(clientEvent)
     try:
         process()
-    except: 
+    except Exception as e:
         return {
             'statusCode': 400,
-            'body': json.dumps('Run Adgroup Bid Adjuster Failed')
+            'body': json.dumps('Run Adgroup Bid Adjuster Failed: ' + str(traceback.format_exception(*sys.exc_info())))
         }
     return {
         'statusCode': 200,

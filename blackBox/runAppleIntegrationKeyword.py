@@ -8,6 +8,7 @@ import pandas as pd
 import requests
 import time
 import boto3
+import traceback
 import sys
 from boto3.dynamodb.conditions import Key
 from boto3.dynamodb.types import DYNAMODB_CONTEXT #eliminate inexact and rounding errors
@@ -294,10 +295,10 @@ def lambda_handler(clientEvent):
     initialize(clientEvent)
     try:
         process()
-    except: 
+    except Exception as e: 
         return {
             'statusCode': 400,
-            'body': json.dumps('Run Apple Integration Keyword Failed')
+            'body': json.dumps('Run Apple Integration Keyword Failed: ' + str(traceback.format_exception(*sys.exc_info())))
         }
     return {
         'statusCode': 200,

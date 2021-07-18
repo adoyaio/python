@@ -8,6 +8,7 @@ import requests
 import time
 import boto3
 import logging
+import traceback
 import sys
 from collections import defaultdict
 from datetime import datetime as dt
@@ -480,10 +481,10 @@ def lambda_handler(clientEvent):
     initialize(clientEvent)
     try:
         process()
-    except: 
+    except Exception as e:
         return {
             'statusCode': 400,
-            'body': json.dumps('Run Bid Adjuster Poor Performer Failed')
+            'body': json.dumps('Run Bid Adjuster Poor Performer Failed: ' + str(traceback.format_exception(*sys.exc_info())))
         }
     return {
         'statusCode': 200,

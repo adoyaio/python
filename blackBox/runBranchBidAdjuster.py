@@ -16,6 +16,7 @@ from utils.retry import retry
 from Client import Client
 from utils import DynamoUtils, EmailUtils, S3Utils, LambdaUtils
 from utils.DecimalEncoder import DecimalEncoder
+import traceback
 import sys
 
 BIDDING_LOOKBACK = 14  # days
@@ -241,8 +242,6 @@ def createJsonFromDataFrame(filtered_dataframe):
 
 
 def createPutRequestString(campaignId, adgroupId):
-    # return config."https://api.searchads.apple.com/api/v4/campaigns/{}/adgroups/{}/targetingkeywords/bulk".format(
-    #     campaignId, adgroupId)
     return config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (campaignId, adgroupId)
 
 
@@ -465,10 +464,10 @@ def lambda_handler(clientEvent):
     initialize(clientEvent)
     try:
         process()
-    except: 
+    except Exception as e: 
         return {
             'statusCode': 400,
-            'body': json.dumps('Run Branch Bid Adjuster Failed')
+            'body': json.dumps('Run Branch Bid Adjuster Failed: ' + str(traceback.format_exception(*sys.exc_info())))
         }
     return {
         'statusCode': 200,
