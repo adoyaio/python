@@ -7,7 +7,6 @@ from boto3.dynamodb.conditions import Key, Attr
 import logging
 import decimal
 import json
-from Client import Client
 
 dashG = "-"
 
@@ -100,6 +99,7 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
 # consider using string for consistency
 
 def getClient(dynamoResource, org_id):
+    from Client import Client
     table = dynamoResource.Table('clients')
     response = table.query(
         KeyConditionExpression=Key('orgId').eq(int(org_id))

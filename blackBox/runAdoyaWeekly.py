@@ -1,8 +1,9 @@
-import logging
+
 import json
 import boto3
+import sys
 from Client import Client
-from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
+from utils import LambdaUtils
 from utils.DecimalEncoder import DecimalEncoder
 
 
@@ -38,7 +39,7 @@ def process(event):
     for client in clientsG:
         clientEvent = {}
         clientEvent['rootEvent'] = event
-        clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+        clientEvent['orgDetails'] = client.toJSON()
         clientEvent['jobDetails'] = ['runBranchBidAdjuster']
 
         if event['env'] == 'prod':
@@ -63,9 +64,10 @@ def lambda_handler(event, context):
     try: 
         process(event)
     except:
+        e = sys.exc_info()[0]
         return {
             'statusCode': 400,
-            'body': json.dumps('Run Adoya Failed')
+            'body': json.dumps('Run Adoya Failed: ' + str(e))
         }
     return {
         'statusCode': 200,

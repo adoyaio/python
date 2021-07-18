@@ -6,10 +6,10 @@ import decimal
 import jwt
 import requests
 import datetime as dt
-from Client import Client
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 from utils.debug import debug, dprint
+from Client import Client
 
 # TODO reevaluate this approach
 def getApiEnvironmentDetails(event):

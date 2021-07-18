@@ -2,7 +2,6 @@ import datetime
 import decimal
 import json
 import os
-from boto3.dynamodb.conditions import Key
 from utils import DynamoUtils
 from utils.DecimalEncoder import DecimalEncoder
 
@@ -84,7 +83,8 @@ class Client:
                 'appID' : self._appID,
                 'auth' : self._auth,
                 'hasRegistered' : self._hasRegistered
-            }
+            },
+            cls=DecimalEncoder
         )
 
 
@@ -322,6 +322,7 @@ class Client:
             Item=i
         )
 
+    # NOTE these are running but not used
     def writeUpdatedAdgroupBids(self, dynamoResource, newValue):
         if not self._updatedAdgroupBidsIsStale:
             self._updatedAdgroupBidsIsStale = True
@@ -337,6 +338,7 @@ class Client:
             Item=i
         )
 
+    # NOTE these are running but not used
     def writePositiveKeywordsAdded(self, dynamoResource, newValue):
         item = {
             "org_id": str(self.orgId),
@@ -347,6 +349,7 @@ class Client:
             Item=item
         )
 
+    # NOTE these are running but not used
     def writeNegativeKeywordsAdded(self, dynamoResource, newValue):
         item = {
             "org_id": str(self.orgId),
@@ -357,6 +360,7 @@ class Client:
             Item=item
         )
 
+    # NOTE these are running but not used
     def readUpdatedBidsCount(self, dynamoResource):
         table = dynamoResource.Table('bids')
         response = table.query(
@@ -369,6 +373,7 @@ class Client:
             bids = 0
         return bids
 
+    # NOTE these are running but not used
     def readUpdatedAdgroupBidsCount(self, dynamoResource):
         table = dynamoResource.Table('adgroup_bids')
         response = table.query(
@@ -380,6 +385,7 @@ class Client:
             bids = 0
         return bids
 
+    # NOTE these are running but not used
     def readPositiveKeywordsAdded(self, dynamoResource):
         table = dynamoResource.Table('positive_keywords')
         response = table.query(
@@ -388,6 +394,7 @@ class Client:
         if len(response['Items']) > 0:
             return response['Items'][0]["keywords"]
 
+    # NOTE these are running but not used
     def readNegativeKeywordsAdded(self, dynamoResource):
         table = dynamoResource.Table('negative_keywords')
         response = table.query(
@@ -429,25 +436,7 @@ class Client:
             response = table.scan(**scan_kwargs)
             for client in response.get('Items'):             
                 CLIENTS.append(
-                    Client.buildFromDictionary(client)
-                    # Client(
-                    #     client.get("orgDetails").get("orgId"),
-                    #     client.get("orgDetails").get("clientName"),
-                    #     client.get("orgDetails").get("emailAddresses"),
-                    #     client.get("orgDetails").get("keyFilename"),
-                    #     client.get("orgDetails").get("pemFilename"),
-                    #     client.get("orgDetails").get("bidParameters"),
-                    #     client.get("orgDetails").get("adgroupBidParameters"),
-                    #     client.get("orgDetails").get("branchBidParameters"),
-                    #     client.get("orgDetails").get("appleCampaigns"),
-                    #     client.get("orgDetails").get("keywordAdderParameters"),
-                    #     client.get("orgDetails").get("branchIntegrationParameters"),
-                    #     client.get("orgDetails").get("currency"),
-                    #     client.get("orgDetails").get("appName"),
-                    #     client.get("orgDetails").get("appID"),
-                    #     client.get("orgDetails").get("auth"),
-                    #     client.get("orgDetails").get("hasRegistered")
-                    # )
+                    Client.buildFromDictionary(client.get("orgDetails"))
                 )
             start_key = response.get('LastEvaluatedKey', None)
             done = start_key is None 

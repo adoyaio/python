@@ -14,7 +14,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: runAdoyaNightly.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -25,7 +25,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: runClient.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 1000
@@ -38,7 +38,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: runAdoyaBiweekly.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 1000
@@ -51,7 +51,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: runAdoyaWeekly.lambda_handler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -62,7 +62,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: clientApi.postClientAdminHandler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: "Internal use 'shortcut' endpoint for admins, supports read, update, delete, & list operations on any table"
       MemorySize: 448
@@ -82,7 +82,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: clientApi.getClientKeywordHistoryHandler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -104,7 +104,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: clientApi.getClientCostHistoryHandler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -126,7 +126,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: supportApi.postSupportItemHandler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -148,7 +148,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: clientApi.postClientHandler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -170,7 +170,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: appleApi.getAppleApps
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -192,7 +192,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: clientApi.getClientHandler
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -214,7 +214,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: appleApi.getAppleAcls
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -236,7 +236,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: appleApi.getAppleAuth
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 448
@@ -258,7 +258,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: appleApi.postAppleCampaign
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 1000
@@ -280,7 +280,7 @@ Resources:
     Type: "AWS::Serverless::Function"
     Properties:
       Handler: appleApi.patchAppleCampaign
-      Runtime: python3.7
+      Runtime: python3.8
       CodeUri: .
       Description: ""
       MemorySize: 1000

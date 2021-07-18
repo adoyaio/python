@@ -3,14 +3,13 @@ import boto3
 import json
 import time
 import datetime
-import sys
 from utils.debug import debug, dprint
 from utils import DynamoUtils, EmailUtils, LambdaUtils
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import ec
+# from cryptography.hazmat.backends import default_backend
+# from cryptography.hazmat.primitives import serialization
+# from cryptography.hazmat.primitives.asymmetric import ec
 from Client import Client
 import requests
 
