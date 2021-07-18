@@ -307,7 +307,7 @@ def process():
         )
     )
     for campaign in campaignsForBidAdjuster:
-        BBP = LambdaUtils.getBidParamsForJob(clientG.__dict__, campaign, "branchBidAdjuster")
+        BBP = LambdaUtils.getBidParamsForJob(clientG, campaign, "branchBidAdjuster")
         print("bidParameters" + str(BBP))
         min_apple_installs = BBP["min_apple_installs"]
         branch_optimization_goal = BBP["branch_optimization_goal"]

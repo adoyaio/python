@@ -86,18 +86,16 @@ def getLogger(env):
         logger.setLevel(logging.INFO)
         return logger
 
-def getBidParamsForJob(orgDetails, campaign, job):
+def getBidParamsForJob(client: Client, campaign, job):
     if job == "bidAdjuster":
-        clientG = Client.buildFromDictionary(orgDetails)
         params = {}
-        params.update(clientG.bidParameters)
+        params.update(client.bidParameters)
         params.update(campaign.get('bidParameters',[]))
         return params
 
     if job == "branchBidAdjuster":
-        clientG = Client.buildFromDictionary(orgDetails)
         params = {}
-        params.update(clientG.branchBidParameters)
+        params.update(client.branchBidParameters)
         params.update(campaign.get('branchBidParameters',[]))
         return params
 
@@ -112,33 +110,13 @@ def getClientForLocalRun(orgId, emailToInternal):
         "emailToInternal": emailToInternal
     }
     with open("./data/dynamo/clients.json") as json_file:
-        clients = json.load(json_file, parse_float=decimal.Decimal)
+        clients = json.load(json_file)
         clientDict = next(item for item in clients if item["orgId"] == orgId)
-        # TODO add biuld from json
-        # client = Client(
-        #     clientDict.get('orgId'),
-        #     clientDict.get('clientName'),
-        #     clientDict.get('emailAddresses'),
-        #     clientDict.get('keyFilename'),
-        #     clientDict.get('pemFilename'),
-        #     clientDict.get('bidParameters'),
-        #     clientDict.get('adgroupBidParameters'),
-        #     clientDict.get('branchBidParameters'),
-        #     clientDict.get('appleCampaigns'),
-        #     clientDict.get('keywordAdderParameters'),
-        #     clientDict.get('branchIntegrationParameters'),
-        #     clientDict.get('currency'),
-        #     clientDict.get('appName'),
-        #     clientDict.get('appID'),
-        #     clientDict.get('auth'),
-        #     clientDict.get('hasRegistered')
-        # )
         client = Client.buildFromDictionary(
             clientDict
         )
     # serialize to json for mock lambda event, 
-    # need to simulate how lamdba marshals a Client into json for the payload
-    clientEvent['orgDetails'] = json.dumps(client.__dict__,cls=DecimalEncoder)
+    clientEvent['orgDetails'] = client.toJSON()
 
     # handle auth token
     if client.auth is None:

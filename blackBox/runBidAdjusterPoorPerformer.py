@@ -448,7 +448,7 @@ def process():
     )
     for campaign in campaignsForBidAdjuster:
         sent = False
-        bidParameters = LambdaUtils.getBidParamsForJob(clientG.__dict__, campaign, "bidAdjuster")
+        bidParameters = LambdaUtils.getBidParamsForJob(clientG, campaign, "bidAdjuster")
         print("bidParameters" + str(bidParameters))
         data = getKeywordReportFromApple(campaign['campaignId'])
         if not data:

@@ -162,6 +162,7 @@ def getKeywordReportFromApple(campaignId):
     return json.loads(response.text)
    
 def createUpdatedKeywordBids(data, campaign, BP):
+    print(str(BP))
     rows = data["data"]["reportingDataResponse"]["row"] 
     if len(rows) == 0:
         return False
@@ -487,7 +488,7 @@ def process():
     )
     for campaign in campaignsForBidAdjuster:
         sent = False
-        bidParameters = LambdaUtils.getBidParamsForJob(clientG.__dict__, campaign, "bidAdjuster")
+        bidParameters = LambdaUtils.getBidParamsForJob(clientG, campaign, "bidAdjuster")
         print("bidParameters" + str(bidParameters))
         data = getKeywordReportFromApple(campaign['campaignId'])
         if not data:

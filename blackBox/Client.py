@@ -396,27 +396,6 @@ class Client:
         if len(response['Items']) > 0:
             return response['Items'][0]["keywords"]
 
-    # when client is serialized to JSON it writes internals with underscore
-    # def buildFromDictionary(orgDetails):
-    #     return Client(
-    #         orgDetails.get('_orgId'),
-    #         orgDetails.get('_clientName'),
-    #         orgDetails.get('_emailAddresses'),
-    #         orgDetails.get('_keyFilename'),
-    #         orgDetails.get('_pemFilename'),
-    #         orgDetails.get('_bidParameters'),
-    #         orgDetails.get('_adgroupBidParameters'),
-    #         orgDetails.get('_branchBidParameters'),
-    #         orgDetails.get('_appleCampaigns'),
-    #         orgDetails.get('_keywordAdderParameters'),
-    #         orgDetails.get('_branchIntegrationParameters'),
-    #         orgDetails.get('_currency'),
-    #         orgDetails.get('_appName'),
-    #         orgDetails.get('_appID'),
-    #         orgDetails.get('_auth'),
-    #         orgDetails.get('_hasRegistered')
-    #     )
-
     def buildFromDictionary(orgDetails):
         return Client(
             orgDetails.get('orgId', "orgId"),
@@ -433,7 +412,7 @@ class Client:
             orgDetails.get('currency', 'USD'),
             orgDetails.get('appName', "appName"),
             orgDetails.get('appId', 'appId'),
-            orgDetails.get('auth', {}),
+            orgDetails.get('auth', None),
             orgDetails.get('hasRegistered', False)
         )
 
@@ -450,24 +429,25 @@ class Client:
             response = table.scan(**scan_kwargs)
             for client in response.get('Items'):             
                 CLIENTS.append(
-                    Client(
-                        client.get("orgDetails").get("orgId"),
-                        client.get("orgDetails").get("clientName"),
-                        client.get("orgDetails").get("emailAddresses"),
-                        client.get("orgDetails").get("keyFilename"),
-                        client.get("orgDetails").get("pemFilename"),
-                        client.get("orgDetails").get("bidParameters"),
-                        client.get("orgDetails").get("adgroupBidParameters"),
-                        client.get("orgDetails").get("branchBidParameters"),
-                        client.get("orgDetails").get("appleCampaigns"),
-                        client.get("orgDetails").get("keywordAdderParameters"),
-                        client.get("orgDetails").get("branchIntegrationParameters"),
-                        client.get("orgDetails").get("currency"),
-                        client.get("orgDetails").get("appName"),
-                        client.get("orgDetails").get("appID"),
-                        client.get("orgDetails").get("auth"),
-                        client.get("orgDetails").get("hasRegistered")
-                    )
+                    Client.buildFromDictionary(client)
+                    # Client(
+                    #     client.get("orgDetails").get("orgId"),
+                    #     client.get("orgDetails").get("clientName"),
+                    #     client.get("orgDetails").get("emailAddresses"),
+                    #     client.get("orgDetails").get("keyFilename"),
+                    #     client.get("orgDetails").get("pemFilename"),
+                    #     client.get("orgDetails").get("bidParameters"),
+                    #     client.get("orgDetails").get("adgroupBidParameters"),
+                    #     client.get("orgDetails").get("branchBidParameters"),
+                    #     client.get("orgDetails").get("appleCampaigns"),
+                    #     client.get("orgDetails").get("keywordAdderParameters"),
+                    #     client.get("orgDetails").get("branchIntegrationParameters"),
+                    #     client.get("orgDetails").get("currency"),
+                    #     client.get("orgDetails").get("appName"),
+                    #     client.get("orgDetails").get("appID"),
+                    #     client.get("orgDetails").get("auth"),
+                    #     client.get("orgDetails").get("hasRegistered")
+                    # )
                 )
             start_key = response.get('LastEvaluatedKey', None)
             done = start_key is None 
