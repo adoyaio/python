@@ -137,6 +137,10 @@ class Client:
     def appleCampaigns(self):
         return list(self._appleCampaigns)
 
+    @appleCampaigns.setter
+    def appleCampaigns(self, appleCampaigns):
+        self._appleCampaigns = appleCampaigns  
+
     @property
     def keywordAdderParameters(self):
         return dict(self._keywordAdderParameters)

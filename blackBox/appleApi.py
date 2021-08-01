@@ -57,7 +57,6 @@ def patchAppleCampaign(event, context):
 
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     table = dynamodb.Table('clients')
-
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
 
     if client.auth is None:
@@ -71,7 +70,7 @@ def patchAppleCampaign(event, context):
             'body': {}
         }
 
-    print(str(updateCampaignData))
+    # print(str(updateCampaignData))
 
     # go thru each campaign in the payload and update 
     existingCampaigns = client.appleCampaigns
@@ -80,6 +79,8 @@ def patchAppleCampaign(event, context):
     authToken = LambdaUtils.getAuthToken(client.auth)
 
     for newCampaignValues in updateCampaignData:
+        
+        # build the new campaigns for 
         adoyaCampaign = next(filter(lambda x: x['campaignId'] == newCampaignValues['campaignId'], existingCampaigns), None)
         if adoyaCampaign is not None:
             adoyaCampaign['status'] = newCampaignValues['status']
@@ -119,8 +120,9 @@ def patchAppleCampaign(event, context):
         print(str(response.text))
         print("The result of PUT campaign to Apple: %s" % response)
 
-    updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
+   
     # write to db
+    updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
     table.put_item(
         Item = {
                 'orgId': int(org_id),

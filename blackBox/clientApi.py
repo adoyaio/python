@@ -1,3 +1,4 @@
+from Client import Client
 import decimal
 import boto3
 import json
@@ -5,15 +6,121 @@ import time
 from utils import DynamoUtils, LambdaUtils, EmailUtils
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
+import requests
+
+
+
+def patchClientHandler(event, context):  
+    print('Loading patchClientHandler...')
+    
+    # parse event data
+    updateClientData: dict = json.loads(event["body"])
+    updateApple = updateClientData.get('updateApple', False)
+    updatedClient = updateClientData.get('client')
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+
+    # init dynamo
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    send = LambdaUtils.getApiEnvironmentDetails(event).get('send')
+    table = dynamodb.Table('clients')
+
+    # get the current client model
+    client: Client = DynamoUtils.getClient(dynamodb, org_id)
+
+    # update client level data
+    client.adgroupBidParameters = updatedClient.get('orgDetails').get('adgroupBidParameters')
+    client.bidParameters = updatedClient.get('orgDetails').get('bidParameters')
+    client.branchBidParameters = updatedClient.get('orgDetails').get('branchBidParameters')
+    client.appleCampaigns = updatedClient.get('orgDetails').get('appleCampaigns')
+
+    # write to dynamo
+    updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
+    table.put_item(
+        Item = {
+                'orgId': int(org_id),
+                'orgDetails': updated
+            }
+    )
+
+    # execute apple update if needed
+    if updateApple:
+        print("found auth values in client " + str(client.auth))
+        authToken = LambdaUtils.getAuthToken(client.auth)
+        headers = {
+            "Authorization": "Bearer %s" % authToken, 
+            "X-AP-Context": "orgId=%s" % org_id,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        for campaign in client.appleCampaigns:
+            url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE % campaign['campaignId'])
+            payload = {
+                "campaign": {
+                     "budgetAmount": {
+                        "amount": str(campaign['lifetimeBudget']),
+                        "currency": str(client.currency)
+                    },
+                    "dailyBudgetAmount": {
+                        "amount": str(campaign['dailyBudget']),
+                        "currency": str(client.currency)
+                    },
+                    "status": str(campaign['status']),
+                }
+            }
+            print("Apple URL is" + url)
+            print("Headers are" + str(headers))
+            print("Payload is '%s'." % payload)
+            response = requests.put(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=config.HTTP_REQUEST_TIMEOUT
+            )
+            print(str(response.text))
+            print("The result of PUT campaign to Apple: %s" % response)
+
+    if send:
+        # send email notification, should only happen in live
+        dateString = time.strftime("%m/%d/%Y")
+        subjectString = "Client updated %s" % dateString
+        EmailUtils.sendTextEmail(
+            json.dumps(
+                client, 
+                cls=DecimalEncoder, 
+                indent=2
+            ), 
+            subjectString, 
+            config.EMAIL_TO, 
+            [],
+            config.EMAIL_FROM)
+
+     # return parsed json from dynamo
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': '*',
+            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+        },
+        'body': json.dumps({})
+    }
+
 
 def postClientHandler(event, context):  
     print('Loading postClientHandler...')
     
     # parse event data
-    body = json.loads(event["body"])
+    body: dict = json.loads(event["body"])
     operation = body["operation"]
     payload = body["payload"]
     tableName = body["tableName"]
+    updateApple = body.get('updateApple', False)
+
+    # parse query string para
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
 
     # init dynamo 
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
@@ -28,10 +135,51 @@ def postClientHandler(event, context):
     }
     
     # parse decimals to float for email
-    client = json.loads(json.dumps(payload), parse_float=decimal.Decimal)
+    clientDict = json.loads(json.dumps(payload), parse_float=decimal.Decimal)
     
     # execute callback(client)
-    response = operations[operation](client)
+    response = operations[operation](clientDict)
+
+    # apple part
+    client: Client = DynamoUtils.getClient(dynamodb, org_id)
+
+    # execute apple update if needed
+    if updateApple:
+        print("found auth values in client " + str(client.auth))
+        authToken = LambdaUtils.getAuthToken(client.auth)
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE % newCampaignValues['campaignId'])
+        headers = {
+            "Authorization": "Bearer %s" % authToken, 
+            "X-AP-Context": "orgId=%s" % org_id,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        for campaign in client.appleCampaigns:
+            payload = {
+                "campaign": {
+                     "budgetAmount": {
+                        "amount": str(campaign['lifetimeBudget']),
+                        "currency": str(client.currency)
+                    },
+                    "dailyBudgetAmount": {
+                        "amount": str(campaign['dailyBudget']),
+                        "currency": str(client.currency)
+                    },
+                    "status": str(campaign['status']),
+                }
+            }
+            print("Apple URL is" + url)
+            print("Headers are" + str(headers))
+            print("Payload is '%s'." % payload)
+            response = requests.put(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=config.HTTP_REQUEST_TIMEOUT
+            )
+            print(str(response.text))
+            print("The result of PUT campaign to Apple: %s" % response)
 
     if send:
         # send email notification, should only happen in live
