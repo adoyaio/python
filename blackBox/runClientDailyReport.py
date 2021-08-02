@@ -4,6 +4,7 @@ import logging
 import time
 import boto3
 import requests
+import traceback
 import sys
 from configuration import config
 from utils.debug import debug, dprint
@@ -443,10 +444,10 @@ def lambda_handler(clientEvent):
     initialize(clientEvent)
     try:
         process()
-    except: 
+    except Exception as e: 
         return {
             'statusCode': 400,
-            'body': json.dumps('Run Client Daily Report Failed')
+            'body': json.dumps('Run Client Daily Report Failed') + str(traceback.format_exception(*sys.exc_info()))
         }
     return {
         'statusCode': 200,
