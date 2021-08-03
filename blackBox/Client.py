@@ -274,8 +274,8 @@ class Client:
         print("getTotalCostPerInstall:::daysToLookBack:::" + str(daysToLookBack))
         print("getTotalCostPerInstall:::dynamoResponse:::" + str(response))
         
-        installs_lookup_key = "installs_" + campaign["campaignId"]
-        spend_lookup_key = "spend_" + campaign["campaignId"]
+        installs_lookup_key = "installs_" + str(campaign["campaignId"])
+        spend_lookup_key = "spend_" + str(campaign["campaignId"])
 
         print("installs_lookup_key " + str(installs_lookup_key))
         print("spend_lookup_key " + str(spend_lookup_key))

@@ -400,9 +400,9 @@ def sendEmailReport(dataForVariousTimes):
     # campaign specific vals
     appleCampaigns = clientG.appleCampaigns
     for campaign in appleCampaigns:
-        spendKey = "spend_" + campaign.get("campaignId")
-        installsKey = "installs_" + campaign.get("campaignId")
-        cpiKey = "cpi_" + campaign.get("campaignId")
+        spendKey = "spend_" + str(campaign.get("campaignId"))
+        installsKey = "installs_" + str(campaign.get("campaignId"))
+        cpiKey = "cpi_" + str(campaign.get("campaignId"))
         rowOfHistory[spendKey] = str(round(summary[ONE_DAY].get(spendKey,0),2))
         rowOfHistory[installsKey] = summary[ONE_DAY].get(installsKey,0)
         rowOfHistory[cpiKey] = str(summary[ONE_DAY].get(cpiKey, 0.00))

@@ -225,7 +225,7 @@ def loadAppleKeywordToDynamo(data, orgId, campaignId):
                 'keywordDisplayStatus': keywordDisplayStatus,
                 'matchType': matchType,
                 'adgroup_name': adgroup_name,
-                'adgroup_id' : adgroup_id,
+                'adgroup_id' : str(adgroup_id),
                 'adgroup_deleted': adgroup_deleted,
                 'bid': bid,
                 'deleted': deleted,
@@ -243,7 +243,7 @@ def loadAppleKeywordToDynamo(data, orgId, campaignId):
                 'local_spend': local_spend,
                 'avg_cpt': avg_cpt,
                 'org_id' : orgId,
-                'campaign_id' : campaignId
+                'campaign_id' : str(campaignId)
             }
 
             try: 
