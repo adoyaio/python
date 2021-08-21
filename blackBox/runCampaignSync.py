@@ -121,5 +121,5 @@ with open("./data/dynamo/clients.json") as json_file:
             appleCampaign['maxAge'] = maxAge
             appleCampaign['adGroupName'] = adGroupName
 
-with open('clients.fixed.json', 'w') as outfile:
+with open('./data/dynamo/clients.fixed.json', 'w') as outfile:
     json.dump(clients, outfile, indent=4, sort_keys=True) 
