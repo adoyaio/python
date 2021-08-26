@@ -133,11 +133,7 @@ def patchClientHandler(event, context):
         dateString = time.strftime("%m/%d/%Y")
         subjectString = "Client updated %s" % dateString
         EmailUtils.sendTextEmail(
-            json.dumps(
-                client, 
-                cls=DecimalEncoder, 
-                indent=2
-            ), 
+            client.toJSON(),
             subjectString, 
             config.EMAIL_TO, 
             [],
@@ -234,7 +230,7 @@ def postClientHandler(event, context):
         subjectString = "Client updated %s" % dateString
         EmailUtils.sendTextEmail(
             json.dumps(
-                client, 
+                clientDict,
                 cls=DecimalEncoder, 
                 indent=2
             ), 
