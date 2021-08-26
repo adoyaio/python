@@ -43,8 +43,8 @@ def patchClientHandler(event, context):
             }
     )
 
-    # execute apple update if needed
-    if updateApple:
+    # execute apple update if needed, only in live
+    if updateApple and send:
         print("found auth values in client " + str(client.auth))
         authToken = LambdaUtils.getAuthToken(client.auth)
         headers = {
@@ -55,6 +55,8 @@ def patchClientHandler(event, context):
         }
 
         for campaign in client.appleCampaigns:
+
+            # handle campaign level
             url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE % campaign['campaignId'])
             payload = {
                 "campaign": {
@@ -80,6 +82,51 @@ def patchClientHandler(event, context):
             )
             print(str(response.text))
             print("The result of PUT campaign to Apple: %s" % response)
+
+
+            # handle ag level
+
+            # convert for apple 
+            gender: list = campaign.get('gender', ['M','F'])
+            if sorted(gender) == sorted(['M','F']):
+                gender = None
+
+            ad_group_url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_ADGROUP_UPDATE_URL_TEMPLATE % (campaign['campaignId'], campaign['adGroupId']))
+            ad_group_payload = {
+                "name": str(campaign['adGroupName']),
+                "targetingDimensions": {
+                    "age": {
+                        "included": [
+                            {
+                                "minAge": campaign.get('minAge', None),
+                                "maxAge": campaign.get('maxAge', None)
+                            }
+                        ]
+                    },
+                    "gender": {
+                        "included": gender
+                    },
+                    "country": None,
+                    "adminArea": None,
+                    "locality": None,
+                    "deviceClass": None,
+                    "daypart": None,
+                    "appDownloaders": None
+                }
+            }
+    
+            print("Adgroup Apple URL is" + ad_group_url)
+            print("Headers are" + str(headers))
+            print("Adgroup Payload is '%s'." % ad_group_payload)
+            response = requests.put(
+                ad_group_url,
+                json=ad_group_payload,
+                headers=headers,
+                timeout=config.HTTP_REQUEST_TIMEOUT
+            )
+            print(str(response.text))
+            print("The result of PUT adgroup to Apple: %s" % response)
+
 
     if send:
         # send email notification, should only happen in live
