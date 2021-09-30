@@ -221,8 +221,8 @@ def analyzeKeywordsSharedCode(
   broad_match_negatives_for_upload = broad_match_negatives_df.to_json(orient = 'records')
 
   #JF 03/23/2020 apple v2 updgrade adding url for search match and broad match negatives
-  search_match_negatives_url = config.APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (search_match_campaign_id, search_match_ad_group_id)
-  broad_match_negatives_url = config.APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
+  search_match_negatives_url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (search_match_campaign_id, search_match_ad_group_id)
+  broad_match_negatives_url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_NEGATIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
 
   #create dataframe for targeted keywords
   #update column name for targeted keywords & convert into dataframe
@@ -283,8 +283,8 @@ def analyzeKeywordsSharedCode(
   #add bid column and update value as per apple search api requirement
   broad_match_targeted_first_step_df['bidAmount'] = broad_match_targeted_first_step_df.shape[0]*[{"amount":""+str(KAP["BROAD_MATCH_DEFAULT_BID"]), "currency":currency}]
 
-  exact_match_targeted_url = config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (exact_match_campaign_id, exact_match_ad_group_id)
-  broad_match_targeted_url = config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
+  exact_match_targeted_url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (exact_match_campaign_id, exact_match_ad_group_id)
+  broad_match_targeted_url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_UPDATE_POSITIVE_KEYWORDS_URL % (broad_match_campaign_id, broad_match_ad_group_id)
 
   #convert search and broad match targeted dataframes into jsons for uploading
   exact_match_targeted_for_upload = exact_match_targeted_first_step_df.to_json(orient = 'records')
