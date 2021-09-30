@@ -451,134 +451,120 @@ def sendToAppleHelper(url, cert, data, headers):
   )
 
 def sendToApple(payloads):
+  if authToken is not None:
+    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+  else:
     headers = { "Authorization": "orgId=%s" % clientG.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
-    if sendG:
-        responses = []
-        for payload in payloads:
-            appleEndpointUrl = payload[1]
-            payloadForPost = payload[0]
-            dprint("runKeywordAdder:::sendToApple:::Payload: '%s'" % payloadForPost)
-            dprint("runKeywordAdder:::sendToApple:::appleEndpointUrl: '%s'" % appleEndpointUrl)
 
+  if sendG:
+      responses = []
+      for payload in payloads:
+          appleEndpointUrl = payload[1]
+          payloadForPost = payload[0]
+          dprint("runKeywordAdder:::sendToApple:::Payload: '%s'" % payloadForPost)
+          dprint("runKeywordAdder:::sendToApple:::appleEndpointUrl: '%s'" % appleEndpointUrl)
+          if authToken is not None:
+            response = sendToAppleHelper(
+              appleEndpointUrl,
+              data=payloadForPost,
+              headers=headers
+            )
+          else:
             response = sendToAppleHelper(
               appleEndpointUrl,
               cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
               data=payloadForPost,
               headers=headers
             )
-
-            if response.status_code == 200:
-                continue
-
-            if response.status_code != 400:
-                print("WARNING: Error %s should be 400 from Apple URL '%s'.  Response of type '%s' is %s." % \
-                    (response.status_code, appleEndpointUrl, response.headers["Content-Type"], response.text))
-                continue
-       
-            if response.headers["Content-Type"] not in JSON_MIME_TYPES:
-                print("WARNING: Error %s from Apple URL '%s'.  Response of type '%s' is %s; should be one of %s." % \
-                    (response.status_code, appleEndpointUrl, response.headers["Content-Type"], response.text, JSON_MIME_TYPES))
-                continue
-
-            # Response from Apple is a JSON object like this:
-            #
-            # {"data"       : null,
-            #  "pagination" : null,
-            #  "error"      : {"errors" : [ {"messageCode" : "DUPLICATE_KEYWORD",
-            #                                "message"     : "duplicate keyword text",
-            #                                "field"       : "NegativeKeywordImport[0].text"},
-            #                               {"messageCode" : "DUPLICATE_KEYWORD",
-            #                                "message"     : "duplicate keyword text",
-            #                                "field"       : "NegativeKeywordImport[1].text"}
-            #                             ]
-            #                 }
-            # }
-
-            # Or this Pythonic version:
-            # {'data': None,
-            #  'error': {'errors': [{'field'      : 'KeywordImport[0].text',
-            #                        'message'    : 'duplicate keyword text',
-            #                        'messageCode': 'DUPLICATE_KEYWORD'},
-            #                       {'field'      : 'KeywordImport[1].text',
-            #                        'message'    : 'duplicate keyword text',
-            #                        'messageCode': 'DUPLICATE_KEYWORD'}]},
-            #  'pagination': None}
-
-            errorObject = response.json()
-            dprint("errorObject is %s" % pprint.pformat(errorObject))
-
-            if "error" not in errorObject:
-                print("WARNING: Missing 'error' attribute in response (%s) from Apple URL '%s'. Response is %s." % (response.status_code, appleEndpointUrl, pprint.pformat(errorObject)))
-                continue
-
-            errorsSubObject = errorObject["error"]
-
-            if "errors" not in errorsSubObject:
-                print("WARNING: Missing 'errors' SUBattribute in response (%s) from Apple URL '%s'. Response is %s." % (response.status_code, appleEndpointUrl, pprint.pformat(errorsSubObject)))
-                continue
-
-            errors = errorsSubObject["errors"]
-
-            if type(errors) != list:
-                print("WARNING: 'errors' isn't an array (a Python list) in response (%s) from Apple URL '%s'. Response is of type %s and is %s." % (response.status_code, appleEndpointUrl, type(errors), pprint.pformat(errors)))
-                continue
-
-            duplicateKeywordIndices = set()
-
-            for error in errors:
-                if type(error) != dict:
-                    print("WARNING: error object isn't an hashmap (a Python dict) in response (%s) from Apple URL '%s'. It is of type %s and is %s." % (response.status_code, appleEndpointUrl, type(error), pprint.pformat(error)))
-                    continue
-
-                messageCode, message, field = error.get("messageCode"), error.get("message"), error.get("field")
-
-                if messageCode == None or message == None or field == None:
-                    print("WARNING: error message is missing one or more of 'messageCode,' 'message,' and 'field' attributes in response (%s) from Apple URL '%s'. It is %s." % (response.status_code, appleEndpointUrl, pprint.pformat(error)))
-                    continue
-
-                # TODO: Centralize the repetition of "duplicated keyword text" in the test and error message. --DS, 26-Oct-2018
-                DUPLICATE_KEYWORD_UPPERCASE = "DUPLICATE_KEYWORD"
-                DUPLICATE_KEYWORD_LOWERCASE = ("duplicate keyword text", "duplicated keyword")
-                if messageCode != DUPLICATE_KEYWORD_UPPERCASE or message.lower() not in DUPLICATE_KEYWORD_LOWERCASE:
-                    print("WARNING: messageCode '%s' isn't '%s' and/or message (lowercased) '%s' isn't in %s in response (%s) from Apple URL '%s'. It is %s for error message %s." % (messageCode,
-                                          DUPLICATE_KEYWORD_UPPERCASE,
-                                          message.lower(),
-                                          DUPLICATE_KEYWORD_LOWERCASE,
-                                          response.status_code,
-                                          appleEndpointUrl,
-                                          pprint.pformat(messageCode),
-                                          error))
-                    continue
-
-                indexMatch = DUPLICATE_KEYWORD_REGEX.match(field)
-
-                if indexMatch == None:
-                    print("WARNING: field with array index didn't match regular expression '%s' in response (%s) from Apple URL '%s'. It is %s for error message %s." % (DUPLICATE_KEYWORD_REGEX.pattern, response.status_code, appleEndpointUrl, pprint.pformat(messageCode), error))
-                    continue
-
-                duplicateKeywordIndices.add(int(indexMatch.group("index")))
-
-                # If there were no errors, keep the response. Otherwise, throw the
-                # response away and use the response from sending the non-duplicates.
-                # This means that the response from a partially-successful update will
-                # be lost.
-                if len(duplicateKeywordIndices) == 0:
-                    responses.append(response)
-
-                else:
-                    responses.append(sendNonDuplicatesToApple(clientG, appleEndpointUrl, payload, headers, duplicateKeywordIndices))
-
-                response = "\n".join(["%s: %s" % (response.status_code, response.text) for response in responses])
-
-    else:
-        response = "Not actually sending anything to Apple."
-        for payload in payloads:
-            print("runKeywordAdder:::sendToApple-false:::payload:'" + str(payload[0]))
-            print("runKeywordAdder:::sendToApple-false:::url:'" + str(payload[1]))
-
-        dprint("The result of sending the keywords to Apple: %s" % response)
-
-    return True
+          if response.status_code == 200:
+              continue
+          if response.status_code != 400:
+              print("WARNING: Error %s should be 400 from Apple URL '%s'.  Response of type '%s' is %s." % \
+                  (response.status_code, appleEndpointUrl, response.headers["Content-Type"], response.text))
+              continue
+     
+          if response.headers["Content-Type"] not in JSON_MIME_TYPES:
+              print("WARNING: Error %s from Apple URL '%s'.  Response of type '%s' is %s; should be one of %s." % \
+                  (response.status_code, appleEndpointUrl, response.headers["Content-Type"], response.text, JSON_MIME_TYPES))
+              continue
+          # Response from Apple is a JSON object like this:
+          #
+          # {"data"       : null,
+          #  "pagination" : null,
+          #  "error"      : {"errors" : [ {"messageCode" : "DUPLICATE_KEYWORD",
+          #                                "message"     : "duplicate keyword text",
+          #                                "field"       : "NegativeKeywordImport[0].text"},
+          #                               {"messageCode" : "DUPLICATE_KEYWORD",
+          #                                "message"     : "duplicate keyword text",
+          #                                "field"       : "NegativeKeywordImport[1].text"}
+          #                             ]
+          #                 }
+          # }
+          # Or this Pythonic version:
+          # {'data': None,
+          #  'error': {'errors': [{'field'      : 'KeywordImport[0].text',
+          #                        'message'    : 'duplicate keyword text',
+          #                        'messageCode': 'DUPLICATE_KEYWORD'},
+          #                       {'field'      : 'KeywordImport[1].text',
+          #                        'message'    : 'duplicate keyword text',
+          #                        'messageCode': 'DUPLICATE_KEYWORD'}]},
+          #  'pagination': None}
+          errorObject = response.json()
+          dprint("errorObject is %s" % pprint.pformat(errorObject))
+          if "error" not in errorObject:
+              print("WARNING: Missing 'error' attribute in response (%s) from Apple URL '%s'. Response is %s." % (response.status_code, appleEndpointUrl, pprint.pformat(errorObject)))
+              continue
+          errorsSubObject = errorObject["error"]
+          if "errors" not in errorsSubObject:
+              print("WARNING: Missing 'errors' SUBattribute in response (%s) from Apple URL '%s'. Response is %s." % (response.status_code, appleEndpointUrl, pprint.pformat(errorsSubObject)))
+              continue
+          errors = errorsSubObject["errors"]
+          if type(errors) != list:
+              print("WARNING: 'errors' isn't an array (a Python list) in response (%s) from Apple URL '%s'. Response is of type %s and is %s." % (response.status_code, appleEndpointUrl, type(errors), pprint.pformat(errors)))
+              continue
+          duplicateKeywordIndices = set()
+          for error in errors:
+              if type(error) != dict:
+                  print("WARNING: error object isn't an hashmap (a Python dict) in response (%s) from Apple URL '%s'. It is of type %s and is %s." % (response.status_code, appleEndpointUrl, type(error), pprint.pformat(error)))
+                  continue
+              messageCode, message, field = error.get("messageCode"), error.get("message"), error.get("field")
+              if messageCode == None or message == None or field == None:
+                  print("WARNING: error message is missing one or more of 'messageCode,' 'message,' and 'field' attributes in response (%s) from Apple URL '%s'. It is %s." % (response.status_code, appleEndpointUrl, pprint.pformat(error)))
+                  continue
+              # TODO: Centralize the repetition of "duplicated keyword text" in the test and error message. --DS, 26-Oct-2018
+              DUPLICATE_KEYWORD_UPPERCASE = "DUPLICATE_KEYWORD"
+              DUPLICATE_KEYWORD_LOWERCASE = ("duplicate keyword text", "duplicated keyword")
+              if messageCode != DUPLICATE_KEYWORD_UPPERCASE or message.lower() not in DUPLICATE_KEYWORD_LOWERCASE:
+                  print("WARNING: messageCode '%s' isn't '%s' and/or message (lowercased) '%s' isn't in %s in response (%s) from Apple URL '%s'. It is %s for error message %s." % (messageCode,
+                                        DUPLICATE_KEYWORD_UPPERCASE,
+                                        message.lower(),
+                                        DUPLICATE_KEYWORD_LOWERCASE,
+                                        response.status_code,
+                                        appleEndpointUrl,
+                                        pprint.pformat(messageCode),
+                                        error))
+                  continue
+              indexMatch = DUPLICATE_KEYWORD_REGEX.match(field)
+              if indexMatch == None:
+                  print("WARNING: field with array index didn't match regular expression '%s' in response (%s) from Apple URL '%s'. It is %s for error message %s." % (DUPLICATE_KEYWORD_REGEX.pattern, response.status_code, appleEndpointUrl, pprint.pformat(messageCode), error))
+                  continue
+              duplicateKeywordIndices.add(int(indexMatch.group("index")))
+              # If there were no errors, keep the response. Otherwise, throw the
+              # response away and use the response from sending the non-duplicates.
+              # This means that the response from a partially-successful update will
+              # be lost.
+              if len(duplicateKeywordIndices) == 0:
+                  responses.append(response)
+              else:
+                  responses.append(sendNonDuplicatesToApple(clientG, appleEndpointUrl, payload, headers, duplicateKeywordIndices))
+              response = "\n".join(["%s: %s" % (response.status_code, response.text) for response in responses])
+  else:
+      response = "Not actually sending anything to Apple."
+      for payload in payloads:
+          print("runKeywordAdder:::sendToApple-false:::payload:'" + str(payload[0]))
+          print("runKeywordAdder:::sendToApple-false:::url:'" + str(payload[1]))
+      dprint("The result of sending the keywords to Apple: %s" % response)
+  return True
 
 
 def createEmailBody(data, sent):
