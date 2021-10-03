@@ -213,48 +213,20 @@ def createUpdatedAdGroupBids(data, campaign):
   # calculate bid multiplier and create a new column
   adGroup_info["bid_multiplier"] = HIGH_CPI_BID_DECREASE_THRESH / adGroup_info["avgCPA"]
 
-  # cap bid multiplier
-  if ABP["OBJECTIVE"] == "aggressive":
-      adGroup_info['bid_multiplier_capped'] = np.clip(adGroup_info['bid_multiplier'], 0.90, 1.30)
-  elif ABP["OBJECTIVE"] == "standard":
-      adGroup_info['bid_multiplier_capped'] = np.clip(adGroup_info['bid_multiplier'], 0.80, 1.20)
-  elif ABP["OBJECTIVE"] == "conservative":
-      adGroup_info['bid_multiplier_capped'] = np.clip(adGroup_info['bid_multiplier'], 0.70, 1.10)
-  else:
-      print("no objective selected")
+  for index, row in adGroup_info.iterrows():
+    # print("-----------------------------------------------------------------------------------")
+    # print("bid: " + str(row['bid']))
+    # print("taps: " + str(row['taps']))
+    # print("TAP_THRESHOLD: " + str(ABP["TAP_THRESHOLD"]))
+    # print("installs: " + str(row['installs']))
+    # print("NO_INSTALL_BID_DECREASE_THRESH: " + str(ABP["NO_INSTALL_BID_DECREASE_THRESH"]))
+    # print("avgCPA: " + str(row['avgCPA']))
+    # print("high CPI bid decrease thresh * 2: " + str(HIGH_CPI_BID_DECREASE_THRESH * 2))
 
-  # create upper bid cap tied to target cost per install.
-  if ABP["OBJECTIVE"] == "aggressive":
-      bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 1.20
-  elif ABP["OBJECTIVE"] == "standard":
-      bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 1
-  elif ABP["OBJECTIVE"] == "conservative":
-      bidCap_targetCPI = HIGH_CPI_BID_DECREASE_THRESH * 0.80
-  else:
-      print("no objective selected")
-
-  #write your conditional statement for the different scenarios
-  adGroup_info_cond = [(adGroup_info.avgCPA      <= HIGH_CPI_BID_DECREASE_THRESH) & \
-                       (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]) & \
-                       (adGroup_info.installs    >  ABP["NO_INSTALL_BID_DECREASE_THRESH"]),
-                       (adGroup_info.avgCPA      >  (HIGH_CPI_BID_DECREASE_THRESH * 2)) & \
-                       (adGroup_info.taps        >= ABP["TAP_THRESHOLD"]),
-                       (adGroup_info.taps        <  ABP["TAP_THRESHOLD"]),
-                       (adGroup_info.installs    == ABP["NO_INSTALL_BID_DECREASE_THRESH"]) & \
-                       (adGroup_info.taps        >= ABP["TAP_THRESHOLD"])]
-
-  adGroup_info_choices = [adGroup_info.bid * 1,
-                          adGroup_info.bid * (1 - cpi_bid_adjustment_poor_performer),
-                          adGroup_info.bid * 1,
-                          adGroup_info.bid * (1 - cpi_bid_adjustment_poor_performer)]                        
-
-  bid_decision = adGroup_info_choices
-
-  #calculate the bid adjustments
-  adGroup_info['bid'] = np.select(adGroup_info_cond, bid_decision, default = adGroup_info.taps)
-
-  # enforce min and max bid
-  adGroup_info['bid'] = np.clip(adGroup_info['bid'], ABP["MIN_BID"], bidCap_targetCPI)
+    if (row['avgCPA'] > (HIGH_CPI_BID_DECREASE_THRESH * 2) and row['taps'] >= ABP["TAP_THRESHOLD"]) or (row['installs'] <= ABP["NO_INSTALL_BID_DECREASE_THRESH"] and (row['taps'] >= ABP["TAP_THRESHOLD"])):
+      newValue = (row['bid'] * .9)
+      adGroup_info.at[index,'bid'] = newValue
+      logger.info('runAdgroupBidAdjusterPoorPerformer.py:::LOWERING ADGROUP BID TO' + str(newValue))
 
   #include campaign id info per apple search ads requirement
   adGroup_info['campaignId'] = adGroup_info.shape[0]*[campaign['campaignId']]
@@ -408,6 +380,7 @@ def process():
   )
 
   for campaign in campaignsForAdgroupBidAdjuster:
+
     logger.info("running for campaign type " + campaign['campaignType'])
 
     data = getAdgroupReportFromApple(campaign)

@@ -440,15 +440,15 @@ def sendNonDuplicatesToApple(url, payload, headers, duplicateKeywordIndices):
   return response
 
 
-@retry
-def sendToAppleHelper(url, cert, data, headers):
-  return requests.post(
-    url, 
-    cert=cert, 
-    data=data, 
-    headers=headers, 
-    timeout=config.HTTP_REQUEST_TIMEOUT
-  )
+# @retry
+# def sendToAppleHelper(url, cert, data, headers):
+#   return requests.post(
+#     url, 
+#     cert=cert, 
+#     data=data, 
+#     headers=headers, 
+#     timeout=config.HTTP_REQUEST_TIMEOUT
+#   )
 
 def sendToApple(payloads):
   if authToken is not None:
@@ -464,17 +464,19 @@ def sendToApple(payloads):
           dprint("runKeywordAdder:::sendToApple:::Payload: '%s'" % payloadForPost)
           dprint("runKeywordAdder:::sendToApple:::appleEndpointUrl: '%s'" % appleEndpointUrl)
           if authToken is not None:
-            response = sendToAppleHelper(
-              appleEndpointUrl,
-              data=payloadForPost,
-              headers=headers
+            response = requests.post(
+              appleEndpointUrl, 
+              data=payloadForPost, 
+              headers=headers, 
+              timeout=config.HTTP_REQUEST_TIMEOUT
             )
           else:
-            response = sendToAppleHelper(
-              appleEndpointUrl,
-              cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
-              data=payloadForPost,
-              headers=headers
+            response = requests.post(
+              appleEndpointUrl, 
+              cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)), 
+              data=payloadForPost, 
+              headers=headers, 
+              timeout=config.HTTP_REQUEST_TIMEOUT
             )
           if response.status_code == 200:
               continue
