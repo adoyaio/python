@@ -452,9 +452,18 @@ def sendNonDuplicatesToApple(url, payload, headers, duplicateKeywordIndices):
 
 def sendToApple(payloads):
   if authToken is not None:
-    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+    headers = {
+      "Authorization": "Bearer %s" % authToken, 
+      "X-AP-Context": "orgId=%s" % clientG.orgId,  
+      "Content-Type" : "application/json", 
+      "Accept" : "application/json"
+    }
   else:
-    headers = { "Authorization": "orgId=%s" % clientG.orgId, "Content-Type" : "application/json", "Accept" : "application/json",}
+    headers = {
+      "Authorization": "orgId=%s" % clientG.orgId, 
+      "Content-Type" : "application/json", 
+      "Accept" : "application/json"
+    }
 
   if sendG:
       responses = []
