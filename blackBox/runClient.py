@@ -9,6 +9,7 @@ import runAdGroupBidAdjusterPoorPerformer
 import runBidAdjusterPoorPerformer
 import runClientDailyReport
 import runBranchBidAdjuster
+import runCampaignSync
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 
@@ -79,6 +80,11 @@ def process(clientEvent, context):
     if 'runBranchBidAdjuster' in jobDetails:
         runBranchBidAdjusterResponse = runBranchBidAdjuster.lambda_handler(clientEvent)
         print(json.dumps(runBranchBidAdjusterResponse))
+
+    if 'runCampaignSync' in jobDetails:
+        runCampaignSyncResponse = runCampaignSync.lambda_handler(clientEvent)
+        print(json.dumps(runCampaignSyncResponse))
+
 
     return True
 

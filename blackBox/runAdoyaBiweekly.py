@@ -38,7 +38,7 @@ def process(event):
         clientEvent = {}
         clientEvent['rootEvent'] = event
         clientEvent['orgDetails'] = client.toJSON()
-        clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport', 'runBidAdjuster', 'runAdgroupBidAdjuster','runKeywordAdder']
+        clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runClientDailyReport', 'runBidAdjuster', 'runAdgroupBidAdjuster','runKeywordAdder', 'runCampaignSync']
 
         if event['env'] == 'prod':
             invoke_response = lambdaClient.invoke(

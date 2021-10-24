@@ -104,11 +104,18 @@ def getBidParamsForJob(client: Client, campaign, job):
 def getClientForLocalRun(orgId, emailToInternal):
     clientEvent = {}
     clientEvent['rootEvent'] = {
-        "env": "lcl", # adjust here to run a prod run
+        "env": "lcl",
         "dynamoEndpoint": "http://localhost:8000",
         "lambdaEndpoint": "http://host.docker.internal:3001",
         "emailToInternal": emailToInternal
     }
+    # uncomment to run for prod
+    # clientEvent['rootEvent'] = {
+    #   "env": "prod",
+    #   "dynamoEndpoint": "",
+    #   "lambdaEndpoint": "",
+    #     "emailToInternal": emailToInternal
+    # }
     with open("./data/dynamo/clients.json") as json_file:
         clients = json.load(json_file)
         clientDict = next(item for item in clients if item["orgId"] == orgId)
