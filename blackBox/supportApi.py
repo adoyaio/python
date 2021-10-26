@@ -15,15 +15,16 @@ def postSupportItemHandler(event, context):
     # init dynamo 
     send = LambdaUtils.getApiEnvironmentDetails(event).get('send')
  
-    # parse decimals to float for email
+    # get details from the payload including if its a request for proposal vs support ticket
+    type = payload.get("type")
+
+    # common values
     subjectString = payload.get("subject", "error retrieving subject")
-    clientEmailAddress = payload.get("username", "info@adoya.io")
-    clientEmailText = "Thank you for contacting Adoya support, we're checking into it!"
+    clientEmailAddress = payload.get("username", "error retrieving ")
+    clientEmailText = "Thank you for contacting Adoya support, we're checking into it and will respond within 24-48 hours."
     supportItem = json.loads(json.dumps(payload))
 
-    
     if send:
-
         # send email notification internal, should only happen in live
         EmailUtils.sendTextEmail(
             json.dumps(
@@ -35,13 +36,14 @@ def postSupportItemHandler(event, context):
             [],
             config.EMAIL_FROM)
 
-        # send email notification to client
-        EmailUtils.sendTextEmail(
-            clientEmailText,
-            subjectString, 
-            [clientEmailAddress], 
-            config.EMAIL_TO,
-            config.EMAIL_FROM)
+        if type == 'support':
+            # send email notification to client
+            EmailUtils.sendTextEmail(
+                clientEmailText,
+                subjectString, 
+                [clientEmailAddress], 
+                config.EMAIL_TO,
+                config.EMAIL_FROM)
 
      # return
     return {
