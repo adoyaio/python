@@ -735,7 +735,149 @@ if 'cpi_branch_history' not in existing_tables:
         {
             'AttributeName': 'timestamp',
             'AttributeType': 'S'
-        }
+        },
+                {
+            'AttributeName': 'cpp',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'revenue',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'spend',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'cpi',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'installs',
+            'AttributeType': 'N'
+        },
+        {
+            'AttributeName': 'revenueOverCost',
+            'AttributeType': 'S'
+        },
+        {
+            'AttributeName': 'purchases',
+            'AttributeType': 'N'
+        },
+        ],
+        GlobalSecondaryIndexes=[
+        {
+            'IndexName': 'org_id-cpp-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'cpp',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-revenue-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'revenue',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-purchases-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'purchases',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-spend-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'spend',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-cpi-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'cpi',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-installs-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'installs',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
+        {
+            'IndexName': 'org_id-revenueOverCost-index',
+            'KeySchema': [
+                {
+                    'AttributeName': 'org_id',
+                    'KeyType': 'HASH'  # Partition key
+                },
+                {
+                    'AttributeName': 'revenueOverCost',
+                    'KeyType': 'RANGE'  # Sort key
+                },
+            ],
+            'Projection': {
+                'ProjectionType': 'ALL'
+            }
+        },
         ],
         BillingMode="PAY_PER_REQUEST"
     )
