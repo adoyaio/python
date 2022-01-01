@@ -29,6 +29,15 @@ def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, tim
     )
     return response
 
+def getBranchCommerceEventsByCampaign(dynamoResource, campaign_id, timestamp):
+    table = dynamoResource.Table('branch_commerce_events')
+    keyExp = "Key('campaign_id').eq('" + str(campaign_id) + "') & Key('timestamp').eq('" + timestamp.strftime('%Y-%m-%d') + "')"
+    query_kwargs = {}
+    query_kwargs['IndexName'] = 'campaign_id-timestamp-index'
+    query_kwargs['KeyConditionExpression']= eval(keyExp)
+    response = table.query(**query_kwargs)
+    return response
+
 # updated to use org id
 def getBranchPurchasesForTimeperiod(dynamoResource, org_id, start_date, end_date):
     table = dynamoResource.Table('branch_commerce_events')
