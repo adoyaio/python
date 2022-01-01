@@ -24,9 +24,7 @@ from utils.DecimalEncoder import DecimalEncoder
 
 LOOKBACK = 1
 startDate = datetime.date.today() - datetime.timedelta(days=LOOKBACK)
-# endDate = datetime.date.today()
 # startDate = '2021-01-25'
-# endDate = '2021-01-31'
 
 def initialize(clientEvent):
     global sendG
@@ -219,7 +217,6 @@ def export_dict_to_csv(raw_dict, filename):
 def process():
     print("runAppleIntegrationCampaign:::" + clientG.clientName + ":::" + str(clientG.orgId))
     orgId = str(clientG.orgId)
-    # appleCampaigns = clientG.appleCampaigns
     data = getCampaignReportFromApple(startDate, startDate)
     if not data:
         logger.info("runAppleIntegrationCampaign:::no data returned")
