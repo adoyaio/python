@@ -55,7 +55,7 @@ def process(clientEvent, context):
         print(json.dumps(runBranchIntegrationResponse))
 
     if 'runAppleIntegrationCampaign' in jobDetails:
-        runAppleIntegrationCampaignResponse = runBranchIntegration.lambda_handler(clientEvent)
+        runAppleIntegrationCampaignResponse = runAppleIntegrationCampaign.lambda_handler(clientEvent)
         print(json.dumps(runAppleIntegrationCampaignResponse))
 
     if 'runClientDailyReport' in jobDetails:
