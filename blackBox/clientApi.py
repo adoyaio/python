@@ -354,6 +354,41 @@ def getClientCostHistoryHandler(event, context):
         'body': json.dumps(response, cls=DecimalEncoder)
     }
 
+def getClientCampaignHistoryHandler(event, context):
+    print('Loading getCampaignCostHistoryHandler....')
+    print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + str(context))
+    queryStringParameters = event["queryStringParameters"]
+    campaign_id = queryStringParameters["campaign_id"]
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+
+    offset = {
+        "campaign_id": queryStringParameters.get("offsetCampaignId"),
+        "date": queryStringParameters.get("offsetDate"),
+    }
+
+    total_recs = queryStringParameters.get("total_recs", "100")
+    start_date = queryStringParameters.get("start_date", "all")
+    end_date = queryStringParameters.get("end_date", "all")
+
+    response = DynamoUtils.getCampaignBranchHistoryByTime(
+        dynamodb,
+        campaign_id,
+        total_recs,
+        offset,
+        start_date,
+        end_date
+    )
+
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'x-api-key'
+        },
+        'body': json.dumps(response, cls=DecimalEncoder)
+    }
 
 def getClientKeywordHistoryHandler(event, context):
     print('Loading getClientKeywordHistoryHandler....')

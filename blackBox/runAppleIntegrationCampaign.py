@@ -55,12 +55,18 @@ def initialize(clientEvent):
     logger.info("runAppleIntegrationCampaign:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
-def getCampaignReportFromAppleHelper(url, cert, json, headers):
-    return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+def getCampaignReportFromAppleHelper(url, cert, json, headers, **kw):
+    # return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r = requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r.raise_for_status
+    return r
 
 @retry
-def getCampaignReportByTokenHelper(url, json, headers):
-    return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+def getCampaignReportByTokenHelper(url, json, headers, **kw):
+    # return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r = requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r.raise_for_status
+    return r
 
 
 def getCampaignReportFromApple(start_date, end_date):

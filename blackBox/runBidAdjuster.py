@@ -367,23 +367,28 @@ def getAppleKeywordsEndpoint(keyword_file_to_post):
 
 
 @retry
-def sendUpdatedBidsToAppleHelper(url, cert, json, headers):
-    return requests.put(
+def sendUpdatedBidsToAppleHelper(url, cert, json, headers, **kw):
+    r = requests.put(
         url, 
         cert=cert, 
         json=json, 
         headers=headers, 
         timeout=config.HTTP_REQUEST_TIMEOUT
     )
+    r.raise_for_status
+    return r
+   
 
 @retry
-def sendUpdatedBidsByTokenHelper(url, json, headers):
-    return requests.put(
+def sendUpdatedBidsByTokenHelper(url, json, headers, **kw):
+    r = requests.put(
         url, 
         json=json, 
         headers=headers, 
         timeout=config.HTTP_REQUEST_TIMEOUT
     )
+    r.raise_for_status
+    return r
 
 def sendUpdatedBidsToApple(keywordFileToPost):
     # TODO cleanup getAppleKeywordsEndpoint, pull campaign and adgroup ids from the apple campaign object

@@ -51,12 +51,18 @@ def initialize(clientEvent):
     logger.info("runClientDailyReport:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
-def getCampaignDataHelper(url, cert, json, headers):
-    return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+def getCampaignDataHelper(url, cert, json, headers, **kw):
+    # return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r = requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r.raise_for_status
+    return r
 
 @retry
-def getCampaignDataByTokenHelper(url, json, headers):
-    return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+def getCampaignDataByTokenHelper(url, json, headers, **kw):
+    # return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r = requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r.raise_for_status
+    return r
 
 
 def getCampaignData(daysToGoBack):
@@ -112,7 +118,8 @@ def getCampaignData(daysToGoBack):
         subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status_code, clientG.clientName)
         logger.warning(email)
         logger.error(subject)
-        if sendG:
+        #if sendG:
+        if True:
             EmailUtils.sendTextEmail(email, subject, emailToG, [], config.EMAIL_FROM)
         
         return False

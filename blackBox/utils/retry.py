@@ -18,11 +18,9 @@ def retry(func):
       except Exception as e:
         if retryCount >= RETRY_LIMIT:
           print(f"{func.__name__} raised exception {e}.  Retried {retryCount} times.  Giving up.")
-        
           raise
 
-        print(f"{func.__name__} raised exception {e}.  Retrying in {sleepTime} seconds.",
-              file=sys.stderr)
+        print(f"{func.__name__} raised exception {e}.  Retrying in {sleepTime} seconds.", file=sys.stderr)
 
         time.sleep(sleepTime)
         sleepTime *= SLEEP_MULTIPLIER

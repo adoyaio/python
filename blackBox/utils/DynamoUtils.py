@@ -225,12 +225,80 @@ def getClientBranchHistoryByTime(
             'offset': nextOffset,
             'count': count.get('Count',0)
         }
-    # response = table.query(
-    #     KeyConditionExpression=Key('org_id').eq(org_id) & Key('timestamp').between(end_date, start_date),
-    #     ScanIndexForward=True
-    # )
-    # return response['Items']
 
+        
+def getCampaignBranchHistoryByTime(
+        dynamoResource, 
+        campaign_id, 
+        total_recs, 
+        offset, 
+        start_date, 
+        end_date
+        ):
+    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.info("getCampaignBranchHistoryByTime")
+
+    table = dynamoResource.Table('campaign_branch_history')
+    
+    # build the KeyConditionExpression
+    if start_date == 'all':
+        keyExp = "Key('campaign_id').eq('" + campaign_id + "')"
+    else:
+        keyExp = "Key('campaign_id').eq('" + campaign_id + "') & Key('date').between('" + end_date + "','"  + start_date + "')"
+    
+    logger.info("getClientBranchHistoryByTime:::keyExp" + keyExp)
+
+    # first page: dont send ExclusiveStartKey
+    if offset.get("org_id") == "init":
+        logger.info("first page init offset")
+        response = table.query(
+            KeyConditionExpression=eval(keyExp),
+            Limit=int(total_recs),
+            ScanIndexForward=False
+        )
+
+        returnVal = response.get('Items')
+        logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+        count = table.query(
+            Select="COUNT",
+            KeyConditionExpression=eval(keyExp),
+        )   
+    else:
+        response = table.query(
+            KeyConditionExpression=eval(keyExp),
+            Limit=int(total_recs),
+            ExclusiveStartKey=offset,
+            ScanIndexForward=False
+        )
+
+        returnVal = response.get('Items')
+
+        # calc total for pagingation
+        count = table.query(
+            Select="COUNT",
+            KeyConditionExpression=eval(keyExp),
+        )
+
+        logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+        logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+
+    # determine whether next page exists and send response
+    try:
+        nextOffset =  response['LastEvaluatedKey']
+        print("nextOffset:::" + str(nextOffset))
+    except KeyError as error:
+        nextOffset = {
+            'date': '',
+            'org_id': ''
+        }
+    return { 
+            'history': returnVal, 
+            'offset': nextOffset,
+            'count': count.get('Count',0)
+        }
 
 def getClientBranchHistory(dynamoResource, org_id, total_recs):
     table = dynamoResource.Table('cpi_branch_history')
