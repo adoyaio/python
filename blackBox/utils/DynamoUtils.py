@@ -240,18 +240,21 @@ def getCampaignBranchHistoryByTime(
     logger.setLevel(logging.INFO)
     logger.info("getCampaignBranchHistoryByTime")
 
+    logger.info('offset' + str(offset))
+    logger.info('total_recs' + str(total_recs))
+
     table = dynamoResource.Table('campaign_branch_history')
     
     # build the KeyConditionExpression
     if start_date == 'all':
         keyExp = "Key('campaign_id').eq('" + campaign_id + "')"
     else:
-        keyExp = "Key('campaign_id').eq('" + campaign_id + "') & Key('date').between('" + end_date + "','"  + start_date + "')"
+        keyExp = "Key('campaign_id').eq('" + campaign_id + "') & Key('timestamp').between('" + end_date + "','"  + start_date + "')"
     
     logger.info("getClientBranchHistoryByTime:::keyExp" + keyExp)
 
     # first page: dont send ExclusiveStartKey
-    if offset.get("org_id") == "init":
+    if offset.get("campaign_id") == "init":
         logger.info("first page init offset")
         response = table.query(
             KeyConditionExpression=eval(keyExp),
@@ -291,8 +294,8 @@ def getCampaignBranchHistoryByTime(
         print("nextOffset:::" + str(nextOffset))
     except KeyError as error:
         nextOffset = {
-            'date': '',
-            'org_id': ''
+            'timestamp': '',
+            'campaign_id': ''
         }
     return { 
             'history': returnVal, 

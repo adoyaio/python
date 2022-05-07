@@ -359,12 +359,12 @@ def getClientCampaignHistoryHandler(event, context):
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
-    campaign_id = queryStringParameters["campaign_id"]
+    campaign_id = str(queryStringParameters["campaign_id"])
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
 
     offset = {
         "campaign_id": queryStringParameters.get("offsetCampaignId"),
-        "date": queryStringParameters.get("offsetDate"),
+        "timestamp": queryStringParameters.get("offsetDate"),
     }
 
     total_recs = queryStringParameters.get("total_recs", "100")
