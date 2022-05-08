@@ -166,6 +166,8 @@ def getClientBranchHistoryByTime(
     logger.setLevel(logging.INFO)
     logger.info("getClientBranchHistoryByTime")
     logger.info("offset " + str(offset)) 
+    logger.info('start date ' + start_date)
+    logger.info('end date ' + end_date)
 
     table = dynamoResource.Table('cpi_branch_history')
     
@@ -220,7 +222,7 @@ def getClientBranchHistoryByTime(
         print("nextOffset:::" + str(nextOffset))
     except KeyError as error:
         nextOffset = {
-            'date': '',
+            'timestamp': '',
             'org_id': ''
         }
     return { 
