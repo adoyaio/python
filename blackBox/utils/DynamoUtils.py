@@ -165,6 +165,7 @@ def getClientBranchHistoryByTime(
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
     logger.info("getClientBranchHistoryByTime")
+    logger.info("offset " + str(offset)) 
 
     table = dynamoResource.Table('cpi_branch_history')
     
@@ -172,13 +173,15 @@ def getClientBranchHistoryByTime(
     if start_date == 'all':
         keyExp = "Key('org_id').eq('" + org_id + "')"
     else:
-        keyExp = "Key('org_id').eq('" + org_id + "') & Key('date').between('" + end_date + "','"  + start_date + "')"
+        keyExp = "Key('org_id').eq('" + org_id + "') & Key('timestamp').between('" + end_date + "','"  + start_date + "')"
     
     logger.info("getClientBranchHistoryByTime:::keyExp" + keyExp)
 
     # first page: dont send ExclusiveStartKey
     if offset.get("org_id") == "init":
         logger.info("first page init offset")
+
+        # TODO while loop this    
         response = table.query(
             KeyConditionExpression=eval(keyExp),
             Limit=int(total_recs),
@@ -278,6 +281,7 @@ def getCampaignBranchHistoryByTime(
         )
 
         returnVal = response.get('Items')
+        logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
 
         # calc total for pagingation
         count = table.query(

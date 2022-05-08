@@ -315,7 +315,7 @@ def getClientCostHistoryHandler(event, context):
 
     offset = {
         "org_id": queryStringParameters.get("offsetOrgId"),
-        "date": queryStringParameters.get("offsetDate"),
+        "timestamp": queryStringParameters.get("offsetDate"),
     }
 
     total_recs = queryStringParameters.get("total_recs", "100")

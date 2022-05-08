@@ -133,10 +133,12 @@ if __name__ == '__main__':
     for campaign in json.loads(formatted):
         campaignIds.append(campaign['campaignId'])
         print(campaign['campaignId'])
-        query_kwargs['KeyConditionExpression'] = Key('campaign_id').eq(str(campaign['campaignId'])) & Key('timestamp').between(
-                    start_date.strftime('%Y-%m-%d'), 
-                    end_date.strftime('%Y-%m-%d')
-                )
+
+        query_kwargs['KeyConditionExpression'] = Key('campaign_id').eq(str(campaign['campaignId']))
+        # query_kwargs['KeyConditionExpression'] = Key('campaign_id').eq(str(campaign['campaignId'])) & Key('timestamp').between(
+        #             start_date.strftime('%Y-%m-%d'), 
+        #             end_date.strftime('%Y-%m-%d')
+        #         )
         while not done:
             if start_key:
                 query_kwargs['ExclusiveStartKey'] = start_key
@@ -146,8 +148,6 @@ if __name__ == '__main__':
             start_key = prodResponse.get('LastEvaluatedKey', None)
             count += 1
             done = start_key is None
-
-
 
 
 
