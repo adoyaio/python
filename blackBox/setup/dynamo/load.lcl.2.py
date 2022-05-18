@@ -96,7 +96,7 @@ if __name__ == '__main__':
             query_kwargs['ExclusiveStartKey'] = start_key
 
         prodResponse = prod.query(**query_kwargs)
-        # load_items_to_local(prodResponse.get('Items', []), local, tableName)
+        load_items_to_local(prodResponse.get('Items', []), local, tableName)
         start_key = prodResponse.get('LastEvaluatedKey', None)
         count += 1
         # done = start_key is None or count == 10
