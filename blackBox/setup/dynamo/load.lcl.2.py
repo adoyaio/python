@@ -133,6 +133,7 @@ if __name__ == '__main__':
     for campaign in json.loads(formatted):
         campaignIds.append(campaign['campaignId'])
         print(campaign['campaignId'])
+        done = False
 
         query_kwargs['KeyConditionExpression'] = Key('campaign_id').eq(str(campaign['campaignId']))
         # query_kwargs['KeyConditionExpression'] = Key('campaign_id').eq(str(campaign['campaignId'])) & Key('timestamp').between(
