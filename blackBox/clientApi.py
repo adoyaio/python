@@ -406,7 +406,7 @@ def getClientCampaignHistoryHandler(event, context):
     offset = {
         "campaign_id": queryStringParameters.get("offsetCampaignId"),
         "timestamp": queryStringParameters.get("offsetDate"),
-        "org_id": queryStringParameters.get("offsetOrgId"),
+        "org_id": org_id,
     }
 
     total_recs = queryStringParameters.get("total_recs", "100")

@@ -266,9 +266,9 @@ def getCampaignBranchHistoryByTime(
     # filterExp = "Attr('campaign_id').in('" + campaign_ids + "')"
     # filterExp = "Attr('campaign_id').in('" + campaign_ids + "')"
     # filterExp = "Attr('campaign_id').in(campaign_ids)"
-    filterTest = ""
-    for id in campaign_ids:
-        filterTest = filterTest + "'" + str(id) + "',"
+    # filterTest = ""
+    # for id in campaign_ids:
+    #     filterTest = filterTest + "'" + str(id) + "',"
 
     # filterExp = "Attr('campaign_id').in(" + str(campaign_ids) + ")"
     # filterExp = "Attr('campaign_id').in(" + ",".join(campaign_ids) + ")"
@@ -294,6 +294,7 @@ def getCampaignBranchHistoryByTime(
         query_kwargs['KeyConditionExpression'] = eval(keyExp)
         query_kwargs['FilterExpression'] = eval(filterExp)
         query_kwargs['IndexName'] = 'org_id-timestamp-index'
+        query_kwargs['ScanIndexForward']=False
         returnVal = []
         while not done:
             if start_key:
@@ -321,6 +322,7 @@ def getCampaignBranchHistoryByTime(
         query_kwargs['FilterExpression'] = eval(filterExp)
         query_kwargs['IndexName'] = 'org_id-timestamp-index'
         query_kwargs['Select'] = 'COUNT'
+        query_kwargs['ScanIndexForward']=False
         count = 0
         while not done:
             if start_key:
@@ -358,6 +360,7 @@ def getCampaignBranchHistoryByTime(
         query_kwargs['KeyConditionExpression'] = eval(keyExp)
         query_kwargs['FilterExpression'] = eval(filterExp)
         query_kwargs['IndexName'] = 'org_id-timestamp-index'
+        query_kwargs['ScanIndexForward']=False
         returnVal = []
         while not done:
             if start_key:
@@ -385,6 +388,7 @@ def getCampaignBranchHistoryByTime(
         query_kwargs['FilterExpression'] = eval(filterExp)
         query_kwargs['IndexName'] = 'org_id-timestamp-index'
         query_kwargs['Select'] = 'COUNT'
+        query_kwargs['ScanIndexForward']=False
         count = 0
         while not done:
             if start_key:
