@@ -1,3 +1,4 @@
+from ast import Not
 import datetime
 import boto3
 from boto3 import dynamodb
@@ -248,7 +249,8 @@ def getCampaignBranchHistoryByTime(
     logger.info("getCampaignBranchHistoryByTime")
 
     logger.info('offset' + str(offset))
-    logger.info('total_recs' + str(total_recs))
+    if total_recs != None:
+        logger.info('total_recs' + str(total_recs))
     logger.info('campaign_ids' + str(campaign_ids))
 
     table = dynamoResource.Table('campaign_branch_history')
@@ -260,26 +262,8 @@ def getCampaignBranchHistoryByTime(
         keyExp = "Key('org_id').eq('" + org_id + "') & Key('timestamp').between('" + end_date + "','"  + start_date + "')"
     
     # build the FilterExpression
-    #filterExp = ""
-    # for ids in campaign_ids:
-    #     filterExp = filterExp + " & Attr('campaign_id').eq(keywordStatus)"
-    # filterExp = "Attr('campaign_id').in('" + campaign_ids + "')"
-    # filterExp = "Attr('campaign_id').in('" + campaign_ids + "')"
-    # filterExp = "Attr('campaign_id').in(campaign_ids)"
-    # filterTest = ""
-    # for id in campaign_ids:
-    #     filterTest = filterTest + "'" + str(id) + "',"
-
-    # filterExp = "Attr('campaign_id').in(" + str(campaign_ids) + ")"
-    # filterExp = "Attr('campaign_id').in(" + ",".join(campaign_ids) + ")"
-    # filterExp = "Attr('campaign_id').in(" + ",".join(campaign_ids) + ")"
-
-    # filterExp = "Attr('campaign_id').is_in(" + filterTest[:-1] + ")"
     filterExp = "Attr('campaign_id').is_in(campaign_ids)"
-
-
-    #logger.info("getClientKeywordHistory:::filterExp" + filterExp)
-    logger.info("getClientKeywordHistory:::keyExp" + keyExp)
+    logger.info("keyExp" + keyExp)
 
     # first page: dont send ExclusiveStartKey
     if offset.get("campaign_id") == "init":
@@ -302,11 +286,14 @@ def getCampaignBranchHistoryByTime(
             response = table.query(**query_kwargs)
             returnVal.extend(response.get('Items'))
             start_key = response.get('LastEvaluatedKey', None)
-            done = len(returnVal) >= int(total_recs) or (start_key is None)
+            # will ignore total recs for now, doesn't work well with the data viz
+            # done = len(returnVal) >= int(total_recs) or (start_key is None)
+            done = start_key is None
         
         # hack for dynamo paging and filtering to work together
         try:
-            last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
+            # last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
+            last = returnVal[-1]
             org_id = last.get('org_id')
             timestamp = last.get('timestamp')
             campaign_id = last.get('campaign_id')
@@ -314,7 +301,7 @@ def getCampaignBranchHistoryByTime(
         except:
             logger.info("no last eval key")
         
-        returnVal = returnVal[0:int(total_recs)-1]
+        # returnVal = returnVal[0:int(total_recs)-1]
         done = False
         start_key = None
         query_kwargs = {} 
@@ -368,10 +355,12 @@ def getCampaignBranchHistoryByTime(
             response = table.query(**query_kwargs)
             returnVal.extend(response.get('Items'))
             start_key = response.get('LastEvaluatedKey', None)
-            done = len(returnVal) >= int(total_recs) or (start_key is None)
+            # done = len(returnVal) >= int(total_recs) or (start_key is None)
+            done = start_key is None
         # hack 
         try:
-            last = returnVal[int(total_recs)]
+            # last = returnVal[int(total_recs)]
+            last = returnVal[-1]
             org_id = last.get('org_id')
             timestamp = last.get('timestamp')
             campaign_id = last.get('campaign_id')
@@ -379,7 +368,7 @@ def getCampaignBranchHistoryByTime(
         except:
             logger.info("no last eval key")
         
-        returnVal = returnVal[0:int(total_recs)-1] 
+        # returnVal = returnVal[0:int(total_recs)-1] 
         # calc total for pagingation
         done = False
         start_key = None

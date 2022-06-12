@@ -397,7 +397,6 @@ def getClientCampaignHistoryHandler(event, context):
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
     multiValueQueryStringParameters = event["multiValueQueryStringParameters"]
-    # campaign_id = str(queryStringParameters["campaign_id"])
     org_id = str(queryStringParameters["org_id"])
     campaign_ids = multiValueQueryStringParameters["campaign_id"]
 
@@ -409,7 +408,7 @@ def getClientCampaignHistoryHandler(event, context):
         "org_id": org_id,
     }
 
-    total_recs = queryStringParameters.get("total_recs", "100")
+    total_recs = queryStringParameters.get("total_recs", "all")
     start_date = queryStringParameters.get("start_date", "all")
     end_date = queryStringParameters.get("end_date", "all")
 
