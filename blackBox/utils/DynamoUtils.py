@@ -1,3 +1,4 @@
+from ast import Not
 import datetime
 import boto3
 from boto3 import dynamodb
@@ -27,6 +28,15 @@ def getBranchCommerceEvents(dynamoResource, campaign_id, ad_set_id, keyword, tim
     response = table.query(
         KeyConditionExpression=Key('branch_commerce_event_key').eq(event_key) & Key('timestamp').eq(timestamp),
     )
+    return response
+
+def getBranchCommerceEventsByCampaign(dynamoResource, campaign_id, timestamp):
+    table = dynamoResource.Table('branch_commerce_events')
+    keyExp = "Key('campaign_id').eq('" + str(campaign_id) + "') & Key('timestamp').eq('" + timestamp.strftime('%Y-%m-%d') + "')"
+    query_kwargs = {}
+    query_kwargs['IndexName'] = 'campaign_id-timestamp-index'
+    query_kwargs['KeyConditionExpression']= eval(keyExp)
+    response = table.query(**query_kwargs)
     return response
 
 # updated to use org id
@@ -144,14 +154,334 @@ def getClientHistory(dynamoResource, org_id):
 #     return response['Items']
 
 
-def getClientBranchHistoryByTime(dynamoResource, org_id, start_date, end_date):
-    table = dynamoResource.Table('cpi_branch_history')
-    response = table.query(
-        KeyConditionExpression=Key('org_id').eq(org_id) & Key('timestamp').between(end_date, start_date),
-        ScanIndexForward=True
-    )
-    return response['Items']
+def getClientBranchHistoryByTime(
+        dynamoResource, 
+        org_id, 
+        total_recs, 
+        offset, 
+        start_date, 
+        end_date
+        ):
+    
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.info("getClientBranchHistoryByTime")
+    logger.info("offset " + str(offset)) 
+    logger.info('start date ' + start_date)
+    logger.info('end date ' + end_date)
 
+    table = dynamoResource.Table('cpi_branch_history')
+    
+    # build the KeyConditionExpression
+    if start_date == 'all':
+        keyExp = "Key('org_id').eq('" + org_id + "')"
+    else:
+        keyExp = "Key('org_id').eq('" + org_id + "') & Key('timestamp').between('" + end_date + "','"  + start_date + "')"
+    
+    logger.info("getClientBranchHistoryByTime:::keyExp" + keyExp)
+
+    # first page: dont send ExclusiveStartKey
+    if offset.get("org_id") == "init":
+        logger.info("first page init offset")
+
+        # TODO while loop this    
+        response = table.query(
+            KeyConditionExpression=eval(keyExp),
+            Limit=int(total_recs),
+            ScanIndexForward=False
+        )
+
+        returnVal = response.get('Items')
+        logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+        count = table.query(
+            Select="COUNT",
+            KeyConditionExpression=eval(keyExp),
+        )   
+    else:
+        response = table.query(
+            KeyConditionExpression=eval(keyExp),
+            Limit=int(total_recs),
+            ExclusiveStartKey=offset,
+            ScanIndexForward=False
+        )
+
+        returnVal = response.get('Items')
+
+        # calc total for pagingation
+        count = table.query(
+            Select="COUNT",
+            KeyConditionExpression=eval(keyExp),
+        )
+
+        logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+        logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+
+    # determine whether next page exists and send response
+    try:
+        nextOffset =  response['LastEvaluatedKey']
+        print("nextOffset:::" + str(nextOffset))
+    except KeyError as error:
+        nextOffset = {
+            'timestamp': '',
+            'org_id': ''
+        }
+    return { 
+            'history': returnVal, 
+            'offset': nextOffset,
+            'count': count.get('Count',0)
+        }
+
+
+
+def getCampaignBranchHistoryByTime(
+        dynamoResource, 
+        campaign_ids, 
+        org_id,
+        total_recs, 
+        offset, 
+        start_date, 
+        end_date
+        ):
+
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    logger.info("getCampaignBranchHistoryByTime")
+
+    logger.info('offset' + str(offset))
+    if total_recs != None:
+        logger.info('total_recs' + str(total_recs))
+    logger.info('campaign_ids' + str(campaign_ids))
+
+    table = dynamoResource.Table('campaign_branch_history')
+
+    # build the KeyConditionExpression
+    if start_date == 'all':
+        keyExp = "Key('org_id').eq('" + org_id + "')"
+    else:
+        keyExp = "Key('org_id').eq('" + org_id + "') & Key('timestamp').between('" + end_date + "','"  + start_date + "')"
+    
+    # build the FilterExpression
+    filterExp = "Attr('campaign_id').is_in(campaign_ids)"
+    logger.info("keyExp" + keyExp)
+
+    # first page: dont send ExclusiveStartKey
+    if offset.get("campaign_id") == "init":
+        logger.info("first page init offset")
+
+        # apply filter expression if needed
+        logger.info("filter expression > 0 len::" + filterExp)
+                    
+        done = False
+        start_key = None
+        query_kwargs = {} 
+        query_kwargs['KeyConditionExpression'] = eval(keyExp)
+        query_kwargs['FilterExpression'] = eval(filterExp)
+        query_kwargs['IndexName'] = 'org_id-timestamp-index'
+        query_kwargs['ScanIndexForward']=False
+        returnVal = []
+        while not done:
+            if start_key:
+                query_kwargs['ExclusiveStartKey'] = start_key
+            response = table.query(**query_kwargs)
+            returnVal.extend(response.get('Items'))
+            start_key = response.get('LastEvaluatedKey', None)
+            # will ignore total recs for now, doesn't work well with the data viz
+            # done = len(returnVal) >= int(total_recs) or (start_key is None)
+            done = start_key is None
+        
+        # hack for dynamo paging and filtering to work together
+        try:
+            # last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
+            last = returnVal[-1]
+            org_id = last.get('org_id')
+            timestamp = last.get('timestamp')
+            campaign_id = last.get('campaign_id')
+            response['LastEvaluatedKey'] = { 'org_id':org_id, 'timestamp':timestamp, 'campaign_id': campaign_id}
+        except:
+            logger.info("no last eval key")
+        
+        # returnVal = returnVal[0:int(total_recs)-1]
+        done = False
+        start_key = None
+        query_kwargs = {} 
+        query_kwargs['KeyConditionExpression'] = eval(keyExp)
+        query_kwargs['FilterExpression'] = eval(filterExp)
+        query_kwargs['IndexName'] = 'org_id-timestamp-index'
+        query_kwargs['Select'] = 'COUNT'
+        query_kwargs['ScanIndexForward']=False
+        count = 0
+        while not done:
+            if start_key:
+                query_kwargs['ExclusiveStartKey'] = start_key
+            count_response = table.query(**query_kwargs)
+            count = count + count_response['Count']
+            start_key = count_response.get('LastEvaluatedKey', None)
+            done = start_key is None
+        logger.info("count:::" + str(count))
+
+        # determine whether next page exists and send response
+        try:
+            nextOffset =  response['LastEvaluatedKey']
+            print("nextOffset:::" + str(nextOffset))
+        except KeyError as error:
+            nextOffset = {
+                'timestamp': '',
+                'campaign_id': '',
+                'org_id': ''
+            }
+        return { 
+                'history': returnVal, 
+                'offset': nextOffset,
+                'count': count
+                }
+
+    # gt first page: send ExclusiveStartKey
+    else: 
+        logger.info("next page offset" + str(offset))
+
+        # apply filter expression if needed
+        done = False
+        start_key = offset
+        query_kwargs = {} 
+        query_kwargs['KeyConditionExpression'] = eval(keyExp)
+        query_kwargs['FilterExpression'] = eval(filterExp)
+        query_kwargs['IndexName'] = 'org_id-timestamp-index'
+        query_kwargs['ScanIndexForward']=False
+        returnVal = []
+        while not done:
+            if start_key:
+                query_kwargs['ExclusiveStartKey'] = start_key
+            response = table.query(**query_kwargs)
+            returnVal.extend(response.get('Items'))
+            start_key = response.get('LastEvaluatedKey', None)
+            # done = len(returnVal) >= int(total_recs) or (start_key is None)
+            done = start_key is None
+        # hack 
+        try:
+            # last = returnVal[int(total_recs)]
+            last = returnVal[-1]
+            org_id = last.get('org_id')
+            timestamp = last.get('timestamp')
+            campaign_id = last.get('campaign_id')
+            response['LastEvaluatedKey'] = { 'org_id':org_id, 'timestamp':timestamp, 'campaign_id': campaign_id}
+        except:
+            logger.info("no last eval key")
+        
+        # returnVal = returnVal[0:int(total_recs)-1] 
+        # calc total for pagingation
+        done = False
+        start_key = None
+        query_kwargs = {} 
+        query_kwargs['KeyConditionExpression'] = eval(keyExp)
+        query_kwargs['FilterExpression'] = eval(filterExp)
+        query_kwargs['IndexName'] = 'org_id-timestamp-index'
+        query_kwargs['Select'] = 'COUNT'
+        query_kwargs['ScanIndexForward']=False
+        count = 0
+        while not done:
+            if start_key:
+                query_kwargs['ExclusiveStartKey'] = start_key
+            count_response = table.query(**query_kwargs)
+            count = count + count_response['Count']
+            start_key = count_response.get('LastEvaluatedKey', None)
+            done = start_key is None
+        logger.info("count:::" + str(count))
+
+        # determine whether next page exists and send response
+        try:
+            nextOffset =  response['LastEvaluatedKey']
+            print("nextOffset:::" + str(nextOffset))
+        except KeyError as error:
+            nextOffset = {
+                'timestamp': '',
+                'campaign_id': '',
+                'org_id': ''
+            }
+        return { 
+                'history': returnVal, 
+                'offset': nextOffset,
+                'count': count
+                }
+
+# def getCampaignBranchHistoryByTime(
+#         dynamoResource, 
+#         campaign_ids, 
+#         org_id,
+#         total_recs, 
+#         offset, 
+#         start_date, 
+#         end_date
+#         ):
+    
+#     logger = logging.getLogger()
+#     logger.setLevel(logging.INFO)
+#     logger.info("getCampaignBranchHistoryByTime")
+
+#     logger.info('offset' + str(offset))
+#     logger.info('total_recs' + str(total_recs))
+#     logger.info('campaign_ids' + str(campaign_ids))
+
+#     table = dynamoResource.Table('campaign_branch_history')
+    
+#     # build the KeyConditionExpression
+#     if start_date == 'all':
+#         keyExp = "Key('org_id').eq('" + org_id + "')"
+#     else:
+#         keyExp = "Key('org_id').eq('" + org_id + "') & Key('timestamp').between('" + end_date + "','"  + start_date + "')"
+    
+#     logger.info("getClientBranchHistoryByTime:::keyExp" + keyExp)
+
+#     # first page: dont send ExclusiveStartKey
+#     if offset.get("campaign_id") == "init":
+#         logger.info("first page init offset")
+#         response = table.query(
+#             KeyConditionExpression=eval(keyExp),
+#             Limit=int(total_recs),
+#             ScanIndexForward=False
+#         )
+
+#         returnVal = response.get('Items')
+#         logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+#         count = table.query(
+#             Select="COUNT",
+#             KeyConditionExpression=eval(keyExp),
+#         )   
+#     else:
+#         response = table.query(
+#             KeyConditionExpression=eval(keyExp),
+#             Limit=int(total_recs),
+#             ExclusiveStartKey=offset,
+#             ScanIndexForward=False
+#         )
+
+#         returnVal = response.get('Items')
+#         # logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+
+#         # calc total for pagingation
+#         count = table.query(
+#             Select="COUNT",
+#             KeyConditionExpression=eval(keyExp),
+#         )
+
+#         logger.info("count:::" + str(json.dumps(count.get('Count',0), cls=DecimalEncoder, indent=2)))
+#         logger.info("count response:::" + str(json.dumps(count, cls=DecimalEncoder, indent=2)))
+
+#     # determine whether next page exists and send response
+#     try:
+#         nextOffset =  response['LastEvaluatedKey']
+#         print("nextOffset:::" + str(nextOffset))
+#     except KeyError as error:
+#         nextOffset = {
+#             'timestamp': '',
+#             'campaign_id': ''
+#         }
+#     return { 
+#             'history': returnVal, 
+#             'offset': nextOffset,
+#             'count': count.get('Count',0)
+#         }
 
 def getClientBranchHistory(dynamoResource, org_id, total_recs):
     table = dynamoResource.Table('cpi_branch_history')

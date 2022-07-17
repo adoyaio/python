@@ -313,18 +313,36 @@ def getClientCostHistoryHandler(event, context):
     org_id = queryStringParameters["org_id"]
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
 
-    query_by_time = False
-    try:
-        total_recs = queryStringParameters["total_recs"]
-    except KeyError as error:
-        query_by_time = True
+    offset = {
+        "org_id": queryStringParameters.get("offsetOrgId"),
+        "timestamp": queryStringParameters.get("offsetDate"),
+    }
 
-    if query_by_time:
-        start_date = queryStringParameters["start_date"]
-        end_date = queryStringParameters["end_date"]
-        history = DynamoUtils.getClientBranchHistoryByTime(dynamodb, org_id, start_date, end_date)
-    else:
-        history = DynamoUtils.getClientBranchHistory(dynamodb, org_id, total_recs)
+    total_recs = queryStringParameters.get("total_recs", "100")
+    start_date = queryStringParameters.get("start_date", "all")
+    end_date = queryStringParameters.get("end_date", "all")
+
+    response = DynamoUtils.getClientBranchHistoryByTime(
+        dynamodb,
+        org_id,
+        total_recs,
+        offset,
+        start_date,
+        end_date
+    )
+
+    # query_by_time = False
+    # try:
+    #     total_recs = queryStringParameters["total_recs"]
+    # except KeyError as error:
+    #     query_by_time = True
+
+    # if query_by_time:
+    #     start_date = queryStringParameters["start_date"]
+    #     end_date = queryStringParameters["end_date"]
+    #     history = DynamoUtils.getClientBranchHistoryByTime(dynamodb, org_id, start_date, end_date)
+    # else:
+    #     history = DynamoUtils.getClientBranchHistory(dynamodb, org_id, total_recs)
 
     return {
         'statusCode': 200,
@@ -333,7 +351,85 @@ def getClientCostHistoryHandler(event, context):
             'Access-Control-Allow-Methods': 'GET',
             'Access-Control-Allow-Headers': 'x-api-key'
         },
-        'body': json.dumps(history, cls=DecimalEncoder)
+        'body': json.dumps(response, cls=DecimalEncoder)
+    }
+
+# def getClientCampaignHistoryHandler(event, context):
+#     print('Loading getCampaignCostHistoryHandler....')
+#     print("Received event: " + json.dumps(event, indent=2))
+#     print("Received context: " + str(context))
+#     queryStringParameters = event["queryStringParameters"]
+#     campaign_id = str(queryStringParameters["campaign_id"])
+
+#     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+
+#     offset = {
+#         "campaign_id": queryStringParameters.get("offsetCampaignId"),
+#         "timestamp": queryStringParameters.get("offsetDate"),
+#     }
+
+#     total_recs = queryStringParameters.get("total_recs", "100")
+#     start_date = queryStringParameters.get("start_date", "all")
+#     end_date = queryStringParameters.get("end_date", "all")
+
+#     response = DynamoUtils.getCampaignBranchHistoryByTime(
+#         dynamodb,
+#         campaign_id,
+#         total_recs,
+#         offset,
+#         start_date,
+#         end_date
+#     )
+
+#     return {
+#         'statusCode': 200,
+#         'headers': {
+#             'Access-Control-Allow-Origin': '*',
+#             'Access-Control-Allow-Methods': 'GET',
+#             'Access-Control-Allow-Headers': 'x-api-key'
+#         },
+#         'body': json.dumps(response, cls=DecimalEncoder)
+#     }
+
+def getClientCampaignHistoryHandler(event, context):
+    print('Loading getCampaignCostHistoryHandler....')
+    print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + str(context))
+    queryStringParameters = event["queryStringParameters"]
+    multiValueQueryStringParameters = event["multiValueQueryStringParameters"]
+    org_id = str(queryStringParameters["org_id"])
+    campaign_ids = multiValueQueryStringParameters["campaign_id"]
+
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+
+    offset = {
+        "campaign_id": queryStringParameters.get("offsetCampaignId"),
+        "timestamp": queryStringParameters.get("offsetDate"),
+        "org_id": org_id,
+    }
+
+    total_recs = queryStringParameters.get("total_recs", "all")
+    start_date = queryStringParameters.get("start_date", "all")
+    end_date = queryStringParameters.get("end_date", "all")
+
+    response = DynamoUtils.getCampaignBranchHistoryByTime(
+        dynamodb,
+        campaign_ids,
+        org_id,
+        total_recs,
+        offset,
+        start_date,
+        end_date
+    )
+
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'x-api-key'
+        },
+        'body': json.dumps(response, cls=DecimalEncoder)
     }
 
 

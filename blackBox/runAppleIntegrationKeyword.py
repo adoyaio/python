@@ -57,12 +57,18 @@ def initialize(clientEvent):
     logger.info("runAppleIntegrationKeyword:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
 @retry
-def getKeywordReportFromAppleHelper(url, cert, json, headers):
-    return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+def getKeywordReportFromAppleHelper(url, cert, json, headers, **kw):
+    # return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r = requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r.raise_for_status
+    return r
 
 @retry
-def getKeywordReportByTokenHelper(url, json, headers):
-    return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+def getKeywordReportByTokenHelper(url, json, headers, **kw):
+    # return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r = requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+    r.raise_for_status
+    return r
 
 
 def getKeywordReportFromApple(campaign_id, start_date, end_date):

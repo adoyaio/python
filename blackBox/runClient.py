@@ -10,6 +10,7 @@ import runBidAdjusterPoorPerformer
 import runClientDailyReport
 import runBranchBidAdjuster
 import runCampaignSync
+import runAppleIntegrationCampaign
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
 
@@ -52,6 +53,10 @@ def process(clientEvent, context):
     if 'runBranchIntegration' in jobDetails:
         runBranchIntegrationResponse = runBranchIntegration.lambda_handler(clientEvent)
         print(json.dumps(runBranchIntegrationResponse))
+
+    if 'runAppleIntegrationCampaign' in jobDetails:
+        runAppleIntegrationCampaignResponse = runAppleIntegrationCampaign.lambda_handler(clientEvent)
+        print(json.dumps(runAppleIntegrationCampaignResponse))
 
     if 'runClientDailyReport' in jobDetails:
         runClientDailyResponse = runClientDailyReport.lambda_handler(clientEvent)
