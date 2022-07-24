@@ -431,7 +431,7 @@ class Client:
     # initialize and return array of Client objects
     def getClients(dynamoResource):
         CLIENTS = []
-        table = dynamoResource.Table('clients')
+        table = dynamoResource.Table('clients_2')
         done = False
         start_key = None
         scan_kwargs = {}

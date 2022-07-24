@@ -24,6 +24,10 @@ APPLE_AUTH_URL = "https://appleid.apple.com/auth/oauth2/token"
 # BRANCH
 BRANCH_ANALYTICS_URL_BASE = "https://api2.branch.io/v1/query/analytics"
 
+# STRIPE
+STRIPE_API_KEY = "sk_test_51I7PknCY7kJiUoJdxbiY3H8233hPnmArovZaVwyTkv4YeGN4lUaIADNmt3SwjW0VeqG0y74Wa7khT9Alqix2ebVE00PTMt2g21"
+
+
 # table to branch event
 DATA_SOURCES = {}
 DATA_SOURCES['branch_commerce_events'] = 'eo_commerce_event'

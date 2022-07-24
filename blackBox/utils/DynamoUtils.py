@@ -108,11 +108,23 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
 # NOTE in dynamo numbers are serialized so there is no advantage to using int 
 # consider using string for consistency
 
+# def getClient(dynamoResource, org_id):
+#     from Client import Client
+#     table = dynamoResource.Table('clients')
+#     response = table.query(
+#         KeyConditionExpression=Key('orgId').eq(int(org_id))
+#     )
+#     clientDict = response['Items'][0]
+#     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
+#     client = Client.buildFromDictionary(parsed)
+#     return client
+
+# updated to use string orgId
 def getClient(dynamoResource, org_id):
     from Client import Client
-    table = dynamoResource.Table('clients')
+    table = dynamoResource.Table('clients_2')
     response = table.query(
-        KeyConditionExpression=Key('orgId').eq(int(org_id))
+        KeyConditionExpression=Key('orgId').eq(org_id)
     )
     clientDict = response['Items'][0]
     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))

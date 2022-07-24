@@ -695,9 +695,9 @@ if 'apple_keyword' not in existing_tables:
 
 # dynamo numbers are serialized to strings so no advantage to using number here
 # TODO rework to use string key instead of number 
-if 'clients' not in existing_tables:
+if 'clients_2' not in existing_tables:
     table = dynamodb.create_table(
-        TableName='clients',
+        TableName='clients_2',
         KeySchema=[
             {
                 'AttributeName': 'orgId',
@@ -707,7 +707,7 @@ if 'clients' not in existing_tables:
         AttributeDefinitions=[
         {
             'AttributeName': 'orgId',
-            'AttributeType': 'N' 
+            'AttributeType': 'S' 
         }
         ],
         BillingMode="PAY_PER_REQUEST",
