@@ -118,9 +118,9 @@ def getClientForLocalRun(orgId, emailToInternal):
     # }
     with open("./data/dynamo/clients.json") as json_file:
         clients = json.load(json_file)
-        clientDict = next(item for item in clients if item["orgId"] == orgId)
+        clientDict = next(item for item in clients if item["orgId"] == str(orgId))
         client = Client.buildFromDictionary(
-            clientDict
+            clientDict['orgDetails']
         )
     # serialize to json for mock lambda event, 
     clientEvent['orgDetails'] = client.toJSON()
@@ -163,7 +163,10 @@ def getAuthToken(auth):
     payload['aud'] = audience
     payload['iat'] = issued_at_timestamp
     payload['exp'] = expiration_timestamp
-    payload['iss'] = team_id 
+    payload['iss'] = team_id
+
+    print("issued_at_timestamp:::" + str(issued_at_timestamp))
+    print("expiration_timestamp:::" + str(expiration_timestamp)) 
 
     dprint("\nPayload %s" % str(payload))
     dprint("\nHeaders %s" % str(headers))
@@ -194,5 +197,8 @@ def getAuthToken(auth):
     dprint("\nParams are %s" % params)
 
     response = requests.post(url, params=params, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+
+    print("response is " + str(response))
+    print("response text " + str(response.text))
 
     return json.loads(response.text).get("access_token", None)

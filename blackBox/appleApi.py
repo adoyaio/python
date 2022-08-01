@@ -91,7 +91,7 @@ def patchAppleCampaign(event, context):
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE % newCampaignValues['campaignId'])
         headers = {
             "Authorization": "Bearer %s" % authToken, 
-            "X-AP-Context": "orgId=%s" % org_id,
+            "X-AP-Context": "orgId=%s" % client.orgId,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
@@ -123,11 +123,15 @@ def patchAppleCampaign(event, context):
    
     # write to db
     updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
+    # table.put_item(
+    #     Item = {
+    #             'orgId': int(org_id),
+    #             'orgDetails': updated
+    #         }
+    # )
+
     table.put_item(
-        Item = {
-                'orgId': int(org_id),
-                'orgDetails': updated
-            }
+        Item = updated
     )
 
     return {
@@ -649,8 +653,11 @@ def getAppleApps(event, context):
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
         authToken = LambdaUtils.getAuthToken(client.auth)
+        
+
+        # get apps
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_GET_APPS_URL
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % org_id}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
         print("URL is" + url)
         print("Headers are" + str(headers))
         response = requests.get(
@@ -658,8 +665,26 @@ def getAppleApps(event, context):
             headers=headers,
             timeout=config.HTTP_REQUEST_TIMEOUT
         )
-
         print(str(response.text))
+
+        # get acls
+        get_acls_response = requests.get(
+            config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
+                headers=headers
+            )
+
+        #extract all the apps assignd to the apple search ads account
+        get_acls_all_orgs_response = json.loads(get_acls_response.text)
+
+        print(str(get_acls_all_orgs_response))
+        get_acls_all_orgs_list = [get_acls_all_orgs_response[x] for x in get_acls_all_orgs_response]
+        get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
+        acls_response = list(
+            filter(
+                lambda org:(org["orgId"] == int(client.orgId)), get_acls_all_orgs_list_extracted
+            )
+        )
+
         
     return {
         'statusCode': 200,
@@ -668,7 +693,7 @@ def getAppleApps(event, context):
             'Access-Control-Allow-Methods': 'GET',
             'Access-Control-Allow-Headers': 'x-api-key'
         },
-        'body': response.text
+        'body': json.dumps({ 'apps' : json.loads(response.text), 'acls': acls_response })
     }
 
 def getAppleAcls(event, context):
@@ -679,13 +704,15 @@ def getAppleAcls(event, context):
     org_id = queryStringParameters["org_id"]
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
+
+    print(json.dumps(client.toJSON()))
     
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
         authToken = LambdaUtils.getAuthToken(client.auth)
 
-    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % org_id}
+    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
     get_acls_response = requests.get(config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
         headers=headers
     )
@@ -698,7 +725,7 @@ def getAppleAcls(event, context):
     get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
     acls_response = list(
         filter(
-            lambda org:(org["orgId"] == int(org_id)), get_acls_all_orgs_list_extracted
+            lambda org:(org["orgId"] == int(client.orgId)), get_acls_all_orgs_list_extracted
         )
     )
         
@@ -712,6 +739,7 @@ def getAppleAcls(event, context):
         'body': json.dumps(acls_response)
     }
 
+# TODO remove this from
 def getAppleAuth(event, context):
     print('Loading getAppleAuth....')
     print("Received event: " + json.dumps(event, indent=2))

@@ -695,6 +695,25 @@ if 'apple_keyword' not in existing_tables:
 
 # dynamo numbers are serialized to strings so no advantage to using number here
 # TODO rework to use string key instead of number 
+if 'clients' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='clients',
+        KeySchema=[
+            {
+                'AttributeName': 'orgId',
+                'KeyType': 'HASH'  #Partition key
+            }
+        ],
+        AttributeDefinitions=[
+        {
+            'AttributeName': 'orgId',
+            'AttributeType': 'N' 
+        }
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    print("Table status:", table.table_name, table.table_status)
+
 if 'clients_2' not in existing_tables:
     table = dynamodb.create_table(
         TableName='clients_2',

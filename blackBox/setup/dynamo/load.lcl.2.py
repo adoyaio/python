@@ -56,16 +56,16 @@ if __name__ == '__main__':
 
     # client_2 table
     tableName = 'clients_2'
-    local = dynamodbLocal.Table(tableName)
-    prod = dynamodbProd.Table(tableName)
+    local = dynamodbLocal.Table('clients_2')
+    prod = dynamodbProd.Table('clients')
 
     prodResponse = prod.query(
-        KeyConditionExpression=Key('orgId').eq(str(orgId))
+        KeyConditionExpression=Key('orgId').eq(int(orgId))
     )
     for item in prodResponse.get("Items"):
         try:
             localResponse = local.put_item(
-                Item=item
+                Item={ 'orgId': str(orgId), 'orgDetails': item['orgDetails'] }
             )
         except ClientError as e:
             print(tableName + " failed due to" + e.localResponse['Error']['Message'])
