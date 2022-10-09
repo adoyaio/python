@@ -23,7 +23,7 @@ def patchClientHandler(event, context):
     # init dynamo
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     send = LambdaUtils.getApiEnvironmentDetails(event).get('send')
-    table = dynamodb.Table('clients')
+    table = dynamodb.Table('clients_2')
 
     # get the current client model
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
@@ -38,7 +38,7 @@ def patchClientHandler(event, context):
     updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
     table.put_item(
         Item = {
-                'orgId': int(org_id),
+                'orgId': org_id,
                 'orgDetails': updated
             }
     )
@@ -49,7 +49,7 @@ def patchClientHandler(event, context):
         authToken = LambdaUtils.getAuthToken(client.auth)
         headers = {
             "Authorization": "Bearer %s" % authToken, 
-            "X-AP-Context": "orgId=%s" % org_id,
+            "X-AP-Context": "orgId=%s" % client.orgId,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }

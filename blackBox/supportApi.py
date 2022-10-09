@@ -24,7 +24,8 @@ def postSupportItemHandler(event, context):
     clientEmailText = "Thank you for contacting Adoya support, we're checking into it and will respond within 24-48 hours."
     supportItem = json.loads(json.dumps(payload))
 
-    if send:
+    # if send:
+    if True:
         # send email notification internal, should only happen in live
         EmailUtils.sendTextEmail(
             json.dumps(

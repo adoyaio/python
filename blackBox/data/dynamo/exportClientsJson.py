@@ -41,7 +41,7 @@ def initialize(env, dynamoEndpoint):
 
 def process():
     data = []
-    for client in (dynamodb.Table('clients').scan()["Items"]):
+    for client in (dynamodb.Table('clients_2').scan()["Items"]):
         # data.append(client["orgDetails"])
         data.append(client)
     with open('clients.' + str(today) + '.json', 'w') as outfile:
