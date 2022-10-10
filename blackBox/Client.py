@@ -26,7 +26,8 @@ class Client:
         appName,
         appID,
         auth,
-        hasRegistered
+        hasRegistered,
+        hasInvitedApiUser
     ):  
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
@@ -60,6 +61,7 @@ class Client:
         self._appID = appID
         self._auth = auth
         self._hasRegistered = hasRegistered
+        self._hasInvitedApiUser = hasInvitedApiUser
 
 
     def __str__(self):
@@ -83,7 +85,8 @@ class Client:
                 'appName' : self._appName,
                 'appID' : self._appID,
                 'auth' : self._auth,
-                'hasRegistered' : self._hasRegistered
+                'hasRegistered' : self._hasRegistered,
+                'hasInvitedApiUser' : self._hasInvitedApiUser
             },
             cls=DecimalEncoder
         )
@@ -162,6 +165,11 @@ class Client:
     @property
     def hasRegistered(self):
        return self._hasRegistered
+
+
+    @property
+    def hasInvitedApiUser(self):
+       return self._hasInvitedApiUser
 
 
     # bid adjusters should use this method for cpi
@@ -425,7 +433,8 @@ class Client:
             orgDetails.get('appName', "appName"),
             orgDetails.get('appId', 'appId'),
             orgDetails.get('auth', None),
-            orgDetails.get('hasRegistered', False)
+            orgDetails.get('hasRegistered', False),
+            orgDetails.get('hasInvitedApiUser', False)
         )
 
     # initialize and return array of Client objects
