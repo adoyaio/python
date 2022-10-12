@@ -20,10 +20,12 @@ def postSupportItemHandler(event, context):
 
     # common values
     subjectString = payload.get("subject", "error retrieving subject")
-    clientEmailAddress = payload.get("username", "error retrieving ")
+    clientEmailAddress = payload.get("username", "error retrieving ") 
     clientEmailText = "Thank you for contacting Adoya support, we're checking into it and will respond within 24-48 hours."
     supportItem = json.loads(json.dumps(payload))
-
+    clientEmailTextForReg = "Thank you for contacting Adoya, we've received and confirmed your invitation for Apple Search Ads API access. You are now ready to complete registration at https://adoya-app.io/registration (You may be required to re-authenticate)" \
+    
+    
     # if send:
     if True:
         # send email notification internal, should only happen in live
@@ -41,6 +43,15 @@ def postSupportItemHandler(event, context):
             # send email notification to client
             EmailUtils.sendTextEmail(
                 clientEmailText,
+                subjectString, 
+                [clientEmailAddress], 
+                config.EMAIL_TO,
+                config.EMAIL_FROM)
+
+        if type == 'registration':
+            # send email notification to client
+            EmailUtils.sendTextEmail(
+                clientEmailTextForReg,
                 subjectString, 
                 [clientEmailAddress], 
                 config.EMAIL_TO,
