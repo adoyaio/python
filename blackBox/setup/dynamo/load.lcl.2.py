@@ -57,10 +57,10 @@ if __name__ == '__main__':
     # client_2 table
     tableName = 'clients_2'
     local = dynamodbLocal.Table('clients_2')
-    prod = dynamodbProd.Table('clients')
+    prod = dynamodbProd.Table('clients_2')
 
     prodResponse = prod.query(
-        KeyConditionExpression=Key('orgId').eq(int(orgId))
+        KeyConditionExpression=Key('orgId').eq(str(orgId))
     )
     for item in prodResponse.get("Items"):
         try:
@@ -137,9 +137,9 @@ if __name__ == '__main__':
     query_kwargs = {}
 
     # first hit clients to get list of 
-    clientTable = dynamodbLocal.Table('clients')
+    clientTable = dynamodbLocal.Table('clients_2')
     clientTableResponse = clientTable.query(
-        KeyConditionExpression=Key('orgId').eq(int(orgId))
+        KeyConditionExpression=Key('orgId').eq(str(orgId))
     )
 
     # print(str(clientTableResponse.get('Items')[0].get('orgDetails').get('appleCampaigns')))

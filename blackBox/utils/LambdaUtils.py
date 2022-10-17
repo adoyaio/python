@@ -141,7 +141,8 @@ def getAuthToken(auth):
     team_id = auth.get('teamId')
     key_id = auth.get('keyId')
 
-    privateKey = auth.get('privateKey')
+    # privateKey = auth.get('privateKey')
+    privateKey = 'MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA=='
     key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
     audience = 'https://appleid.apple.com'
     alg = 'ES256'
