@@ -615,20 +615,21 @@ def getClientKeywordHistory(
                 response = table.query(**query_kwargs)
                 returnVal.extend(response.get('Items'))
                 start_key = response.get('LastEvaluatedKey', None)
-                done = len(returnVal) >= int(total_recs) or (start_key is None)
+                done = (start_key is None)
+                # done = len(returnVal) >= int(total_recs) or (start_key is None)
             
             # hack for dynamo paging and filtering to work together
-            try:
-                last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
-                org_id = last.get('org_id')
-                date = last.get('date')
-                keyword_id = last.get('keyword_id')
-                response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
-            except:
-                logger.info("no last eval key")
+            # try:
+            #     last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
+            #     org_id = last.get('org_id')
+            #     date = last.get('date')
+            #     keyword_id = last.get('keyword_id')
+            #     response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
+            # except:
+            #     logger.info("no last eval key")
             
-            returnVal = returnVal[0:int(total_recs)-1]
-
+            # returnVal = returnVal[0:int(total_recs)-1]
+        
 
             done = False
             start_key = None

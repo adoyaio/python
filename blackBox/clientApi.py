@@ -447,7 +447,7 @@ def getClientKeywordHistoryHandler(event, context):
         "keyword_id": queryStringParameters.get("offsetKeywordId")
     }
 
-    total_recs = queryStringParameters.get("total_recs", "100")
+    total_recs = queryStringParameters.get("total_recs", "all")
     start_date = queryStringParameters.get("start_date", "all")
     end_date = queryStringParameters.get("end_date", "all")
     matchType = queryStringParameters.get("matchType",'all')
