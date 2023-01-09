@@ -342,6 +342,28 @@ Resources:
             Method: ANY
             Auth:
               ApiKeyRequired: true
+  createClientPemKey:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.createClientPemKeyHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "createClientPemKey"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /api/client/createPemKey
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
   postStripeCustomer:
     Type: "AWS::Serverless::Function"
     Properties:

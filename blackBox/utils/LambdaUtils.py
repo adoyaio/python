@@ -119,6 +119,7 @@ def getClientForLocalRun(orgId, emailToInternal):
     with open("./data/dynamo/clients.json") as json_file:
         clients = json.load(json_file)
         clientDict = next(item for item in clients if item["orgId"] == str(orgId))
+        
         client = Client.buildFromDictionary(
             clientDict['orgDetails']
         )
@@ -130,13 +131,13 @@ def getClientForLocalRun(orgId, emailToInternal):
         clientEvent['authToken'] = None
         return clientEvent
         
-    authToken = getAuthToken(client.auth)
+    authToken = getAuthToken(client.auth, client.orgId)
     clientEvent['authToken'] = authToken
     return clientEvent
 
 
 # gets an oauth token from appleid.apple.com
-def getAuthToken(auth):
+def getAuthToken(auth, orgId):
     client_id = auth.get('clientId')
     team_id = auth.get('teamId')
     key_id = auth.get('keyId')
@@ -144,6 +145,9 @@ def getAuthToken(auth):
     # privateKey = auth.get('privateKey')
     privateKey = 'MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA=='
     key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
+    
+    # TODO get private key from s3 
+
     audience = 'https://appleid.apple.com'
     alg = 'ES256'
 

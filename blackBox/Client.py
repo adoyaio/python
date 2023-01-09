@@ -69,6 +69,7 @@ class Client:
     def __str__(self):
         return "Client '%s (#%d)" % (self.clientName, self.orgId)
 
+    # to avoid the underscores when serializing a Client
     def toJSON(self):
         return json.dumps(
             {
