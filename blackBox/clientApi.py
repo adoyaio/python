@@ -514,8 +514,8 @@ def createClientPemKeyHandler(event, context):
     with open(tempNamePublic, 'rb') as data:
         S3Utils.setCert(data, public_key_file_name)
 
-    with open(tempNamePublic, 'rt') as data: 
-        returnValue = data.read()
+    with open(tempNamePublic, 'rt') as file: 
+        returnValue = file.read()
     
     return {
         'statusCode': 200,

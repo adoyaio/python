@@ -10,6 +10,7 @@ from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 from utils.debug import debug, dprint
 from Client import Client
+from utils import S3Utils
 
 # TODO reevaluate this approach
 def getApiEnvironmentDetails(event):
@@ -142,11 +143,19 @@ def getAuthToken(auth, orgId):
     team_id = auth.get('teamId')
     key_id = auth.get('keyId')
 
+    # NOTE deprecated approach where customers share key
     # privateKey = auth.get('privateKey')
-    privateKey = 'MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA=='
-    key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
+    # privateKey = 'MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA=='
+    # key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
     
-    # TODO get private key from s3 
+    # TODO get private key from s3
+    key = None
+    private_key_name = str(orgId) + "-private-key.pem"
+    print("james test 1" + str(orgId))
+    print("james test" + private_key_name)
+    tempNamePublic = S3Utils.getCert(private_key_name)
+    with open(tempNamePublic, 'rt') as file: 
+        key = file.read()
 
     audience = 'https://appleid.apple.com'
     alg = 'ES256'

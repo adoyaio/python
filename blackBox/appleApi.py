@@ -76,7 +76,7 @@ def patchAppleCampaign(event, context):
     existingCampaigns = client.appleCampaigns
 
     print("found auth values in client " + str(client.auth))
-    authToken = LambdaUtils.getAuthToken(client.auth, org_id)
+    authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
 
     for newCampaignValues in updateCampaignData:
         
@@ -652,7 +652,7 @@ def getAppleApps(event, context):
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, org_id)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
         
 
         # get apps
@@ -710,7 +710,7 @@ def getAppleAcls(event, context):
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, org_id)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
 
     headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
     get_acls_response = requests.get(config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
@@ -750,7 +750,7 @@ def getAppleAuth(event, context):
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, org_id)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
         
     return {
         'statusCode': 200,
