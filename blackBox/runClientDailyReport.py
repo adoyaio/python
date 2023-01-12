@@ -336,8 +336,7 @@ def sendEmailReport(dataForVariousTimes):
         summary[someTime] = {"installs": 0, "spend": 0.0}
         
         # iterate each campaign from asa and get totals
-        for campaign in campaignsForThatTime:
-            
+        for campaign in campaignsForThatTime:            
             # pull install and spend from asa response
             campaignId = campaign["metadata"]["campaignId"]
             installs = campaign["total"]["installs"]
@@ -348,7 +347,8 @@ def sendEmailReport(dataForVariousTimes):
             summary[someTime]["spend"] += spend
 
             # get list of client campaigns from dynamo
-            adoyaCampaign = next(filter(lambda x: x["campaignId"] == str(campaignId), clientG.appleCampaigns), None)
+            adoyaCampaign = next(filter(lambda x: x["campaignId"] == campaignId, clientG.appleCampaigns), None)
+
             if adoyaCampaign is not None:
                 summary[someTime]["cpi_" + str(campaignId)] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_" + str(campaignId)] = installs
@@ -407,12 +407,15 @@ def sendEmailReport(dataForVariousTimes):
     # campaign specific vals
     appleCampaigns = clientG.appleCampaigns
     for campaign in appleCampaigns:
+
         spendKey = "spend_" + str(campaign.get("campaignId"))
         installsKey = "installs_" + str(campaign.get("campaignId"))
         cpiKey = "cpi_" + str(campaign.get("campaignId"))
+
         rowOfHistory[spendKey] = str(round(summary[ONE_DAY].get(spendKey,0),2))
         rowOfHistory[installsKey] = summary[ONE_DAY].get(installsKey,0)
         rowOfHistory[cpiKey] = str(summary[ONE_DAY].get(cpiKey, 0.00))
+
 
     clientG.addRowToHistory(rowOfHistory, dynamodb, end_date)
 
