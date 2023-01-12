@@ -148,13 +148,11 @@ def getAuthToken(auth, orgId):
     # privateKey = 'MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA=='
     # key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
     
-    # TODO get private key from s3
+    # get private key from s3
     key = None
     private_key_name = str(orgId) + "-private-key.pem"
-    print("james test 1" + str(orgId))
-    print("james test" + private_key_name)
-    tempNamePublic = S3Utils.getCert(private_key_name)
-    with open(tempNamePublic, 'rt') as file: 
+    private_key = S3Utils.getCert(private_key_name)
+    with open(private_key, 'rt') as file: 
         key = file.read()
 
     audience = 'https://appleid.apple.com'
