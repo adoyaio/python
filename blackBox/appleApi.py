@@ -7,43 +7,11 @@ from utils.debug import debug, dprint
 from utils import DynamoUtils, EmailUtils, LambdaUtils
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
-# from cryptography.hazmat.backends import default_backend
-# from cryptography.hazmat.primitives import serialization
-# from cryptography.hazmat.primitives.asymmetric import ec
 from Client import Client
 import requests
+from requests.adapters import HTTPAdapter, Retry
+import urllib3
 
-
-# def getAppleKeys(event, context):
-#     print('Loading getAppleKeys....')
-#     print("Received event: " + json.dumps(event, indent=2))
-#     print("Received context: " + str(context))
-#     print("Received context: " + str(context.client_context))
-#     # queryStringParameters = event["queryStringParameters"]
-#     # org_id = queryStringParameters["org_id"]
-
-#     # dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-#     # client = DynamoUtils.getClient(dynamodb, org_id)
-#     private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
-#     public_key = private_key.public_key()
-#     # serializing into PEM
-#     ec_key = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.OpenSSH, encryption_algorithm=ec.SECP256R1)
-#     ec_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.OpenSSH)
-#     print(ec_pem.decode())
-#     print(ec_key.decode())
-
-#     returnKey = ec_key.decode()
-#     returnPem = ec_pem.decode()
-
-#     return {
-#         'statusCode': 200,
-#         'headers': {
-#             'Access-Control-Allow-Origin': '*',
-#             'Access-Control-Allow-Methods': 'GET',
-#             'Access-Control-Allow-Headers': 'x-api-key'
-#         },
-#         'body': { 'privateKey': returnKey, 'publicKey': returnPem }
-#     }
 
 def patchAppleCampaign(event, context):
     print('Loading postAppleCampaign....')
@@ -394,20 +362,31 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         "status": campaignStatus # ENABLED or PAUSED, set per env via LambdaUtils  
     }
 
+    
+    
     create_campaign_url = base_url + "campaigns"
 
     print("Payload is '%s'." % create_campaign_payload)
     print("Url is '%s'." % create_campaign_url)
-    create_campaign_response = requests.post(
-        create_campaign_url,  
-        json=create_campaign_payload,
-        headers=headers
-    )
 
-    print ("The result of POST campaign to Apple: %s" % create_campaign_response)
+    # HTTP retry implementation
+    http = urllib3.PoolManager()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 500, 502, 503, 504 ])
+    
+    encoded_data = json.dumps(create_campaign_payload).encode('utf-8')
+    create_campaign_response = http.request('POST', create_campaign_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+    # create_campaign_response = requests.post(
+    #     create_campaign_url,  
+    #     json=create_campaign_payload,
+    #     headers=headers
+    # )
+
+    # print ("The result of POST campaign to Apple: %s" % create_campaign_response)
+    print ("The result of POST campaign to Apple: %s" % create_campaign_response.data)
 
     # error handling
-    if create_campaign_response.status_code != 200:
+    if create_campaign_response.status != 200:
         return False
 
     # 2. create ad group
@@ -441,16 +420,21 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     print ("url is '%s'." % get_campaigns_url)
     print ("Payload is '%s'." % get_campaigns_payload)
 
-    get_campaigns_response = requests.post(
-        get_campaigns_url,
-        json=get_campaigns_payload,
-        headers=headers
-    ) 
 
-    print ("The result of get campaigns from apple : %s" % get_campaigns_response)
+    encoded_data = json.dumps(get_campaigns_payload).encode('utf-8')
+    get_campaigns_response = http.request('POST', get_campaigns_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+    # get_campaigns_response = requests.post(
+    #     get_campaigns_url,
+    #     json=get_campaigns_payload,
+    #     headers=headers
+    # ) 
+
+    print ("The result of get campaigns from apple : %s" % get_campaigns_response.data)
 
     # extract all the apps assignd to the apple search ads account
-    campaign_id_data = json.loads(get_campaigns_response.text) 
+    # campaign_id_data = json.loads(get_campaigns_response.text) 
+    campaign_id_data = json.loads(get_campaigns_response.data) 
     campaign_id_list = [campaign_id_data[x] for x in campaign_id_data]
     all_campaigns_list = campaign_id_list[0][0:1000]
 
@@ -494,16 +478,20 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
 
     print ("Payload is '%s'." % create_ad_group_payload)
     print ("Url is '%s'." % create_ad_group_url)
-    create_ad_group_response = requests.post(
-        create_ad_group_url,
-        json=create_ad_group_payload,
-        headers=headers
-    ) 
 
-    print ("The result of POST adgroups to Apple: %s" % create_ad_group_response)
+    encoded_data = json.dumps(create_ad_group_payload).encode('utf-8')
+    create_ad_group_response = http.request('POST', create_ad_group_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+    # create_ad_group_response = requests.post(
+    #     create_ad_group_url,
+    #     json=create_ad_group_payload,
+    #     headers=headers
+    # ) 
+
+    print ("The result of POST adgroups to Apple: %s" % create_ad_group_response.data)
 
     # error handling
-    if create_ad_group_response.status_code != 200:
+    if create_ad_group_response.status != 200:
         return False
 
     # 3. create targeted keywords
@@ -532,16 +520,19 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     print ("Url is '%s'." % get_adgroups_url)
     print ("Payload is '%s'." % get_adgroups_payload)
 
-    get_adgroups_response = requests.post(
-        base_url + "campaigns/%s/adgroups/find" % new_campaign_id,
-        json=get_adgroups_payload,
-        headers=headers
-    ) 
+    encoded_data = json.dumps(get_adgroups_payload).encode('utf-8')
+    get_adgroups_response = http.request('POST', get_adgroups_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
 
-    print ("The result of getting adgroups from Apple: %s" % get_adgroups_response)
+    # get_adgroups_response = requests.post(
+    #     base_url + "campaigns/%s/adgroups/find" % new_campaign_id,
+    #     json=get_adgroups_payload,
+    #     headers=headers
+    # ) 
+
+    print ("The result of getting adgroups from Apple: %s" % get_adgroups_response.data)
 
     # extract all the ad groups
-    ad_group_data = json.loads(get_adgroups_response.text) 
+    ad_group_data = json.loads(get_adgroups_response.data) 
     ad_group_data_list = [ad_group_data[x] for x in ad_group_data]
     all_ad_groups_list = ad_group_data_list[0][0:1000]
 
@@ -566,20 +557,23 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         print ("Url is '%s'." % negative_keyword_url)
         print ("Payload is '%s'." % negative_keyword_payload)
 
-        create_negative_keyword_response = requests.post(
-            negative_keyword_url,
-            json=negative_keyword_payload,
-            headers=headers
-        )
+        encoded_data = json.dumps(negative_keyword_payload).encode('utf-8')
+        create_negative_keyword_response = http.request('POST', negative_keyword_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+        # create_negative_keyword_response = requests.post(
+        #     negative_keyword_url,
+        #     json=negative_keyword_payload,
+        #     headers=headers
+        # )
 
         print("Headers are" + str(headers))
         print("Response headers" + str(create_negative_keyword_response.headers))
-        print("Response is" + str(create_negative_keyword_response))
-        print("Response text is" + str(create_negative_keyword_response.reason))
-        print("The result of posting NEGATIVE keywords to Apple: %s" % create_negative_keyword_response)
+        print("Response is" + str(create_negative_keyword_response.data))
+        # print("Response text is" + str(create_negative_keyword_response.reason))
+        print("The result of posting NEGATIVE keywords to Apple: %s" % create_negative_keyword_response.status)
 
         # error handling
-        if create_negative_keyword_response.status_code != 200:
+        if create_negative_keyword_response.status != 200:
            return False
 
     
@@ -600,16 +594,20 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         targeted_keyword_url = base_url + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
         print ("Url is '%s'." % targeted_keyword_url)
         print ("Payload is '%s'." % targeted_keyword_payload)
-        create_targeted_keyword_response = requests.post(
-            targeted_keyword_url,
-            json=targeted_keyword_payload,
-            headers=headers
-        )
 
-        print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response)
+        encoded_data = json.dumps(targeted_keyword_payload).encode('utf-8')
+        create_targeted_keyword_response = http.request('POST', targeted_keyword_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+        # create_targeted_keyword_response = requests.post(
+        #     targeted_keyword_url,
+        #     json=targeted_keyword_payload,
+        #     headers=headers
+        # )
+
+        print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response.data)
 
         # error handling
-        if create_targeted_keyword_response.status_code != 200:
+        if create_targeted_keyword_response.status != 200:
             return False
 
     # common campaign values
