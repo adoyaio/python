@@ -9,7 +9,35 @@ Globals:
       AllowMethods: "'*'"
       AllowHeaders: "'x-api-key,Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization'"
       AllowOrigin: "'*'"
+# Parameters:
+#   CognitoUserPoolArn: "arn:aws:cognito-idp:us-east-1:496475828721:userpool/us-east-1_eeW2PLi0U"
+#     Description: ARN of the Cognito User Pool
+#     Type: String
+#     Value:  ???
 Resources:
+  # Cognito User Pools Authorizer
+  # AuthorizersCognitoUserPools:
+  #   Type: AWS::ApiGateway::Authorizer
+  #   Properties:
+  #     Name: CognitoAuthorizer
+  #     Type: COGNITO_USER_POOLS
+  #     RestApiId: !Ref adoyaApi
+  #     IdentitySource: method.request.header.authorizationToken
+  #     ProviderARNs:
+  #       - !Ref CognitoUserPoolArn
+  # adoyaApi:
+  #   Type: AWS::ApiGateway::RestApi
+  #   Properties:
+  #     Name: adoyaApi
+  # adoyaApi:
+  #   Type: AWS::Serverless::Api
+  #   Properties:
+  #     StageName: Prod
+  #     Auth:
+  #       DefaultAuthorizer: adoyaAuthorizer
+  #       Authorizers:
+  #         adoyaAuthorizer:
+  #           UserPoolArn: "arn:aws:cognito-idp:us-east-1:496475828721:userpool/us-east-1_eeW2PLi0U"
   runAdoyaNightly:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -78,6 +106,9 @@ Resources:
           Properties:
             Path: /api/client/admin
             Method: post
+            Auth:
+              # Authorizer: adoyaAuthorizer
+              ApiKeyRequired: true
   getClientKeywordHistory:
     Type: "AWS::Serverless::Function"
     Properties:
