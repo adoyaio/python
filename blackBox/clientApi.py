@@ -304,8 +304,9 @@ def getClientHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': '*',
+            
         },
         'body': clientJSON
     }
@@ -353,8 +354,8 @@ def getClientCostHistoryHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(response, cls=DecimalEncoder)
     }
@@ -431,8 +432,8 @@ def getClientCampaignHistoryHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(response, cls=DecimalEncoder)
     }
@@ -473,8 +474,8 @@ def getClientKeywordHistoryHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(response, cls=DecimalEncoder)
     }
@@ -522,7 +523,7 @@ def createClientPemKeyHandler(event, context):
         'headers': {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': '*',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps({ 'publicKey': returnValue}, cls=DecimalEncoder)
     }

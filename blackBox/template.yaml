@@ -7,37 +7,934 @@ Globals:
     # to a particular domain name, e.g. "'www.example.com'"
     Cors:
       AllowMethods: "'*'"
-      AllowHeaders: "'x-api-key,Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization'"
+      AllowHeaders: "'x-api-key,Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization, Access-Control-Allow-Origin'"
       AllowOrigin: "'*'"
-# Parameters:
-#   CognitoUserPoolArn: "arn:aws:cognito-idp:us-east-1:496475828721:userpool/us-east-1_eeW2PLi0U"
-#     Description: ARN of the Cognito User Pool
-#     Type: String
-#     Value:  ???
+Parameters:
+  CognitoUserPoolArn:
+    Description: ARN of the Cognito User Pool
+    Type: String
+    Default: "arn:aws:cognito-idp:us-east-1:496475828721:userpool/us-east-1_eeW2PLi0U"
+
 Resources:
-  # Cognito User Pools Authorizer
-  # AuthorizersCognitoUserPools:
-  #   Type: AWS::ApiGateway::Authorizer
-  #   Properties:
-  #     Name: CognitoAuthorizer
-  #     Type: COGNITO_USER_POOLS
-  #     RestApiId: !Ref adoyaApi
-  #     IdentitySource: method.request.header.authorizationToken
-  #     ProviderARNs:
-  #       - !Ref CognitoUserPoolArn
-  # adoyaApi:
+  # REST API
+  # AppApi:
   #   Type: AWS::ApiGateway::RestApi
   #   Properties:
-  #     Name: adoyaApi
-  # adoyaApi:
-  #   Type: AWS::Serverless::Api
+  #     Name: cognito-restapi
+  #     Description: Cognito User Pools Authorizer REST API demo
+  #     Cors:
+  #       AllowMethods: "'*'"
+  #       AllowHeaders: "'x-api-key,Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization, Access-Control-Allow-Origin'"
+  #       AllowOrigin: "'*'"
+  #     DefinitionBody:
+  #       swagger: 2.0
+  #       info:
+  #         title: !Sub API-${FunctionName}-${StageName}
+  #       paths:
+  #         /:
+  #           x-amazon-apigateway-any-method:
+  #             produces:
+  #               - application/json
+  #             x-amazon-apigateway-integration:
+  #               uri: !Sub "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:postSupportItem/invocations"
+  #               passthroughBehavior: when_no_match
+  #               httpMethod: ANY
+  #               type: aws_proxy
+
+  AppApi:
+    Type: "AWS::Serverless::Api"
+    Properties:
+      # StageName: !Ref StageName
+      Cors:
+        AllowMethods: "'*'"
+        AllowHeaders: "'x-api-key,Access-Control-Allow-Headers, Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers, Authorization, Access-Control-Allow-Origin'"
+        # AllowHeaders: "'*'"
+        # AllowOrigin: "'https://adoya-app.io, http://127.0.0.1:3000'"
+        AllowOrigin: "'*'"
+        # AllowCredentials: true
+      StageName: Prod
+      Auth:
+        # DefaultAuthorizer: MyCognitoAuthorizer
+        Authorizers:
+          MyCognitoAuthorizer:
+            UserPoolArn: "arn:aws:cognito-idp:us-east-1:496475828721:userpool/us-east-1_eeW2PLi0U"
+      DefinitionBody:
+        swagger: 2.0
+        info:
+          # title: !Sub API-${FunctionName}-${StageName}
+          title: test
+        paths:
+          /api/client/get:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getClient/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/client/post:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:postClient/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/client/patch:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:patchClient/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/client/keyword/history:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getClientKeywordHistory/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/client/campaign/history:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getClientCampaignHistoryHandler/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/client/cost/history:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getClientCostHistory/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/client/createPemKey:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:createClientPemKey/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/support/post:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:postSupportItem/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/apple/apps:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getAppleApps/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/apple/acls:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getAppleAcls/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/apple/auth:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getAppleAuth/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/apple/campaign/post:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:postAppleCampaign/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+          /api/apple/campaign/patch:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:patchAppleCampaign/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+
+  # ClientProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
   #   Properties:
-  #     StageName: Prod
-  #     Auth:
-  #       DefaultAuthorizer: adoyaAuthorizer
-  #       Authorizers:
-  #         adoyaAuthorizer:
-  #           UserPoolArn: "arn:aws:cognito-idp:us-east-1:496475828721:userpool/us-east-1_eeW2PLi0U"
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/client/get"
+
+  # PostClientProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/client/post"
+
+  # PatchClientProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/client/patch"
+
+  # CreateClientPemKeyProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/client/createPemKey"
+
+  # CostHistoryProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/client/cost/history"
+
+  # CampaignHistoryProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/client/campaign/history"
+
+  # KeywordHistoryProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/client/keyword/history"
+
+  # AppleAppsProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/apple/apps"
+
+  # AppleAclsProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/apple/acls"
+
+  # AppleAuthProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/apple/auth"
+
+  # PostAppleCampaignProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/apple/campaign/post"
+
+  # PatchAppleCampaignProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "/api/apple/campaign/patch"
+
+  # SupportProxyResource:
+  #   Type: "AWS::ApiGateway::Resource"
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     ParentId: !GetAtt AppApi.RootResourceId
+  #     PathPart: "api/support/post"
+
+  # Method with Cognito User Pools Authorizer enabled
+  # getClientMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref ClientProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+  #             !GetAtt getClient.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # postClientMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref PostClientProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+  #             !GetAtt postClient.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # patchClientMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref PatchClientProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+  #             !GetAtt patchClient.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # getClientCostHistoryMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref CostHistoryProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+  #             !GetAtt getClientCostHistory.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # getClientKeywordHistoryMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref KeywordHistoryProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt getClientKeywordHistory.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # getClientCampaignHistoryMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref CampaignHistoryProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt getClientCampaignHistory.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # getAppleAppsMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref AppleAppsProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY TODO use POST
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt getAppleApps.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # getAppleAclsMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref AppleAclsProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt getAppleAcls.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # getAppleAuthMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref AppleAuthProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt getAppleAuth.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # postAppleCampaignMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref PostAppleCampaignProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt postAppleCampaign.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # patchAppleCampaignMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref PatchAppleCampaignProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt patchAppleCampaign.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # createClientPemKeyMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref CreateClientPemKeyProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: COGNITO_USER_POOLS
+  #     AuthorizerId: !Ref AuthorizersCognitoUserPools
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             !Ref AWS::Region,
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt createClientPemKey.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # postSupportItemMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref AppApi
+  #     # ResourceId: !Ref SupportProxyResource
+  #     ResourceId: !GetAtt AppApi.RootResourceId
+  #     HttpMethod: ANY
+  #     AuthorizationType: none
+  #     # PassthroughBehavior: WHEN_NO_MATCH
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: ANY
+  #       Uri:
+  #         !Join [
+  #           "",
+  #           [
+  #             "arn:aws:apigateway:",
+  #             "us-east-1",
+  #             ":lambda:path/2015-03-31/functions/",
+  #             !GetAtt postSupportItem.Arn,
+  #             "/invocations",
+  #           ],
+  #         ]
+
+  # function definitions
+  getClient:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.getClientHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getClient"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/client/get
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+
+  # postClientAdmin:
+  #   Type: "AWS::Serverless::Function"
+  #   Properties:
+  #     Handler: clientApi.postClientAdminHandler
+  #     Runtime: python3.8
+  #     CodeUri: .
+  #     Description: "Internal use 'shortcut' endpoint for admins, supports read, update, delete, & list operations on any table"
+  #     MemorySize: 448
+  #     Timeout: 60
+  #     FunctionName: "postClientAdmin"
+  #     Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+  # Environment:
+  #   Variables:
+  #     env: "prod"
+  # Events:
+  #   Api:
+  #     Type: Api
+  #     Properties:
+  #       Path: /api/client/admin
+  #       Method: post
+  #       Auth:
+  #         ApiKeyRequired: true
+
+  getClientKeywordHistory:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.getClientKeywordHistoryHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getClientKeywordHistory"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/client/keyword/history/
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+
+  getClientCostHistory:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.getClientCostHistoryHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getClientCostHistory"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/client/cost/history
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+
+  getClientCampaignHistory:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.getClientCampaignHistoryHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getClientCampaignHistoryHandler"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/client/campaign/history
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+
+  postSupportItem:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: supportApi.postSupportItemHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "postSupportItem"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Environment:
+        Variables:
+          env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/support/post
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  postClient:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.postClientHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "postClient"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/client/post
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  patchClient:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.patchClientHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "patchClient"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/client/patch
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  getAppleApps:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.getAppleApps
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getAppleApps"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/apple/apps
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  getAppleAcls:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.getAppleAcls
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getAppleAcls"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/apple/acls
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  getAppleAuth:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.getAppleAuth
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getAppleAuth"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/apple/auth
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  postAppleCampaign:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.postAppleCampaign
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 1000
+      Timeout: 900
+      FunctionName: "postAppleCampaign"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/apple/campaign/post
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  patchAppleCampaign:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.patchAppleCampaign
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 1000
+      Timeout: 900
+      FunctionName: "patchAppleCampaign"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/apple/campaign/patch
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  createClientPemKey:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: clientApi.createClientPemKeyHandler
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 1000
+      Timeout: 900
+      FunctionName: "createClientPemKey"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      # Environment:
+      #   Variables:
+      #     env: "prod"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/client/createPemKey
+            Method: ANY
+            Auth:
+              ApiKeyRequired: true
+
+  # postStripeCustomer:
+  #   Type: "AWS::Serverless::Function"
+  #   Properties:
+  #     Handler: stripeApi.postStripeCustomer
+  #     Runtime: python3.8
+  #     CodeUri: .
+  #     Description: ""
+  #     MemorySize: 1000
+  #     Timeout: 900
+  #     FunctionName: "postStripeCustomer"
+  #     Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+  # Environment:
+  #   Variables:
+  #     env: "prod"
+  # Events:
+  #   Api:
+  #     Type: Api
+  #     Properties:
+  #       Path: /api/stripe/customer/post
+  #       Method: ANY
+  #       Auth:
+  #         ApiKeyRequired: true
+
+  # batch jobs
   runAdoyaNightly:
     Type: "AWS::Serverless::Function"
     Properties:
@@ -86,334 +983,95 @@ Resources:
       Timeout: 900
       FunctionName: "runAdoyaWeekly"
       Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-  postClientAdmin:
-    Type: "AWS::Serverless::Function"
+
+  # SAM plumbing for api gw
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
     Properties:
-      Handler: clientApi.postClientAdminHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: "Internal use 'shortcut' endpoint for admins, supports read, update, delete, & list operations on any table"
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "postClientAdmin"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/admin
-            Method: post
-            Auth:
-              # Authorizer: adoyaAuthorizer
-              ApiKeyRequired: true
-  getClientKeywordHistory:
-    Type: "AWS::Serverless::Function"
+      RestApiId: !Ref AppApi
+
+  # Stage:
+  #   Type: AWS::ApiGateway::Stage
+  #   Properties:
+  #     StageName: Prod
+  #     RestApiId: !Ref AppApi
+  #     DeploymentId: !Ref Deployment
+
+  # Permission to allow Lambda invocation from API Gateway
+  GetClientPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: clientApi.getClientKeywordHistoryHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getClientKeywordHistory"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/keyword/history/
-            Method: GET
-            Auth:
-              ApiKeyRequired: true
-  getClientCostHistory:
-    Type: "AWS::Serverless::Function"
+      # FunctionName: !Ref getClient
+      FunctionName: "arn:aws:lambda:us-east-1:496475828721:function:getClient"
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  GetClientKeywordHistoryPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: clientApi.getClientCostHistoryHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getClientCostHistory"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/cost/history
-            Method: GET
-            Auth:
-              ApiKeyRequired: true
-  getClientCampaignHistory:
-    Type: "AWS::Serverless::Function"
+      FunctionName: "arn:aws:lambda:us-east-1:496475828721:function:getClientKeywordHistory"
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  GetClientCostHistoryPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: clientApi.getClientCampaignHistoryHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getClientCampaignHistoryHandler"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/campaign/history
-            Method: GET
-            Auth:
-              ApiKeyRequired: true
-  postSupportItem:
-    Type: "AWS::Serverless::Function"
+      FunctionName: !Ref getClientCostHistory
+      # FunctionName: "arn:aws:lambda:us-east-1:496475828721:function:getClientCostHistory"
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  GetClientCampaignHistoryPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: supportApi.postSupportItemHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "postSupportItem"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/support/post
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  postClient:
-    Type: "AWS::Serverless::Function"
+      FunctionName: !Ref getClientCampaignHistory
+      # FunctionName: "arn:aws:lambda:us-east-1:496475828721:function:getClient"
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  GetAppleAppsPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: clientApi.postClientHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "postClient"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/post
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  patchClient:
-    Type: "AWS::Serverless::Function"
+      FunctionName: !Ref getAppleApps
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  GetAppleAclsPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: clientApi.patchClientHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "patchClient"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/patch
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  getAppleApps:
-    Type: "AWS::Serverless::Function"
+      FunctionName: !Ref getAppleAcls
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  PostAppleCampaignPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: appleApi.getAppleApps
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getAppleApps"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/apple/apps
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  getClient:
-    Type: "AWS::Serverless::Function"
+      FunctionName: !Ref postAppleCampaign
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  PatchAppleCampaignPermission:
+    Type: AWS::Lambda::Permission
     Properties:
-      Handler: clientApi.getClientHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getClient"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/get
-            Method: GET
-            Auth:
-              ApiKeyRequired: true
-  getAppleAcls:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: appleApi.getAppleAcls
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getAppleAcls"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/apple/acls
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  getAppleAuth:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: appleApi.getAppleAuth
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "getAppleAuth"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/apple/auth
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  postAppleCampaign:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: appleApi.postAppleCampaign
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 1000
-      Timeout: 900
-      FunctionName: "postAppleCampaign"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/apple/campaign/post
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  patchAppleCampaign:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: appleApi.patchAppleCampaign
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 1000
-      Timeout: 900
-      FunctionName: "patchAppleCampaign"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/apple/campaign/patch
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  createClientPemKey:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: clientApi.createClientPemKeyHandler
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 448
-      Timeout: 60
-      FunctionName: "createClientPemKey"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/client/createPemKey
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
-  postStripeCustomer:
-    Type: "AWS::Serverless::Function"
-    Properties:
-      Handler: stripeApi.postStripeCustomer
-      Runtime: python3.8
-      CodeUri: .
-      Description: ""
-      MemorySize: 1000
-      Timeout: 900
-      FunctionName: "postStripeCustomer"
-      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
-      Environment:
-        Variables:
-          env: "prod"
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /api/stripe/customer/post
-            Method: ANY
-            Auth:
-              ApiKeyRequired: true
+      FunctionName: !Ref patchAppleCampaign
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  # Cognito User Pools Authorizer
+  # AuthorizersCognitoUserPools:
+  #   Type: AWS::ApiGateway::Authorizer
+  #   Properties:
+  #     Name: CognitoAuthorizer
+  #     Type: COGNITO_USER_POOLS
+  #     RestApiId: !Ref AppApi
+  #     IdentitySource: method.request.header.authorizationToken
+  #     ProviderARNs:
+  #       - !Ref CognitoUserPoolArn

@@ -8,6 +8,8 @@ from configuration import config
 def postSupportItemHandler(event, context):  
     print('Loading postSupportItemHandler...')
     
+    # print("handling event ")
+    # print(str(event))
     # parse event data
     body = json.loads(event["body"])
     payload = body["payload"]

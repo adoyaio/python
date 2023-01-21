@@ -32,8 +32,8 @@ def patchAppleCampaign(event, context):
             'statusCode': 400,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'x-api-key'
+                'Access-Control-Allow-Methods': '*',
+                'Access-Control-Allow-Headers': 'x-api-key, Authorization'
             },
             'body': {}
         }
@@ -106,8 +106,8 @@ def patchAppleCampaign(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': response.text
     }
@@ -153,8 +153,8 @@ def postAppleCampaign(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(
             {'campaign': campaign }
@@ -688,8 +688,8 @@ def getAppleApps(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps({ 'apps' : json.loads(response.text), 'acls': acls_response })
     }
@@ -731,8 +731,8 @@ def getAppleAcls(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(acls_response)
     }
@@ -754,8 +754,8 @@ def getAppleAuth(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(authToken)
     }
