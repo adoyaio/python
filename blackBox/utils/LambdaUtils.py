@@ -10,6 +10,7 @@ from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 from utils.debug import debug, dprint
 from Client import Client
+from utils import S3Utils
 
 # TODO reevaluate this approach
 def getApiEnvironmentDetails(event):
@@ -118,9 +119,10 @@ def getClientForLocalRun(orgId, emailToInternal):
     # }
     with open("./data/dynamo/clients.json") as json_file:
         clients = json.load(json_file)
-        clientDict = next(item for item in clients if item["orgId"] == orgId)
+        clientDict = next(item for item in clients if item["orgId"] == str(orgId))
+        
         client = Client.buildFromDictionary(
-            clientDict
+            clientDict['orgDetails']
         )
     # serialize to json for mock lambda event, 
     clientEvent['orgDetails'] = client.toJSON()
@@ -130,19 +132,29 @@ def getClientForLocalRun(orgId, emailToInternal):
         clientEvent['authToken'] = None
         return clientEvent
         
-    authToken = getAuthToken(client.auth)
+    authToken = getAuthToken(client.auth, client.orgId)
     clientEvent['authToken'] = authToken
     return clientEvent
 
 
 # gets an oauth token from appleid.apple.com
-def getAuthToken(auth):
+def getAuthToken(auth, orgId):
     client_id = auth.get('clientId')
     team_id = auth.get('teamId')
     key_id = auth.get('keyId')
 
-    privateKey = auth.get('privateKey')
-    key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
+    # NOTE deprecated approach where customers share key
+    # privateKey = auth.get('privateKey')
+    # privateKey = 'MHcCAQEEIJgiDLBqbaAb8pqgK74wEY/u0uiswAZkECJFkLUayk+9oAoGCCqGSM49AwEHoUQDQgAEfsYLIIQVzyQWizAguQWR9l7ZkXijRAzgJRXGuq/Q/th1FqlsFyE7vr4xDCw53+JoJebvKBy8QbZgSWON8TohdA=='
+    # key = '-----BEGIN EC PRIVATE KEY-----\n' + privateKey + '\n-----END EC PRIVATE KEY-----'
+    
+    # get private key from s3
+    key = None
+    private_key_name = str(orgId) + "-private-key.pem"
+    private_key = S3Utils.getCert(private_key_name)
+    with open(private_key, 'rt') as file: 
+        key = file.read()
+
     audience = 'https://appleid.apple.com'
     alg = 'ES256'
 
@@ -163,7 +175,10 @@ def getAuthToken(auth):
     payload['aud'] = audience
     payload['iat'] = issued_at_timestamp
     payload['exp'] = expiration_timestamp
-    payload['iss'] = team_id 
+    payload['iss'] = team_id
+
+    print("issued_at_timestamp:::" + str(issued_at_timestamp))
+    print("expiration_timestamp:::" + str(expiration_timestamp)) 
 
     dprint("\nPayload %s" % str(payload))
     dprint("\nHeaders %s" % str(headers))
@@ -194,5 +209,8 @@ def getAuthToken(auth):
     dprint("\nParams are %s" % params)
 
     response = requests.post(url, params=params, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+
+    print("response is " + str(response))
+    print("response text " + str(response.text))
 
     return json.loads(response.text).get("access_token", None)

@@ -3,10 +3,15 @@ import decimal
 import boto3
 import json
 import time
-from utils import DynamoUtils, LambdaUtils, EmailUtils
+from utils import DynamoUtils, LambdaUtils, EmailUtils, S3Utils
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
 import requests
+import os
+import tempfile
+import datetime as dt
+from Crypto.PublicKey import ECC
+
 
 
 
@@ -23,7 +28,7 @@ def patchClientHandler(event, context):
     # init dynamo
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     send = LambdaUtils.getApiEnvironmentDetails(event).get('send')
-    table = dynamodb.Table('clients')
+    table = dynamodb.Table('clients_2')
 
     # get the current client model
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
@@ -38,7 +43,7 @@ def patchClientHandler(event, context):
     updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
     table.put_item(
         Item = {
-                'orgId': int(org_id),
+                'orgId': org_id,
                 'orgDetails': updated
             }
     )
@@ -46,10 +51,10 @@ def patchClientHandler(event, context):
     # execute apple update if needed, only in live
     if updateApple and send:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth)
+        authToken = LambdaUtils.getAuthToken(client.auth, org_id)
         headers = {
             "Authorization": "Bearer %s" % authToken, 
-            "X-AP-Context": "orgId=%s" % org_id,
+            "X-AP-Context": "orgId=%s" % client.orgId,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
@@ -189,7 +194,7 @@ def postClientHandler(event, context):
     # execute apple update if needed
     if updateApple:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth)
+        authToken = LambdaUtils.getAuthToken(client.auth, org_id)
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE % newCampaignValues['campaignId'])
         headers = {
             "Authorization": "Bearer %s" % authToken, 
@@ -299,8 +304,9 @@ def getClientHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': '*',
+            
         },
         'body': clientJSON
     }
@@ -318,7 +324,7 @@ def getClientCostHistoryHandler(event, context):
         "timestamp": queryStringParameters.get("offsetDate"),
     }
 
-    total_recs = queryStringParameters.get("total_recs", "100")
+    total_recs = queryStringParameters.get("total_recs", "all")
     start_date = queryStringParameters.get("start_date", "all")
     end_date = queryStringParameters.get("end_date", "all")
 
@@ -348,8 +354,8 @@ def getClientCostHistoryHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(response, cls=DecimalEncoder)
     }
@@ -426,8 +432,8 @@ def getClientCampaignHistoryHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(response, cls=DecimalEncoder)
     }
@@ -447,7 +453,7 @@ def getClientKeywordHistoryHandler(event, context):
         "keyword_id": queryStringParameters.get("offsetKeywordId")
     }
 
-    total_recs = queryStringParameters.get("total_recs", "100")
+    total_recs = queryStringParameters.get("total_recs", "all")
     start_date = queryStringParameters.get("start_date", "all")
     end_date = queryStringParameters.get("end_date", "all")
     matchType = queryStringParameters.get("matchType",'all')
@@ -468,8 +474,62 @@ def getClientKeywordHistoryHandler(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(response, cls=DecimalEncoder)
     }
+
+def createClientPemKeyHandler(event, context):
+    print('Loading createClientPemKeyHandler....')
+    print("Received event: " + json.dumps(event, indent=2))
+    
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+    
+
+    private_key = ECC.generate(curve='P-256')
+    public_key = private_key.public_key()
+
+    private_key_file_name = str(org_id) + "-private-key.pem"
+    public_key_file_name = str(org_id) + "-public-key.pem"
+    
+    tempNamePublic = ""
+    tempNamePrivate = ""
+    returnValue = ""
+
+    with tempfile.NamedTemporaryFile(mode='wt', dir="/tmp", delete=False) as file:
+        print("setting file name to " + file.name)
+        file.write(private_key.export_key(format='PEM'))
+        tempNamePrivate = file.name
+
+    with tempfile.NamedTemporaryFile(mode='wt', dir="/tmp", delete=False) as file:
+        print("setting file name to " + file.name)
+        file.write(public_key.export_key(format='PEM'))
+        tempNamePublic = file.name
+
+
+    with open(tempNamePrivate, 'rb') as data:
+       S3Utils.setCert(data, private_key_file_name)
+        
+    with open(tempNamePublic, 'rb') as data:
+        S3Utils.setCert(data, public_key_file_name)
+
+    with open(tempNamePublic, 'rt') as file: 
+        returnValue = file.read()
+    
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
+        },
+        'body': json.dumps({ 'publicKey': returnValue}, cls=DecimalEncoder)
+    }
+
+
+if __name__ == "__main__":
+    event = {'queryStringParameters' : {'org_id': 12345}}
+    context = json.dumps({})
+    createClientPemKeyHandler(event, context)

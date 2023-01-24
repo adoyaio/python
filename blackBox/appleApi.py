@@ -7,43 +7,11 @@ from utils.debug import debug, dprint
 from utils import DynamoUtils, EmailUtils, LambdaUtils
 from configuration import config
 from utils.DecimalEncoder import DecimalEncoder
-# from cryptography.hazmat.backends import default_backend
-# from cryptography.hazmat.primitives import serialization
-# from cryptography.hazmat.primitives.asymmetric import ec
 from Client import Client
 import requests
+from requests.adapters import HTTPAdapter, Retry
+import urllib3
 
-
-# def getAppleKeys(event, context):
-#     print('Loading getAppleKeys....')
-#     print("Received event: " + json.dumps(event, indent=2))
-#     print("Received context: " + str(context))
-#     print("Received context: " + str(context.client_context))
-#     # queryStringParameters = event["queryStringParameters"]
-#     # org_id = queryStringParameters["org_id"]
-
-#     # dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-#     # client = DynamoUtils.getClient(dynamodb, org_id)
-#     private_key = ec.generate_private_key(ec.SECP256R1(), default_backend())
-#     public_key = private_key.public_key()
-#     # serializing into PEM
-#     ec_key = private_key.private_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.OpenSSH, encryption_algorithm=ec.SECP256R1)
-#     ec_pem = public_key.public_bytes(encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.OpenSSH)
-#     print(ec_pem.decode())
-#     print(ec_key.decode())
-
-#     returnKey = ec_key.decode()
-#     returnPem = ec_pem.decode()
-
-#     return {
-#         'statusCode': 200,
-#         'headers': {
-#             'Access-Control-Allow-Origin': '*',
-#             'Access-Control-Allow-Methods': 'GET',
-#             'Access-Control-Allow-Headers': 'x-api-key'
-#         },
-#         'body': { 'privateKey': returnKey, 'publicKey': returnPem }
-#     }
 
 def patchAppleCampaign(event, context):
     print('Loading postAppleCampaign....')
@@ -64,8 +32,8 @@ def patchAppleCampaign(event, context):
             'statusCode': 400,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST',
-                'Access-Control-Allow-Headers': 'x-api-key'
+                'Access-Control-Allow-Methods': '*',
+                'Access-Control-Allow-Headers': 'x-api-key, Authorization'
             },
             'body': {}
         }
@@ -76,7 +44,7 @@ def patchAppleCampaign(event, context):
     existingCampaigns = client.appleCampaigns
 
     print("found auth values in client " + str(client.auth))
-    authToken = LambdaUtils.getAuthToken(client.auth)
+    authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
 
     for newCampaignValues in updateCampaignData:
         
@@ -91,7 +59,7 @@ def patchAppleCampaign(event, context):
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE % newCampaignValues['campaignId'])
         headers = {
             "Authorization": "Bearer %s" % authToken, 
-            "X-AP-Context": "orgId=%s" % org_id,
+            "X-AP-Context": "orgId=%s" % client.orgId,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
@@ -123,19 +91,23 @@ def patchAppleCampaign(event, context):
    
     # write to db
     updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
+    # table.put_item(
+    #     Item = {
+    #             'orgId': int(org_id),
+    #             'orgDetails': updated
+    #         }
+    # )
+
     table.put_item(
-        Item = {
-                'orgId': int(org_id),
-                'orgDetails': updated
-            }
+        Item = updated
     )
 
     return {
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': response.text
     }
@@ -181,8 +153,8 @@ def postAppleCampaign(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'POST',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(
             {'campaign': campaign }
@@ -390,20 +362,31 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         "status": campaignStatus # ENABLED or PAUSED, set per env via LambdaUtils  
     }
 
+    
+    
     create_campaign_url = base_url + "campaigns"
 
     print("Payload is '%s'." % create_campaign_payload)
     print("Url is '%s'." % create_campaign_url)
-    create_campaign_response = requests.post(
-        create_campaign_url,  
-        json=create_campaign_payload,
-        headers=headers
-    )
 
-    print ("The result of POST campaign to Apple: %s" % create_campaign_response)
+    # HTTP retry implementation
+    http = urllib3.PoolManager()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 500, 502, 503, 504 ])
+    
+    encoded_data = json.dumps(create_campaign_payload).encode('utf-8')
+    create_campaign_response = http.request('POST', create_campaign_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+    # create_campaign_response = requests.post(
+    #     create_campaign_url,  
+    #     json=create_campaign_payload,
+    #     headers=headers
+    # )
+
+    # print ("The result of POST campaign to Apple: %s" % create_campaign_response)
+    print ("The result of POST campaign to Apple: %s" % create_campaign_response.data)
 
     # error handling
-    if create_campaign_response.status_code != 200:
+    if create_campaign_response.status != 200:
         return False
 
     # 2. create ad group
@@ -437,16 +420,21 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     print ("url is '%s'." % get_campaigns_url)
     print ("Payload is '%s'." % get_campaigns_payload)
 
-    get_campaigns_response = requests.post(
-        get_campaigns_url,
-        json=get_campaigns_payload,
-        headers=headers
-    ) 
 
-    print ("The result of get campaigns from apple : %s" % get_campaigns_response)
+    encoded_data = json.dumps(get_campaigns_payload).encode('utf-8')
+    get_campaigns_response = http.request('POST', get_campaigns_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+    # get_campaigns_response = requests.post(
+    #     get_campaigns_url,
+    #     json=get_campaigns_payload,
+    #     headers=headers
+    # ) 
+
+    print ("The result of get campaigns from apple : %s" % get_campaigns_response.data)
 
     # extract all the apps assignd to the apple search ads account
-    campaign_id_data = json.loads(get_campaigns_response.text) 
+    # campaign_id_data = json.loads(get_campaigns_response.text) 
+    campaign_id_data = json.loads(get_campaigns_response.data) 
     campaign_id_list = [campaign_id_data[x] for x in campaign_id_data]
     all_campaigns_list = campaign_id_list[0][0:1000]
 
@@ -490,16 +478,20 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
 
     print ("Payload is '%s'." % create_ad_group_payload)
     print ("Url is '%s'." % create_ad_group_url)
-    create_ad_group_response = requests.post(
-        create_ad_group_url,
-        json=create_ad_group_payload,
-        headers=headers
-    ) 
 
-    print ("The result of POST adgroups to Apple: %s" % create_ad_group_response)
+    encoded_data = json.dumps(create_ad_group_payload).encode('utf-8')
+    create_ad_group_response = http.request('POST', create_ad_group_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+    # create_ad_group_response = requests.post(
+    #     create_ad_group_url,
+    #     json=create_ad_group_payload,
+    #     headers=headers
+    # ) 
+
+    print ("The result of POST adgroups to Apple: %s" % create_ad_group_response.data)
 
     # error handling
-    if create_ad_group_response.status_code != 200:
+    if create_ad_group_response.status != 200:
         return False
 
     # 3. create targeted keywords
@@ -528,16 +520,19 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     print ("Url is '%s'." % get_adgroups_url)
     print ("Payload is '%s'." % get_adgroups_payload)
 
-    get_adgroups_response = requests.post(
-        base_url + "campaigns/%s/adgroups/find" % new_campaign_id,
-        json=get_adgroups_payload,
-        headers=headers
-    ) 
+    encoded_data = json.dumps(get_adgroups_payload).encode('utf-8')
+    get_adgroups_response = http.request('POST', get_adgroups_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
 
-    print ("The result of getting adgroups from Apple: %s" % get_adgroups_response)
+    # get_adgroups_response = requests.post(
+    #     base_url + "campaigns/%s/adgroups/find" % new_campaign_id,
+    #     json=get_adgroups_payload,
+    #     headers=headers
+    # ) 
+
+    print ("The result of getting adgroups from Apple: %s" % get_adgroups_response.data)
 
     # extract all the ad groups
-    ad_group_data = json.loads(get_adgroups_response.text) 
+    ad_group_data = json.loads(get_adgroups_response.data) 
     ad_group_data_list = [ad_group_data[x] for x in ad_group_data]
     all_ad_groups_list = ad_group_data_list[0][0:1000]
 
@@ -562,20 +557,23 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         print ("Url is '%s'." % negative_keyword_url)
         print ("Payload is '%s'." % negative_keyword_payload)
 
-        create_negative_keyword_response = requests.post(
-            negative_keyword_url,
-            json=negative_keyword_payload,
-            headers=headers
-        )
+        encoded_data = json.dumps(negative_keyword_payload).encode('utf-8')
+        create_negative_keyword_response = http.request('POST', negative_keyword_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+        # create_negative_keyword_response = requests.post(
+        #     negative_keyword_url,
+        #     json=negative_keyword_payload,
+        #     headers=headers
+        # )
 
         print("Headers are" + str(headers))
         print("Response headers" + str(create_negative_keyword_response.headers))
-        print("Response is" + str(create_negative_keyword_response))
-        print("Response text is" + str(create_negative_keyword_response.reason))
-        print("The result of posting NEGATIVE keywords to Apple: %s" % create_negative_keyword_response)
+        print("Response is" + str(create_negative_keyword_response.data))
+        # print("Response text is" + str(create_negative_keyword_response.reason))
+        print("The result of posting NEGATIVE keywords to Apple: %s" % create_negative_keyword_response.status)
 
         # error handling
-        if create_negative_keyword_response.status_code != 200:
+        if create_negative_keyword_response.status != 200:
            return False
 
     
@@ -596,16 +594,20 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         targeted_keyword_url = base_url + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
         print ("Url is '%s'." % targeted_keyword_url)
         print ("Payload is '%s'." % targeted_keyword_payload)
-        create_targeted_keyword_response = requests.post(
-            targeted_keyword_url,
-            json=targeted_keyword_payload,
-            headers=headers
-        )
 
-        print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response)
+        encoded_data = json.dumps(targeted_keyword_payload).encode('utf-8')
+        create_targeted_keyword_response = http.request('POST', targeted_keyword_url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
+
+        # create_targeted_keyword_response = requests.post(
+        #     targeted_keyword_url,
+        #     json=targeted_keyword_payload,
+        #     headers=headers
+        # )
+
+        print ("The result of posting keywords to Apple: %s" % create_targeted_keyword_response.data)
 
         # error handling
-        if create_targeted_keyword_response.status_code != 200:
+        if create_targeted_keyword_response.status != 200:
             return False
 
     # common campaign values
@@ -648,9 +650,12 @@ def getAppleApps(event, context):
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        
+
+        # get apps
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_GET_APPS_URL
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % org_id}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
         print("URL is" + url)
         print("Headers are" + str(headers))
         response = requests.get(
@@ -658,17 +663,35 @@ def getAppleApps(event, context):
             headers=headers,
             timeout=config.HTTP_REQUEST_TIMEOUT
         )
-
         print(str(response.text))
+
+        # get acls
+        get_acls_response = requests.get(
+            config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
+                headers=headers
+            )
+
+        #extract all the apps assignd to the apple search ads account
+        get_acls_all_orgs_response = json.loads(get_acls_response.text)
+
+        print(str(get_acls_all_orgs_response))
+        get_acls_all_orgs_list = [get_acls_all_orgs_response[x] for x in get_acls_all_orgs_response]
+        get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
+        acls_response = list(
+            filter(
+                lambda org:(org["orgId"] == int(client.orgId)), get_acls_all_orgs_list_extracted
+            )
+        )
+
         
     return {
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
-        'body': response.text
+        'body': json.dumps({ 'apps' : json.loads(response.text), 'acls': acls_response })
     }
 
 def getAppleAcls(event, context):
@@ -679,13 +702,15 @@ def getAppleAcls(event, context):
     org_id = queryStringParameters["org_id"]
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
+
+    print(json.dumps(client.toJSON()))
     
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
 
-    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % org_id}
+    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
     get_acls_response = requests.get(config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
         headers=headers
     )
@@ -698,7 +723,7 @@ def getAppleAcls(event, context):
     get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
     acls_response = list(
         filter(
-            lambda org:(org["orgId"] == int(org_id)), get_acls_all_orgs_list_extracted
+            lambda org:(org["orgId"] == int(client.orgId)), get_acls_all_orgs_list_extracted
         )
     )
         
@@ -706,12 +731,13 @@ def getAppleAcls(event, context):
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(acls_response)
     }
 
+# TODO remove this from front end
 def getAppleAuth(event, context):
     print('Loading getAppleAuth....')
     print("Received event: " + json.dumps(event, indent=2))
@@ -722,14 +748,14 @@ def getAppleAuth(event, context):
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
         
     return {
         'statusCode': 200,
         'headers': {
             'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Methods': 'GET',
-            'Access-Control-Allow-Headers': 'x-api-key'
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
         'body': json.dumps(authToken)
     }

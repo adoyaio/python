@@ -41,7 +41,7 @@ def process(clientEvent, context):
         )
     )
     if client.auth is not None:
-        authToken = LambdaUtils.getAuthToken(client.auth)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
         
         # add accesToken to the clientEvent
         clientEvent["authToken"] = authToken

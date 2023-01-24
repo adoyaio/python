@@ -6,3 +6,5 @@ PyJWT==2.0.1
 cffi==1.14.5
 cryptography==3.2.1
 pycparser==2.20
+stripe==3.5.0
+pycryptodome

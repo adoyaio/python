@@ -26,7 +26,9 @@ class Client:
         appName,
         appID,
         auth,
-        hasRegistered
+        hasRegistered,
+        hasInvitedApiUser,
+        isActiveClient
     ):  
         self._updatedBidsIsStale = False
         self._updatedAdgroupBidsIsStale = False
@@ -60,11 +62,14 @@ class Client:
         self._appID = appID
         self._auth = auth
         self._hasRegistered = hasRegistered
+        self._hasInvitedApiUser = hasInvitedApiUser
+        self._isActiveClient = isActiveClient
 
 
     def __str__(self):
         return "Client '%s (#%d)" % (self.clientName, self.orgId)
 
+    # to avoid the underscores when serializing a Client
     def toJSON(self):
         return json.dumps(
             {
@@ -83,7 +88,9 @@ class Client:
                 'appName' : self._appName,
                 'appID' : self._appID,
                 'auth' : self._auth,
-                'hasRegistered' : self._hasRegistered
+                'hasRegistered' : self._hasRegistered,
+                'hasInvitedApiUser' : self._hasInvitedApiUser,
+                'isActiveClient' : self._isActiveClient
             },
             cls=DecimalEncoder
         )
@@ -162,6 +169,15 @@ class Client:
     @property
     def hasRegistered(self):
        return self._hasRegistered
+
+
+    @property
+    def hasInvitedApiUser(self):
+       return self._hasInvitedApiUser
+
+    @property
+    def isActiveClient(self):
+       return self._isActiveClient
 
 
     # bid adjusters should use this method for cpi
@@ -411,7 +427,7 @@ class Client:
     def buildFromDictionary(orgDetails):
         return Client(
             orgDetails.get('orgId', "orgId"),
-            orgDetails.get('clientName', "clientName"),
+            orgDetails.get('clientName', "client"),
             orgDetails.get('emailAddresses', []),
             orgDetails.get('keyFilename', 'keyFilename'),
             orgDetails.get('pemFilename', 'pemFilename'),
@@ -425,24 +441,30 @@ class Client:
             orgDetails.get('appName', "appName"),
             orgDetails.get('appId', 'appId'),
             orgDetails.get('auth', None),
-            orgDetails.get('hasRegistered', False)
+            orgDetails.get('hasRegistered', False),
+            orgDetails.get('hasInvitedApiUser', False),
+            orgDetails.get('isActiveClient', True)
         )
 
     # initialize and return array of Client objects
     def getClients(dynamoResource):
         CLIENTS = []
-        table = dynamoResource.Table('clients')
+        table = dynamoResource.Table('clients_2')
         done = False
         start_key = None
         scan_kwargs = {}
+        # TODO this is cleaner but not working atm todo try True
+        # scan_kwargs['FilterExpression'] = "Attr('orgDetails.isActiveClient').eq(true)"
         while not done:
             if start_key:
                 scan_kwargs['ExclusiveStartKey'] = start_key
+                
             response = table.scan(**scan_kwargs)
-            for client in response.get('Items'):             
-                CLIENTS.append(
-                    Client.buildFromDictionary(client.get("orgDetails"))
-                )
+            for client in response.get('Items'): 
+                if client.get("orgDetails").get("isActiveClient") == True:
+                    CLIENTS.append(
+                        Client.buildFromDictionary(client.get("orgDetails"))
+                    )
             start_key = response.get('LastEvaluatedKey', None)
             done = start_key is None 
 

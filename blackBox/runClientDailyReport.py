@@ -8,9 +8,13 @@ import traceback
 import sys
 from configuration import config
 from utils.debug import debug, dprint
-from utils.retry import retry
+# from utils.retry import retry
 from utils import EmailUtils, DynamoUtils, S3Utils, LambdaUtils
 from Client import Client
+# from urllib3 import Retry
+import requests
+from requests.adapters import HTTPAdapter, Retry
+import urllib3
 
 ONE_DAY = 1
 SEVEN_DAYS = 7
@@ -27,6 +31,8 @@ def initialize(clientEvent):
     global dynamodb
     global logger
     global authToken
+    global http
+    global retries
 
     emailClientsG = LambdaUtils.getEmailClientsG(
         clientEvent['rootEvent']['env']
@@ -47,21 +53,25 @@ def initialize(clientEvent):
     authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(
         clientEvent['rootEvent']['env']
-    ) 
+    )
+
+    # HTTP retry implementation
+    http = urllib3.PoolManager()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[ 500, 502, 503, 504 ])
+
     logger.info("runClientDailyReport:::initialize(), rootEvent='" + str(clientEvent['rootEvent']))
 
-@retry
-def getCampaignDataHelper(url, cert, json, headers, **kw):
-    # return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
-    r = requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
-    r.raise_for_status
-    return r
 
-@retry
-def getCampaignDataByTokenHelper(url, json, headers, **kw):
-    # return requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
-    r = requests.post(url, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
-    r.raise_for_status
+# JF 01/14/23 certs are deprecated
+# def getCampaignDataHelper(url, cert, body, headers, **kw):
+#     # return requests.post(url, cert=cert, json=json, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+#     r = requests.post(url, cert=cert, json=body, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT)
+#     r.raise_for_status
+#     return r
+
+def getCampaignDataByTokenHelper(url, body, headers, **kw):
+    encoded_data = json.dumps(body).encode('utf-8')
+    r = http.request('POST', url, body=encoded_data, headers=headers, timeout=config.HTTP_REQUEST_TIMEOUT, retries=retries)
     return r
 
 
@@ -82,40 +92,45 @@ def getCampaignData(daysToGoBack):
         # "granularity"                : 2, # 1 is hourly, 2 is daily, 3 is monthly etc
     }
 
-    response = dict()
-
-    # NOTE pivot on token until v3 sunset
+    # response = dict()
+    
+    # NOTE 01/14/23 certs are deprecated
     if authToken is not None:
         url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        # headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId, 'Content-Type': 'application/json'}
         dprint("\n\nHeaders: %s" % headers)
         dprint("\n\nPayload: %s" % payload)
         dprint("\n\nApple URL: %s" % url)
+        
         response = getCampaignDataByTokenHelper(
             url,
-            json=payload,
+            body=payload,
             headers=headers
         )
     else:
-        url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
-        headers = {"Authorization": "orgId=%s" % clientG.orgId}
-        dprint("\n\nHeaders: %s" % headers)
-        dprint("\n\nPayload: %s" % payload)
-        dprint("\n\nApple URL: %s" % url)
-        response = getCampaignDataHelper(
-            url,
-            cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
-            json=payload,
-            headers=headers
-        )
+        logger.error("bad auth token")
+        response = None
+    # else:
+    #     url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
+    #     headers = {"Authorization": "orgId=%s" % clientG.orgId}
+    #     dprint("\n\nHeaders: %s" % headers)
+    #     dprint("\n\nPayload: %s" % payload)
+    #     dprint("\n\nApple URL: %s" % url)
+    #     response = getCampaignDataHelper(
+    #         url,
+    #         cert=(S3Utils.getCert(clientG.pemFilename), S3Utils.getCert(clientG.keyFilename)),
+    #         body=payload,
+    #         headers=headers
+    #     )
 
-    dprint("\n\nResponse: '%s'" % response)
+    dprint("\n\nResponse: '%s'" % response.data)
 
     # TODO extract to utils
-    if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
+    if response.status != 200:
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response.reason)
         date = time.strftime("%m/%d/%Y")
-        subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status_code, clientG.clientName)
+        subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status, clientG.clientName)
         logger.warning(email)
         logger.error(subject)
         #if sendG:
@@ -124,7 +139,8 @@ def getCampaignData(daysToGoBack):
         
         return False
 
-    return json.loads(response.text)
+    # return json.loads(response.text)
+    return json.loads(response.data)
 
 # JF TODO non html email should be updated with branch data
 def createOneRowOfTable(data, label):
@@ -336,8 +352,7 @@ def sendEmailReport(dataForVariousTimes):
         summary[someTime] = {"installs": 0, "spend": 0.0}
         
         # iterate each campaign from asa and get totals
-        for campaign in campaignsForThatTime:
-            
+        for campaign in campaignsForThatTime:            
             # pull install and spend from asa response
             campaignId = campaign["metadata"]["campaignId"]
             installs = campaign["total"]["installs"]
@@ -348,7 +363,8 @@ def sendEmailReport(dataForVariousTimes):
             summary[someTime]["spend"] += spend
 
             # get list of client campaigns from dynamo
-            adoyaCampaign = next(filter(lambda x: x["campaignId"] == str(campaignId), clientG.appleCampaigns), None)
+            adoyaCampaign = next(filter(lambda x: x["campaignId"] == campaignId, clientG.appleCampaigns), None)
+
             if adoyaCampaign is not None:
                 summary[someTime]["cpi_" + str(campaignId)] = clientG.calculateCPI(spend, installs)
                 summary[someTime]["installs_" + str(campaignId)] = installs
@@ -407,12 +423,15 @@ def sendEmailReport(dataForVariousTimes):
     # campaign specific vals
     appleCampaigns = clientG.appleCampaigns
     for campaign in appleCampaigns:
+
         spendKey = "spend_" + str(campaign.get("campaignId"))
         installsKey = "installs_" + str(campaign.get("campaignId"))
         cpiKey = "cpi_" + str(campaign.get("campaignId"))
+
         rowOfHistory[spendKey] = str(round(summary[ONE_DAY].get(spendKey,0),2))
         rowOfHistory[installsKey] = summary[ONE_DAY].get(installsKey,0)
         rowOfHistory[cpiKey] = str(summary[ONE_DAY].get(cpiKey, 0.00))
+
 
     clientG.addRowToHistory(rowOfHistory, dynamodb, end_date)
 

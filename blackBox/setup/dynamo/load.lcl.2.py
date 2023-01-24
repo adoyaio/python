@@ -53,6 +53,25 @@ if __name__ == '__main__':
 
     print(tableName + " rows added:::" + str(len(prodResponse.get("Items"))))
 
+
+    # client_2 table
+    tableName = 'clients_2'
+    local = dynamodbLocal.Table('clients_2')
+    prod = dynamodbProd.Table('clients_2')
+
+    prodResponse = prod.query(
+        KeyConditionExpression=Key('orgId').eq(str(orgId))
+    )
+    for item in prodResponse.get("Items"):
+        try:
+            localResponse = local.put_item(
+                Item={ 'orgId': str(orgId), 'orgDetails': item['orgDetails'] }
+            )
+        except ClientError as e:
+            print(tableName + " failed due to" + e.localResponse['Error']['Message'])
+
+    print(tableName + " rows added:::" + str(len(prodResponse.get("Items"))))
+
     # cpi_history table
     tableName = 'cpi_history'
     local = dynamodbLocal.Table(tableName)
@@ -118,9 +137,9 @@ if __name__ == '__main__':
     query_kwargs = {}
 
     # first hit clients to get list of 
-    clientTable = dynamodbLocal.Table('clients')
+    clientTable = dynamodbLocal.Table('clients_2')
     clientTableResponse = clientTable.query(
-        KeyConditionExpression=Key('orgId').eq(int(orgId))
+        KeyConditionExpression=Key('orgId').eq(str(orgId))
     )
 
     # print(str(clientTableResponse.get('Items')[0].get('orgDetails').get('appleCampaigns')))

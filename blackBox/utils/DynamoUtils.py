@@ -108,11 +108,23 @@ def getAppleKeywordData(dynamoResource, ad_group_id, start_date, end_date):
 # NOTE in dynamo numbers are serialized so there is no advantage to using int 
 # consider using string for consistency
 
+# def getClient(dynamoResource, org_id):
+#     from Client import Client
+#     table = dynamoResource.Table('clients')
+#     response = table.query(
+#         KeyConditionExpression=Key('orgId').eq(int(org_id))
+#     )
+#     clientDict = response['Items'][0]
+#     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
+#     client = Client.buildFromDictionary(parsed)
+#     return client
+
+# updated to use string orgId
 def getClient(dynamoResource, org_id):
     from Client import Client
-    table = dynamoResource.Table('clients')
+    table = dynamoResource.Table('clients_2')
     response = table.query(
-        KeyConditionExpression=Key('orgId').eq(int(org_id))
+        KeyConditionExpression=Key('orgId').eq(str(org_id))
     )
     clientDict = response['Items'][0]
     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
@@ -184,20 +196,30 @@ def getClientBranchHistoryByTime(
     if offset.get("org_id") == "init":
         logger.info("first page init offset")
 
-        # TODO while loop this    
-        response = table.query(
-            KeyConditionExpression=eval(keyExp),
-            Limit=int(total_recs),
-            ScanIndexForward=False
-        )
+        done = False
+        start_key = None
+        query_kwargs = {} 
+        query_kwargs['KeyConditionExpression'] = eval(keyExp)
+        query_kwargs['ScanIndexForward']=False
+        returnVal = []
 
-        returnVal = response.get('Items')
-        logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
+        while not done:
+            if start_key:
+                query_kwargs['ExclusiveStartKey'] = start_key
+            response = table.query(**query_kwargs)
+            returnVal.extend(response.get('Items'))
+            start_key = response.get('LastEvaluatedKey', None)
+            # will ignore total recs for now, doesn't work well with the data viz
+            # done = len(returnVal) >= int(total_recs) or (start_key is None)
+            done = start_key is None
+    
+        # logger.info("response:::" + str(json.dumps(response, cls=DecimalEncoder, indent=2)))
 
         count = table.query(
             Select="COUNT",
-            KeyConditionExpression=eval(keyExp),
-        )   
+            KeyConditionExpression=eval(keyExp)
+        )
+    # for now server side pagination is not used so this block will not run
     else:
         response = table.query(
             KeyConditionExpression=eval(keyExp),
@@ -593,20 +615,21 @@ def getClientKeywordHistory(
                 response = table.query(**query_kwargs)
                 returnVal.extend(response.get('Items'))
                 start_key = response.get('LastEvaluatedKey', None)
-                done = len(returnVal) >= int(total_recs) or (start_key is None)
+                done = (start_key is None)
+                # done = len(returnVal) >= int(total_recs) or (start_key is None)
             
             # hack for dynamo paging and filtering to work together
-            try:
-                last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
-                org_id = last.get('org_id')
-                date = last.get('date')
-                keyword_id = last.get('keyword_id')
-                response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
-            except:
-                logger.info("no last eval key")
+            # try:
+            #     last = returnVal[int(total_recs)] # pull the last record of the data set we want to send back
+            #     org_id = last.get('org_id')
+            #     date = last.get('date')
+            #     keyword_id = last.get('keyword_id')
+            #     response['LastEvaluatedKey'] = { 'org_id':org_id, 'date':date, 'keyword_id': keyword_id}
+            # except:
+            #     logger.info("no last eval key")
             
-            returnVal = returnVal[0:int(total_recs)-1]
-
+            # returnVal = returnVal[0:int(total_recs)-1]
+        
 
             done = False
             start_key = None

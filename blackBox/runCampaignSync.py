@@ -9,6 +9,7 @@ from Client import Client
 def initialize(clientEvent): 
     global sendG
     global clientG
+    global userG
     global emailToG
     global dynamodb
     global logger
@@ -41,7 +42,7 @@ def process():
 
     auth = clientG.auth
     if auth is not None:
-        authToken = LambdaUtils.getAuthToken(auth)
+        authToken = LambdaUtils.getAuthToken(auth, orgId)
         headers = {
             "Authorization": "Bearer %s" % authToken, 
             "X-AP-Context": "orgId=%s" % orgId,

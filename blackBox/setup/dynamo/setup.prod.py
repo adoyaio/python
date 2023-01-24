@@ -715,6 +715,25 @@ if 'clients' not in existing_tables:
     )
     print("Table status:", table.table_name, table.table_status)
 
+if 'clients_2' not in existing_tables:
+    table = dynamodb.create_table(
+        TableName='clients_2',
+        KeySchema=[
+            {
+                'AttributeName': 'orgId',
+                'KeyType': 'HASH'  #Partition key
+            }
+        ],
+        AttributeDefinitions=[
+        {
+            'AttributeName': 'orgId',
+            'AttributeType': 'S' 
+        }
+        ],
+        BillingMode="PAY_PER_REQUEST",
+    )
+    print("Table status:", table.table_name, table.table_status)
+
 if 'cpi_branch_history' not in existing_tables:
     table = dynamodb.create_table(
         TableName='cpi_branch_history',
