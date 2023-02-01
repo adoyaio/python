@@ -300,6 +300,8 @@ def getClientHandler(event, context):
     client = DynamoUtils.getClient(dynamodb, org_id)
     clientJSON = client.toJSON()
 
+    # TODO don't parse into a python 'client' return dynamo response
+
     return {
         'statusCode': 200,
         'headers': {
@@ -309,6 +311,30 @@ def getClientHandler(event, context):
             
         },
         'body': clientJSON
+    }
+
+
+def getClientsHandler(event, context):
+    print('Loading getClientsHandler....')
+    print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + str(context))
+    print("Received context: " + str(context.client_context))
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    clients = DynamoUtils.getClients(dynamodb, org_id)
+    # clientJSON = client.toJSON()
+
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': '*',
+            
+        },
+        'body': json.dumps(clients, cls=DecimalEncoder)
     }
 
 def getClientCostHistoryHandler(event, context):
@@ -486,17 +512,40 @@ def createClientPemKeyHandler(event, context):
     
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
-    
+    private_key_file_name = str(org_id) + "-private-key.pem"
+    public_key_file_name = str(org_id) + "-public-key.pem"
+
+
+    # gotta use temp file names for lambda container read only system
+    tempNamePublic = None
+    tempNamePrivate = None
+
+    # holds the public key value
+    returnValue = ""
+
+    # check if this this org has public key already
+    tempNamePublic = S3Utils.getCert(public_key_file_name)
+
+    if tempNamePublic is not None:
+        print("found existing public key")
+        with open(tempNamePublic, 'rt') as file: 
+            returnValue = file.read()
+
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': '*',
+                'Access-Control-Allow-Headers': 'x-api-key, Authorization'
+            },
+            'body': json.dumps({ 'publicKey': returnValue, 'keyCreated' : False}, cls=DecimalEncoder)
+    }         
+
+
+    print("no existing public key") 
 
     private_key = ECC.generate(curve='P-256')
     public_key = private_key.public_key()
-
-    private_key_file_name = str(org_id) + "-private-key.pem"
-    public_key_file_name = str(org_id) + "-public-key.pem"
-    
-    tempNamePublic = ""
-    tempNamePrivate = ""
-    returnValue = ""
 
     with tempfile.NamedTemporaryFile(mode='wt', dir="/tmp", delete=False) as file:
         print("setting file name to " + file.name)
@@ -525,7 +574,7 @@ def createClientPemKeyHandler(event, context):
             'Access-Control-Allow-Methods': '*',
             'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
-        'body': json.dumps({ 'publicKey': returnValue}, cls=DecimalEncoder)
+        'body': json.dumps({ 'publicKey': returnValue, 'keyCreated' : True}, cls=DecimalEncoder)
     }
 
 

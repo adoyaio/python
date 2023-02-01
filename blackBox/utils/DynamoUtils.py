@@ -127,10 +127,22 @@ def getClient(dynamoResource, org_id):
         KeyConditionExpression=Key('orgId').eq(str(org_id))
     )
     clientDict = response['Items'][0]
+
+    # TODO remove this and return dynamo response as is
     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
     client = Client.buildFromDictionary(parsed)
     return client
 
+def getClients(dynamoResource, org_id):
+    from Client import Client
+    table = dynamoResource.Table('clients_2')
+    response = table.scan(
+        FilterExpression=Attr('orgId').begins_with(str(org_id))
+    )
+    # response = table.query(Key('orgId').begins_with(str(org_id)))
+    print(str(response))
+    clients = response.get('Items', [])    
+    return clients
 
 
 def getClientHistory(dynamoResource, org_id):
