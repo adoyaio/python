@@ -93,6 +93,7 @@ def process():
                 headers=headers,
                 timeout=800
             )
+        # DEPRECATED TODO remove
         else:
             adgroupResponse = requests.get(
                 url,
@@ -143,10 +144,10 @@ def process():
 
     # write to dynamo
     updated = json.loads(clientG.toJSON(), parse_float=decimal.Decimal)
-    table = dynamodb.Table('clients')
+    table = dynamodb.Table('clients_2')
     table.put_item(
         Item = {
-                'orgId': int(orgId),
+                'orgId': orgId,
                 'orgDetails': updated
             }
     )

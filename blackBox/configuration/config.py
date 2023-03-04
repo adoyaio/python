@@ -10,6 +10,7 @@ APPLE_SEARCHADS_URL_BASE_V4 = "https://api.searchads.apple.com/api/v4/"
 APPLE_KEYWORDS_REPORT_URL = "reports/campaigns"
 APPLE_UPDATE_POSITIVE_KEYWORDS_URL = "campaigns/%s/adgroups/%s/targetingkeywords/bulk"
 APPLE_UPDATE_NEGATIVE_KEYWORDS_URL = "campaigns/%s/adgroups/%s/negativekeywords/bulk"
+APPLE_CAMPAIGNS_URL = "campaigns"
 APPLE_KEYWORD_REPORTING_URL_TEMPLATE = "reports/campaigns/%s/keywords"
 APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE = "reports/campaigns/%s/searchterms"
 APPLE_ADGROUP_REPORTING_URL_TEMPLATE = "reports/campaigns/%s/adgroups" # POST

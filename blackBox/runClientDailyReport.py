@@ -443,6 +443,7 @@ def process():
             daysToGoBack
         )
 
+
         if(campaignData != False):
             dataArray = campaignData["data"]["reportingDataResponse"]["row"]
             dprint("For %d (%s), there are %d campaigns in the campaign data." % \

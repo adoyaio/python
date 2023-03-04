@@ -25,11 +25,12 @@ def postSupportItemHandler(event, context):
     subjectString = payload.get("subject", "error retrieving subject")
     clientEmailAddress = payload.get("username", "error retrieving ")
     description = payload.get("description", "")
+    orgId = payload.get("orgId", "")
     
     # contact us or support items
     clientEmailText = "Thank you for contacting Adoya. "
     clientEmailTextSupport = "We're checking into to your request and will respond within 24-48 hours."
-    clientEmailTextOnboarding = "We've received and confirmed your invitation for Apple Search Ads API access. You are now ready to complete registration at https://adoya-app.io/registration (You may be required to re-authenticate)" \
+    clientEmailTextOnboarding = "We've received and confirmed your invitation for Apple Search Ads API access. You are now ready to complete registration at https://adoya-app.io/registration?id=" + orgId + " (You may be required to re-authenticate)" \
     
     
     # if send:

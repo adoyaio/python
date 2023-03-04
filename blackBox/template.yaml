@@ -190,6 +190,15 @@ Resources:
                 passthroughBehavior: when_no_match
                 httpMethod: POST
                 type: aws_proxy
+          /api/apple/campaign/list:
+            x-amazon-apigateway-any-method:
+              produces:
+                - application/json
+              x-amazon-apigateway-integration:
+                uri: "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:496475828721:function:getAppleCampaigns/invocations"
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
 
   # ClientProxyResource:
   #   Type: "AWS::ApiGateway::Resource"
@@ -941,6 +950,27 @@ Resources:
             Auth:
               ApiKeyRequired: true
 
+  getAppleCampaigns:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      Handler: appleApi.getAppleCampaigns
+      Runtime: python3.8
+      CodeUri: .
+      Description: ""
+      MemorySize: 448
+      Timeout: 60
+      FunctionName: "getAppleCampaigns"
+      Role: "arn:aws:iam::496475828721:role/service-role/lambda_dynamo"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref AppApi
+            Path: /api/apple/campaign/list
+            Method: GET
+            Auth:
+              ApiKeyRequired: true
+
   # postStripeCustomer:
   #   Type: "AWS::Serverless::Function"
   #   Properties:
@@ -1037,6 +1067,15 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
 
+  GetClientsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref getClients
+      # FunctionName: "arn:aws:lambda:us-east-1:496475828721:function:getClients"
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
   GetClientKeywordHistoryPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -1091,6 +1130,14 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref patchAppleCampaign
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
+  GetAppleCampaignsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref getAppleCampaigns
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
       SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*

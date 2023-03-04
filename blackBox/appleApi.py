@@ -694,6 +694,44 @@ def getAppleApps(event, context):
         'body': json.dumps({ 'apps' : json.loads(response.text), 'acls': acls_response })
     }
 
+def getAppleCampaigns(event, context):
+    print('Loading getAppleCampaigns....')
+    print("Received event: " + json.dumps(event, indent=2))
+    print("Received context: " + str(context))
+    queryStringParameters = event["queryStringParameters"]
+    org_id = queryStringParameters["org_id"]
+    dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+    client : Client = DynamoUtils.getClient(dynamodb, org_id)
+
+    # handle auth token
+    if client.auth is not None:
+        print("found auth values in client " + str(client.auth))
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        
+        # get campaigns
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_CAMPAIGNS_URL
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
+        print("URL is" + url)
+        print("Headers are" + str(headers))
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=config.HTTP_REQUEST_TIMEOUT
+        )
+        print(str(response.text))
+        
+    return {
+        'statusCode': 200,
+        'headers': {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': '*',
+            'Access-Control-Allow-Headers': 'x-api-key, Authorization'
+        },
+        'body': response.text
+    }
+
+
+# NOTE remove this unused
 def getAppleAcls(event, context):
     print('Loading getAppleAcls....')
     print("Received event: " + json.dumps(event, indent=2))
