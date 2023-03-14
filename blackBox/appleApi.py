@@ -730,40 +730,32 @@ def getAppleCampaigns(event, context):
         'body': response.text
     }
 
-
-# NOTE remove this unused
-def getAppleAcls(event, context):
-    print('Loading getAppleAcls....')
+def getAppleAdgroups(event, context):
+    print('Loading getAppleAdgroups....')
     print("Received event: " + json.dumps(event, indent=2))
     print("Received context: " + str(context))
     queryStringParameters = event["queryStringParameters"]
     org_id = queryStringParameters["org_id"]
+    campaign_id = queryStringParameters["campaign_id"]
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-    client: Client = DynamoUtils.getClient(dynamodb, org_id)
+    client : Client = DynamoUtils.getClient(dynamodb, org_id)
 
-    print(json.dumps(client.toJSON()))
-    
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
         authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
-
-    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
-    get_acls_response = requests.get(config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
-        headers=headers
-    )
-
-    #extract all the apps assignd to the apple search ads account
-    get_acls_all_orgs_response = json.loads(get_acls_response.text)
-
-    print(str(get_acls_all_orgs_response))
-    get_acls_all_orgs_list = [get_acls_all_orgs_response[x] for x in get_acls_all_orgs_response]
-    get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
-    acls_response = list(
-        filter(
-            lambda org:(org["orgId"] == int(client.orgId)), get_acls_all_orgs_list_extracted
+        
+        # get campaigns
+        url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUPS_URL % campaign_id
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
+        print("URL is" + url)
+        print("Headers are" + str(headers))
+        response = requests.get(
+            url,
+            headers=headers,
+            timeout=config.HTTP_REQUEST_TIMEOUT
         )
-    )
+        print(str(response.text))
         
     return {
         'statusCode': 200,
@@ -772,8 +764,53 @@ def getAppleAcls(event, context):
             'Access-Control-Allow-Methods': '*',
             'Access-Control-Allow-Headers': 'x-api-key, Authorization'
         },
-        'body': json.dumps(acls_response)
+        'body': response.text
     }
+
+
+# NOTE remove this unused
+# def getAppleAcls(event, context):
+#     print('Loading getAppleAcls....')
+#     print("Received event: " + json.dumps(event, indent=2))
+#     print("Received context: " + str(context))
+#     queryStringParameters = event["queryStringParameters"]
+#     org_id = queryStringParameters["org_id"]
+#     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
+#     client: Client = DynamoUtils.getClient(dynamodb, org_id)
+
+#     print(json.dumps(client.toJSON()))
+    
+#     # handle auth token
+#     if client.auth is not None:
+#         print("found auth values in client " + str(client.auth))
+#         authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+
+#     headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
+#     get_acls_response = requests.get(config.APPLE_SEARCHADS_URL_BASE_V4 + "acls",
+#         headers=headers
+#     )
+
+#     #extract all the apps assignd to the apple search ads account
+#     get_acls_all_orgs_response = json.loads(get_acls_response.text)
+
+#     print(str(get_acls_all_orgs_response))
+#     get_acls_all_orgs_list = [get_acls_all_orgs_response[x] for x in get_acls_all_orgs_response]
+#     get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
+#     acls_response = list(
+#         filter(
+#             lambda org:(org["orgId"] == int(client.orgId)), get_acls_all_orgs_list_extracted
+#         )
+#     )
+        
+#     return {
+#         'statusCode': 200,
+#         'headers': {
+#             'Access-Control-Allow-Origin': '*',
+#             'Access-Control-Allow-Methods': '*',
+#             'Access-Control-Allow-Headers': 'x-api-key, Authorization'
+#         },
+#         'body': json.dumps(acls_response)
+#     }
 
 # TODO remove this from front end
 def getAppleAuth(event, context):
