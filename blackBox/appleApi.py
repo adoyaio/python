@@ -24,7 +24,7 @@ def patchAppleCampaign(event, context):
     org_id = queryStringParameters["org_id"]
 
     dynamodb = LambdaUtils.getApiEnvironmentDetails(event).get('dynamodb')
-    table = dynamodb.Table('clients')
+    table = dynamodb.Table('clients_2')
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
 
     if client.auth is None:
@@ -91,16 +91,16 @@ def patchAppleCampaign(event, context):
    
     # write to db
     updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
-    # table.put_item(
-    #     Item = {
-    #             'orgId': int(org_id),
-    #             'orgDetails': updated
-    #         }
-    # )
-
     table.put_item(
-        Item = updated
+        Item = {
+                'orgId': org_id,
+                'orgDetails': updated
+            }
     )
+
+    # table.put_item(
+    #     Item = updated
+    # )
 
     return {
         'statusCode': 200,

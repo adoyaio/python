@@ -1065,6 +1065,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
 
+  GetAppleAdgroupsPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref getAppleAdgroups
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
   # Cognito User Pools Authorizer
   # AuthorizersCognitoUserPools:
   #   Type: AWS::ApiGateway::Authorizer
