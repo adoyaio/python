@@ -250,7 +250,7 @@ def postClientHandler(event, context):
         'headers': {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': '*',
-            'Access-Control-Allow-Methods': 'OPTIONS,POST,GET'
+            'Access-Control-Allow-Methods': '*'
         },
         'body': json.dumps(response, cls=DecimalEncoder)
     }

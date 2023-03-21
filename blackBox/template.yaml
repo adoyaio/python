@@ -990,6 +990,14 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
 
+  PostClientPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: "arn:aws:lambda:us-east-1:496475828721:function:postClient"
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: arn:aws:execute-api:us-east-1:496475828721:9v61i85hn2/*
+
   GetClientsPermission:
     Type: AWS::Lambda::Permission
     Properties:
