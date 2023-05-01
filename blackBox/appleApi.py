@@ -292,7 +292,7 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
     }
 
     base_url_4 = config.APPLE_SEARCHADS_URL_BASE_V4
-    base_url = config.APPLE_SEARCHADS_URL_BASE_V3
+    # base_url = config.APPLE_SEARCHADS_URL_BASE_V3
 
 
     # daily cap may not exceed total budget
@@ -359,12 +359,14 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         },
         "adamId": adam_id,
         "countriesOrRegions": [str(campaign_target_country)],
-        "status": campaignStatus # ENABLED or PAUSED, set per env via LambdaUtils  
+        "status": campaignStatus, # ENABLED or PAUSED, set per env via LambdaUtils  
+        "billingEvent": "TAPS"
     }
 
     
     
-    create_campaign_url = base_url + "campaigns"
+    # create_campaign_url = base_url + "campaigns"
+    create_campaign_url = base_url_4 + "campaigns"
 
     print("Payload is '%s'." % create_campaign_payload)
     print("Url is '%s'." % create_campaign_url)
@@ -415,7 +417,8 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
         "pagination":{"offset":0,"limit":1000}
     }
 
-    get_campaigns_url = base_url + "campaigns/find"
+    # get_campaigns_url = base_url + "campaigns/find"
+    get_campaigns_url = base_url_4 + "campaigns/find"
 
     print ("url is '%s'." % get_campaigns_url)
     print ("Payload is '%s'." % get_campaigns_payload)
@@ -449,10 +452,11 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
             "name": str(ad_group_name),
             "startTime": ad_group_start_date_time,
             "automatedKeywordsOptIn": search_match,
-            "defaultCpcBid": {
+            "defaultBidAmount": {
                 "amount": str(round(target_cost_per_install * 0.50,2)),
                 "currency": str(currency)
             },
+            "pricingModel": "CPC",
             "targetingDimensions": {
                 "age": {
                     "included": [
@@ -474,7 +478,9 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
             }
     }
 
-    create_ad_group_url = base_url + "campaigns/%s/adgroups/" % new_campaign_id
+    # create_ad_group_url = base_url + "campaigns/%s/adgroups/" % new_campaign_id
+    create_ad_group_url = base_url_4 + "campaigns/%s/adgroups/" % new_campaign_id
+
 
     print ("Payload is '%s'." % create_ad_group_payload)
     print ("Url is '%s'." % create_ad_group_url)
@@ -516,7 +522,9 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
             {"offset":0,"limit":1000}
     }
 
-    get_adgroups_url = base_url + "campaigns/%s/adgroups/find" % new_campaign_id
+    # get_adgroups_url = base_url + "campaigns/%s/adgroups/find" % new_campaign_id
+    get_adgroups_url = base_url_4 + "campaigns/%s/adgroups/find" % new_campaign_id
+
     print ("Url is '%s'." % get_adgroups_url)
     print ("Payload is '%s'." % get_adgroups_payload)
 
@@ -591,7 +599,10 @@ def createCampaign(campaignType, campaignData, campaignStatus, authToken):
             } 
             for item in targeted_keywords
         ]
-        targeted_keyword_url = base_url + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
+        
+        # targeted_keyword_url = base_url + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
+        targeted_keyword_url = base_url_4 + "campaigns/%s/adgroups/%s/targetingkeywords/bulk" % (new_campaign_id, new_ad_group_id)
+
         print ("Url is '%s'." % targeted_keyword_url)
         print ("Payload is '%s'." % targeted_keyword_payload)
 
