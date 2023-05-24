@@ -51,7 +51,7 @@ def patchClientHandler(event, context):
     # execute apple update if needed, only in live
     if updateApple and send:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, org_id)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
         headers = {
             "Authorization": "Bearer %s" % authToken, 
             "X-AP-Context": "orgId=%s" % client.orgId,
@@ -194,11 +194,11 @@ def postClientHandler(event, context):
     # execute apple update if needed
     if updateApple:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, org_id)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + (config.APPLE_CAMPAIGN_UPDATE_URL_TEMPLATE % newCampaignValues['campaignId'])
         headers = {
             "Authorization": "Bearer %s" % authToken, 
-            "X-AP-Context": "orgId=%s" % org_id,
+            "X-AP-Context": "orgId=%s" % client.orgId,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
