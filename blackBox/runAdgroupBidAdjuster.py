@@ -49,7 +49,7 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-    clientG = Client.buildFromDictionary(
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
