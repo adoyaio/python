@@ -47,7 +47,7 @@ def initialize(clientEvent):
     # NOTE uncomment to force an update to production. ie manual backfill if needed
     # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    clientG = Client.buildFromDictionary(
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
@@ -124,7 +124,7 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
     # NOTE pivot on token
     if authToken is not None:
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.asaId}
         dprint("URL is '%s'." % url)
         dprint("Payload is '%s'." % payload)
         dprint("Headers are %s." % headers)
@@ -135,7 +135,7 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
         )
     else:
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaign_id
-        headers = {"Authorization": "orgId=%s" % clientG.orgId}
+        headers = {"Authorization": "orgId=%s" % clientG.asaId}
         dprint("URL is '%s'." % url)
         dprint("Payload is '%s'." % payload)
         dprint("Headers are %s." % headers)
@@ -149,7 +149,7 @@ def getKeywordReportFromApple(campaign_id, start_date, end_date):
 
     # TODO extract to utils
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.asaId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
         subject ="%s - %d ERROR in runAppleIntegrationKeyword for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
@@ -269,6 +269,7 @@ def export_dict_to_csv(raw_dict, filename):
 def process():
     print("runAppleIntegrationKeyword:::" + clientG.clientName + ":::" + str(clientG.orgId))
     orgId = str(clientG.orgId)
+    asaId = str(clientG.asaId)
     appleCampaigns = clientG.appleCampaigns
     campaignsForAppleKeywordIntegration = list(
         filter(

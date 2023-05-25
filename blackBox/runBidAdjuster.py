@@ -52,11 +52,13 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     ) 
-    clientG = Client.buildFromDictionary(
+
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
     )
+    
     authToken = clientEvent['authToken']
     logger = LambdaUtils.getLogger(
         clientEvent['rootEvent']['env']
@@ -125,7 +127,7 @@ def getKeywordReportFromApple(campaignId):
     # NOTE pivot on token until v3 sunset
     if authToken is not None:
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.asaId}
         dprint("\nURL is %s" % url)
         dprint("\nPayload is %s" % payload)
         dprint("\nHeaders are %s" % headers)
@@ -136,7 +138,7 @@ def getKeywordReportFromApple(campaignId):
         )
     else:
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_REPORTING_URL_TEMPLATE % campaignId
-        headers = {"Authorization": "orgId=%s" % clientG.orgId}
+        headers = {"Authorization": "orgId=%s" % clientG.asaId}
         dprint("\nURL is %s" % url)
         dprint("\nPayload is %s" % payload)
         dprint("\nHeaders are %s" % headers)
@@ -150,7 +152,7 @@ def getKeywordReportFromApple(campaignId):
     dprint("Response is %s" % response)
 
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.asaId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
         subject ="%s - %d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
@@ -399,13 +401,13 @@ def sendUpdatedBidsToApple(keywordFileToPost):
     if authToken is not None:
         headers = {
             "Authorization": "Bearer %s" % authToken,
-            "X-AP-Context": "orgId=%s" % clientG.orgId,
+            "X-AP-Context": "orgId=%s" % clientG.asaId,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
     else:
         headers = {
-            "Authorization": "orgId=%s" % clientG.orgId,
+            "Authorization": "orgId=%s" % clientG.asaId,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -440,7 +442,7 @@ def sendUpdatedBidsToApple(keywordFileToPost):
             )
         
         if response.status_code != 200:
-            email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
+            email = "client id:%d \n url:%s \n response:%s" % (clientG.asaId, url, response)
             date = time.strftime("%m/%d/%Y")
             subject ="%s:%d ERROR in runBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
             logger.warn(email)
@@ -485,7 +487,7 @@ def emailSummaryReport(data, sent):
 def process():
     print("runBidAdjuster:::" + clientG.clientName + ":::" + str(clientG.orgId))
     summaryReportInfo = {}
-    summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = {} 
+    summaryReportInfo["%s (%s)" % (clientG.asaId, clientG.clientName)] = clientSummaryReportInfo = {} 
     appleCampaigns = clientG.appleCampaigns
     campaignsForBidAdjuster = list(
         filter(

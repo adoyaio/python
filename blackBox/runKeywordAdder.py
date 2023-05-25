@@ -46,7 +46,8 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-    clientG = Client.buildFromDictionary(
+
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
@@ -112,7 +113,7 @@ def getSearchTermsReportFromApple(campaignId):
   # NOTE pivot on token until v3 sunset
   if authToken is not None:
     url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
-    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.asaId}
     dprint ("URL is '%s'." % url)
     dprint ("Payload is '%s'." % payload)
     dprint ("Headers are %s." % headers)
@@ -124,7 +125,7 @@ def getSearchTermsReportFromApple(campaignId):
     )
   else:
     url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORD_SEARCH_TERMS_URL_TEMPLATE % campaignId
-    headers = { "Authorization": "orgId=%s" % clientG.orgId }
+    headers = { "Authorization": "orgId=%s" % clientG.asaId }
     dprint ("URL is '%s'." % url)
     dprint ("Payload is '%s'." % payload)
     dprint ("Headers are %s." % headers)
@@ -141,7 +142,7 @@ def getSearchTermsReportFromApple(campaignId):
 
   # TODO extract to utils
   if response.status_code != 200:
-    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
+    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.asaId, url, payload, response)
     date = time.strftime("%m/%d/%Y")
     subject ="%s - %d ERROR in runKeywordAdder for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
@@ -429,7 +430,7 @@ def sendNonDuplicatesToApple(url, payload, headers, duplicateKeywordIndices):
     dprint("NonDuplicate send worked.");
 
   else:
-    email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
+    email = "client id:%d \n url:%s \n response:%s" % (clientG.asaId, url, response)
     date = time.strftime("%m/%d/%Y")
     subject ="%s:%d ERROR in runKeywordAdder for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
@@ -454,13 +455,13 @@ def sendToApple(payloads):
   if authToken is not None:
     headers = {
       "Authorization": "Bearer %s" % authToken, 
-      "X-AP-Context": "orgId=%s" % clientG.orgId,  
+      "X-AP-Context": "orgId=%s" % clientG.asaId,  
       "Content-Type" : "application/json", 
       "Accept" : "application/json"
     }
   else:
     headers = {
-      "Authorization": "orgId=%s" % clientG.orgId, 
+      "Authorization": "orgId=%s" % clientG.asaId, 
       "Content-Type" : "application/json", 
       "Accept" : "application/json"
     }
@@ -653,7 +654,7 @@ def process():
   print("runKeywordAdder:::" + clientG.clientName + ":::" + str(clientG.orgId))
   summaryReportInfo = { }
   sent = False
-  summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = CSRI = { }
+  summaryReportInfo["%s (%s)" % (clientG.asaId, clientG.clientName)] = CSRI = { }
 
   searchCampaign = next(
     item for item in clientG.appleCampaigns if item["campaignType"] == "search"

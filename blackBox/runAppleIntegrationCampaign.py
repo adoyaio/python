@@ -45,7 +45,7 @@ def initialize(clientEvent):
     # NOTE uncomment to force an update to production. ie manual backfill if needed
     # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 
-    clientG = Client.buildFromDictionary(
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
@@ -89,7 +89,7 @@ def getCampaignReportFromApple(start_date, end_date):
     # NOTE pivot on token
     if authToken is not None:
         url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.asaId}
         dprint("URL is '%s'." % url)
         dprint("Payload is '%s'." % payload)
         dprint("Headers are %s." % headers)
@@ -100,7 +100,7 @@ def getCampaignReportFromApple(start_date, end_date):
         )
     else:
         url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
-        headers = {"Authorization": "orgId=%s" % clientG.orgId}
+        headers = {"Authorization": "orgId=%s" % clientG.asaId}
         dprint("URL is '%s'." % url)
         dprint("Payload is '%s'." % payload)
         dprint("Headers are %s." % headers)
@@ -112,9 +112,11 @@ def getCampaignReportFromApple(start_date, end_date):
         )
     logger.info("Response is %s." % response)
 
+    print(str(response.text))
+
     # TODO extract to utils
     if response.status_code != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.asaId, url, payload, response)
         date = time.strftime("%m/%d/%Y")
         subject ="%s - %d ERROR in runAppleIntegrationKeyword for %s" % (date, response.status_code, clientG.clientName)
         logger.warn(email)
@@ -135,83 +137,84 @@ def loadAppleCampaignToDynamo(data, orgId, endDate):
 
     for row in rows:
         # logger.debug("loadAppleKeywordToDynamo:::row:::" + str(row))
+        if row['metadata']['displayStatus'] == 'RUNNING':
 
-        # always pull from meta
-        campaignId = str(row['metadata']['campaignId'])
-        campaignName = str(row['metadata']['campaignName'])
-        deleted = row['metadata']['deleted']
-        campaignStatus = str(row['metadata']['campaignStatus'])
-        appName = row['metadata']['app']['appName']
-        adamId = str(row['metadata']['app']['adamId'])
-        servingStatus = row['metadata']['servingStatus']
-        modificationTime = row['metadata']['modificationTime'].split("T")[0]
-        totalBudget_amount = row['metadata']['totalBudget']['amount']
-        totalBudget_currency = row['metadata']['totalBudget']['currency']
-        dailyBudget_amount = row['metadata']['dailyBudget']['amount']
-        dailyBudget_currency = row['metadata']['dailyBudget']['currency']
-        displayStatus = row['metadata']['displayStatus']
+            # always pull from meta
+            campaignId = str(row['metadata']['campaignId'])
+            campaignName = str(row['metadata']['campaignName'])
+            deleted = row['metadata']['deleted']
+            campaignStatus = str(row['metadata']['campaignStatus'])
+            appName = row['metadata']['app']['appName']
+            adamId = str(row['metadata']['app']['adamId'])
+            servingStatus = row['metadata']['servingStatus']
+            modificationTime = row['metadata']['modificationTime'].split("T")[0]
+            totalBudget_amount = row['metadata']['totalBudget']['amount']
+            totalBudget_currency = row['metadata']['totalBudget']['currency']
+            dailyBudget_amount = row['metadata']['dailyBudget']['amount']
+            dailyBudget_currency = row['metadata']['dailyBudget']['currency']
+            displayStatus = row['metadata']['displayStatus']
 
-        # always pull from total
-        taps = row['total']['taps']
-        installs = row['total']['installs']
-        ttr = row['total']['ttr']
-        new_downloads = row['total']['newDownloads']
-        re_downloads = row['total']['redownloads']
-        lat_on_installs= row['total']['latOnInstalls']
-        lat_off_installs = row['total']['latOffInstalls']
-        avg_cpa = decimal.Decimal(str(row['total']['avgCPA']['amount']))
-        conversion_rate = decimal.Decimal(str(row['total']['conversionRate']))
-        local_spend = decimal.Decimal(str(row['total']['localSpend']['amount']))
-        avg_cpt = decimal.Decimal(str(row['total']['avgCPT']['amount']))
+            # always pull from total
+            taps = row['total']['taps']
+            installs = row['total']['installs']
+            ttr = row['total']['ttr']
+            new_downloads = row['total']['newDownloads']
+            re_downloads = row['total']['redownloads']
+            lat_on_installs= row['total']['latOnInstalls']
+            lat_off_installs = row['total']['latOffInstalls']
+            avg_cpa = decimal.Decimal(str(row['total']['avgCPA']['amount']))
+            conversion_rate = decimal.Decimal(str(row['total']['conversionRate']))
+            local_spend = decimal.Decimal(str(row['total']['localSpend']['amount']))
+            avg_cpt = decimal.Decimal(str(row['total']['avgCPT']['amount']))
 
-        # TODO calc branch stats
-        # NOTE incrementing on each loop thru items is unneeded as we query with timestamp, and branch data is by day at its lowest level
-        branch_response = DynamoUtils.getBranchCommerceEventsByCampaign(dynamodb, campaignId, endDate)
-        branch_revenue = 0
-        branch_commerce_event_count = 0
-        for j in branch_response.get("Items"):
-            print("found branch result!")
-            # print(json.dumps(j, cls=DecimalEncoder))
-            branch_revenue = branch_revenue + int(j.get("revenue",0))
-            branch_commerce_event_count = branch_commerce_event_count + int(j.get("count",0))
+            # TODO calc branch stats
+            # NOTE incrementing on each loop thru items is unneeded as we query with timestamp, and branch data is by day at its lowest level
+            branch_response = DynamoUtils.getBranchCommerceEventsByCampaign(dynamodb, campaignId, endDate)
+            branch_revenue = 0
+            branch_commerce_event_count = 0
+            for j in branch_response.get("Items"):
+                print("found branch result!")
+                # print(json.dumps(j, cls=DecimalEncoder))
+                branch_revenue = branch_revenue + int(j.get("revenue",0))
+                branch_commerce_event_count = branch_commerce_event_count + int(j.get("count",0))
 
-        i={
-            'timestamp': str(endDate),
-            'campaignId': campaignId,
-            'campaignName': campaignName,
-            'deleted': deleted,
-            'campaignStatus': campaignStatus,
-            'appName': appName,
-            'adamId': adamId,
-            'servingStatus': servingStatus,
-            'modificationTime': modificationTime,
-            'totalBudget_amount': totalBudget_amount,
-            'totalBudget_currency': totalBudget_currency,
-            'dailyBudget_amount': dailyBudget_amount,
-            'dailyBudget_currency': dailyBudget_currency,
-            'displayStatus' : displayStatus,
-            'taps': taps,
-            'installs': installs,
-            'ttr': ttr,
-            'new_downloads': new_downloads,
-            're_downloads': re_downloads,
-            'lat_on_installs': lat_on_installs,
-            'lat_off_installs': lat_off_installs,
-            'avg_cpa': avg_cpa,
-            'conversion_rate': conversion_rate,
-            'local_spend': local_spend,
-            'avg_cpt': avg_cpt,
-            'org_id' : orgId,
-            'campaign_id' : str(campaignId),
-            'branch_revenue' : branch_revenue,
-            'branch_commerce_event_count': branch_commerce_event_count
-        }
-        try: 
-            response = table.put_item(Item=i)
-        except ClientError as e:
-            logger.critical("runAppleIntegrationCampaign:::process:::PutItem failed due to" + e.response['Error']['Message'])
-        else:
-            logger.debug("runAppleIntegrationCampaign:::process:::PutItem succeeded:")
+            i={
+                'timestamp': str(endDate),
+                'campaignId': campaignId,
+                'campaignName': campaignName,
+                'deleted': deleted,
+                'campaignStatus': campaignStatus,
+                'appName': appName,
+                'adamId': adamId,
+                'servingStatus': servingStatus,
+                'modificationTime': modificationTime,
+                'totalBudget_amount': totalBudget_amount,
+                'totalBudget_currency': totalBudget_currency,
+                'dailyBudget_amount': dailyBudget_amount,
+                'dailyBudget_currency': dailyBudget_currency,
+                'displayStatus' : displayStatus,
+                'taps': taps,
+                'installs': installs,
+                'ttr': ttr,
+                'new_downloads': new_downloads,
+                're_downloads': re_downloads,
+                'lat_on_installs': lat_on_installs,
+                'lat_off_installs': lat_off_installs,
+                'avg_cpa': avg_cpa,
+                'conversion_rate': conversion_rate,
+                'local_spend': local_spend,
+                'avg_cpt': avg_cpt,
+                'org_id' : orgId,
+                'campaign_id' : str(campaignId),
+                'branch_revenue' : branch_revenue,
+                'branch_commerce_event_count': branch_commerce_event_count
+            }
+            try: 
+                response = table.put_item(Item=i)
+            except ClientError as e:
+                logger.critical("runAppleIntegrationCampaign:::process:::PutItem failed due to" + e.response['Error']['Message'])
+            else:
+                logger.debug("runAppleIntegrationCampaign:::process:::PutItem succeeded:")
 
     return True
 
@@ -223,6 +226,7 @@ def export_dict_to_csv(raw_dict, filename):
 def process():
     print("runAppleIntegrationCampaign:::" + clientG.clientName + ":::" + str(clientG.orgId))
     orgId = str(clientG.orgId)
+    asaId = clientG.asaId
     data = getCampaignReportFromApple(startDate, startDate)
     if not data:
         logger.info("runAppleIntegrationCampaign:::no data returned")
@@ -232,7 +236,7 @@ def process():
 
 if __name__ == "__main__":
     clientEvent = LambdaUtils.getClientForLocalRun(
-        int(sys.argv[1]),
+        str(sys.argv[1]),
         ['james@adoya.io']
     )
     initialize(clientEvent)

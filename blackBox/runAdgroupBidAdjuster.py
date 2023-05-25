@@ -115,7 +115,7 @@ def getAdgroupReportFromApple(campaign):
   # NOTE pivot on token until v3 sunset
   if authToken is not None:
     url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
-    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
+    headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.asaId}
     dprint("\nURL is '%s'." % url)
     dprint("\nPayload is '%s'." % payload)
     dprint ("\nHeaders are %s." % headers)
@@ -126,7 +126,7 @@ def getAdgroupReportFromApple(campaign):
     )
   else:
     url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUP_REPORTING_URL_TEMPLATE % campaign['campaignId']
-    headers = { "Authorization": "orgId=%s" % clientG.orgId }
+    headers = { "Authorization": "orgId=%s" % clientG.asaId }
     dprint("\nURL is '%s'." % url)
     dprint("\nPayload is '%s'." % payload)
     dprint ("\nHeaders are %s." % headers)
@@ -140,7 +140,7 @@ def getAdgroupReportFromApple(campaign):
   dprint ("\nResponse is %s." % response)
 
   if response.status_code != 200:
-    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response)
+    email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.asaId, url, payload, response)
     date = time.strftime("%m/%d/%Y")
     subject ="%s - %d ERROR in runAdgroupBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
     logger.warn(email)
@@ -343,7 +343,7 @@ def sendOneUpdatedBidToApple(adGroup, headers, currency):
       )
 
     if response.status_code != 200:
-      email = "client id:%d \n url:%s \n response:%s" % (clientG.orgId, url, response)
+      email = "client id:%d \n url:%s \n response:%s" % (clientG.asaId, url, response)
       date = time.strftime("%m/%d/%Y")
       subject ="%s:%d ERROR in runAdGroupBidAdjuster for %s" % (date, response.status_code, clientG.clientName)
       logger.warn(email)
@@ -363,13 +363,13 @@ def sendUpdatedBidsToApple(adGroupFileToPost):
   if authToken is not None:
     headers = {
       "Authorization": "Bearer %s" % authToken, 
-      "X-AP-Context": "orgId=%s" % clientG.orgId,
+      "X-AP-Context": "orgId=%s" % clientG.asaId,
       "Content-Type": "application/json",
       "Accept": "application/json",
     }
   else:
     headers = {
-      "Authorization": "orgId=%s" % clientG.orgId,
+      "Authorization": "orgId=%s" % clientG.asaId,
       "Content-Type" : "application/json",
       "Accept"       : "application/json",
     }
@@ -406,7 +406,7 @@ def process():
   print("runAdgroupBidAdjuster:::" + clientG.clientName + ":::" + str(clientG.orgId))
   summaryReportInfo = { }
   sent = False
-  summaryReportInfo["%s (%s)" % (clientG.orgId, clientG.clientName)] = clientSummaryReportInfo = { }
+  summaryReportInfo["%s (%s)" % (clientG.asaId, clientG.clientName)] = clientSummaryReportInfo = { }
   
   appleCampaigns = clientG.appleCampaigns
   campaignsForAdgroupBidAdjuster = list(

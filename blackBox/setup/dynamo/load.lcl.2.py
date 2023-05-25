@@ -34,24 +34,26 @@ def load_items_to_local(items, local, tableName):
 if __name__ == '__main__':
     # get input client id
     orgId = sys.argv[1]
+    asaId = sys.argv[2]
+    
     print('Client Id:' + str(orgId)) 
 
     # client table
-    tableName = 'clients'
-    local = dynamodbLocal.Table(tableName)
-    prod = dynamodbProd.Table(tableName)
-    prodResponse = prod.query(
-        KeyConditionExpression=Key('orgId').eq(int(orgId))
-    )
-    for item in prodResponse.get("Items"):
-        try:
-            localResponse = local.put_item(
-                Item=item
-            )
-        except ClientError as e:
-            print(tableName + " failed due to" + e.localResponse['Error']['Message'])
+    # tableName = 'clients'
+    # local = dynamodbLocal.Table(tableName)
+    # prod = dynamodbProd.Table(tableName)
+    # prodResponse = prod.query(
+    #     KeyConditionExpression=Key('orgId').eq(int(orgId))
+    # )
+    # for item in prodResponse.get("Items"):
+    #     try:
+    #         localResponse = local.put_item(
+    #             Item=item
+    #         )
+    #     except ClientError as e:
+    #         print(tableName + " failed due to" + e.localResponse['Error']['Message'])
 
-    print(tableName + " rows added:::" + str(len(prodResponse.get("Items"))))
+    # print(tableName + " rows added:::" + str(len(prodResponse.get("Items"))))
 
 
     # client_2 table

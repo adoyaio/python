@@ -45,7 +45,8 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-    clientG = Client.buildFromDictionary(
+
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
@@ -98,7 +99,7 @@ def getCampaignData(daysToGoBack):
     if authToken is not None:
         url: str = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_KEYWORDS_REPORT_URL
         # headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId}
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.orgId, 'Content-Type': 'application/json'}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % clientG.asaId, 'Content-Type': 'application/json'}
         dprint("\n\nHeaders: %s" % headers)
         dprint("\n\nPayload: %s" % payload)
         dprint("\n\nApple URL: %s" % url)
@@ -128,7 +129,7 @@ def getCampaignData(daysToGoBack):
 
     # TODO extract to utils
     if response.status != 200:
-        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.orgId, url, payload, response.reason)
+        email = "client id:%d \n url:%s \n payload:%s \n response:%s" % (clientG.asaId, url, payload, response.reason)
         date = time.strftime("%m/%d/%Y")
         subject ="%s - %d ERROR in runClientDailyReport for %s" % (date, response.status, clientG.clientName)
         logger.warning(email)
@@ -446,8 +447,8 @@ def process():
 
         if(campaignData != False):
             dataArray = campaignData["data"]["reportingDataResponse"]["row"]
-            dprint("For %d (%s), there are %d campaigns in the campaign data." % \
-                (clientG.orgId, clientG.clientName, len(dataArray)))
+            dprint("For %s, there are %d campaigns in the campaign data." % \
+                (clientG.clientName, len(dataArray)))
             dataForVariousTimes[daysToGoBack] = dataArray
     dataForOneDay = dataForVariousTimes.get(ONE_DAY, None)
     dataForSevenDay = dataForVariousTimes.get(SEVEN_DAYS, None)

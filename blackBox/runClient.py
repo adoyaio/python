@@ -35,13 +35,13 @@ def process(clientEvent, context):
     # get auth token and add to the clientEvent, default to None
     clientEvent['authToken'] = None
     
-    client = Client.buildFromDictionary(
+    client = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
     )
     if client.auth is not None:
-        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.asaId)
         
         # add accesToken to the clientEvent
         clientEvent["authToken"] = authToken

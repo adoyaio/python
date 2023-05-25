@@ -48,8 +48,7 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['dynamoEndpoint']
     )
     # dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-
-    clientG = Client.buildFromDictionary(
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )

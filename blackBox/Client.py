@@ -12,6 +12,7 @@ class Client:
     def __init__(
         self,
         orgId,
+        asaId,
         clientName,
         emailAddresses,
         keyFilename, 
@@ -47,6 +48,7 @@ class Client:
         #         "Missing search, broad, or exact in keywordAdderIds[\"adGroupId\"]. It was %s." % str(kAPGI))
 
         self._orgId = orgId
+        self._asaId = asaId
         self._clientName = clientName
         self._emailAddresses = emailAddresses
         self._keyFilename = keyFilename
@@ -74,6 +76,7 @@ class Client:
         return json.dumps(
             {
                 'orgId': self._orgId,
+                'asaId': self._asaId,
                 'clientName': self._clientName,
                 'emailAddresses': self._emailAddresses,
                 'keyFilename': self._keyFilename,
@@ -99,6 +102,10 @@ class Client:
     @property
     def orgId(self):
         return self._orgId
+
+    @property
+    def asaId(self):
+        return self._asaId
 
     @property
     def clientName(self):
@@ -424,9 +431,36 @@ class Client:
         if len(response['Items']) > 0:
             return response['Items'][0]["keywords"]
 
-    def buildFromDictionary(orgDetails):
+    def buildFromDictionary(orgDetails, key):
+        print("james test build from dict client")
+        print(str(orgDetails.get('orgId')))
+        return Client(
+            key, # root org id ie adoya id
+            orgDetails.get('orgId', "orgId"), # represents ass id but dont want to migrate db
+            orgDetails.get('clientName', "client"),
+            orgDetails.get('emailAddresses', []),
+            orgDetails.get('keyFilename', 'keyFilename'),
+            orgDetails.get('pemFilename', 'pemFilename'),
+            orgDetails.get('bidParameters', {}),
+            orgDetails.get('adgroupBidParameters', {}),
+            orgDetails.get('branchBidParameters', {}),
+            orgDetails.get('appleCampaigns', []),
+            orgDetails.get('keywordAdderParameters', {}),
+            orgDetails.get('branchIntegrationParameters', {}),
+            orgDetails.get('currency', 'USD'),
+            orgDetails.get('appName', "appName"),
+            orgDetails.get('appId', 'appId'),
+            orgDetails.get('auth', None),
+            orgDetails.get('hasRegistered', False),
+            orgDetails.get('hasInvitedApiUser', False),
+            orgDetails.get('isActiveClient', True)
+        )
+
+    def buildFromOrgdetails(orgDetails):
+        print("james test build from orgdetails ")
         return Client(
             orgDetails.get('orgId', "orgId"),
+            orgDetails.get('asaId', "asaId"), 
             orgDetails.get('clientName', "client"),
             orgDetails.get('emailAddresses', []),
             orgDetails.get('keyFilename', 'keyFilename'),
@@ -462,8 +496,16 @@ class Client:
             response = table.scan(**scan_kwargs)
             for client in response.get('Items'): 
                 if client.get("orgDetails").get("isActiveClient") == True:
+                    # orgDetails = client.get("orgDetails")
+                    # orgDetails["orgIdKey"] = client.get("orgId") # stick the root org id into orgdetails
+                    # saves db rework but not ideal
                     CLIENTS.append(
-                        Client.buildFromDictionary(client.get("orgDetails"))
+                        # Client.buildFromDictionary(client.get("orgDetails"))
+                        # Client.buildFromDictionary(orgDetails)
+                        Client.buildFromDictionary(
+                            client.get("orgDetails"), 
+                            client.get("orgId")
+                        )
                     )
             start_key = response.get('LastEvaluatedKey', None)
             done = start_key is None 

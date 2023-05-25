@@ -121,24 +121,33 @@ def getClientForLocalRun(orgId, emailToInternal):
         clients = json.load(json_file)
         clientDict = next(item for item in clients if item["orgId"] == str(orgId))
         
+        orgDetails = clientDict.get("orgDetails")
+        # orgDetails['orgIdKey'] = orgId
+
         client = Client.buildFromDictionary(
-            clientDict['orgDetails']
+            orgDetails,
+            orgId
         )
     # serialize to json for mock lambda event, 
     clientEvent['orgDetails'] = client.toJSON()
+    # clientEvent['client'] = client
+
+    # print("jamestest client event")
+
+    # print(client.toJSON())
 
     # handle auth token
     if client.auth is None:
         clientEvent['authToken'] = None
         return clientEvent
         
-    authToken = getAuthToken(client.auth, client.orgId)
+    authToken = getAuthToken(client.auth, client.asaId)
     clientEvent['authToken'] = authToken
     return clientEvent
 
 
 # gets an oauth token from appleid.apple.com
-def getAuthToken(auth, orgId):
+def getAuthToken(auth, asaId):
     client_id = auth.get('clientId')
     team_id = auth.get('teamId')
     key_id = auth.get('keyId')
@@ -150,7 +159,7 @@ def getAuthToken(auth, orgId):
     
     # get private key from s3
     key = None
-    private_key_name = str(orgId) + "-private-key.pem"
+    private_key_name = str(asaId) + "-private-key.pem"
     private_key = S3Utils.getCert(private_key_name)
     with open(private_key, 'rt') as file: 
         key = file.read()

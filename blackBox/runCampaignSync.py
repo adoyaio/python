@@ -23,7 +23,8 @@ def initialize(clientEvent):
         clientEvent['rootEvent']['env'],
         clientEvent['rootEvent']['dynamoEndpoint']
     )
-    clientG = Client.buildFromDictionary(
+
+    clientG = Client.buildFromOrgdetails(
         json.loads(
             clientEvent['orgDetails']
         )
@@ -36,21 +37,22 @@ def initialize(clientEvent):
 
 def process():
     print("runCampaignSync:::" + clientG.clientName + ":::" + str(clientG.orgId))
+    asaId = clientG.asaId
     orgId = clientG.orgId
     pemFilename = clientG.pemFilename
     keyFilename = clientG.keyFilename
 
     auth = clientG.auth
     if auth is not None:
-        authToken = LambdaUtils.getAuthToken(auth, orgId)
+        authToken = LambdaUtils.getAuthToken(auth, asaId)
         headers = {
             "Authorization": "Bearer %s" % authToken, 
-            "X-AP-Context": "orgId=%s" % orgId,
+            "X-AP-Context": "orgId=%s" % asaId,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
     else:
-        headers = {"Authorization": "orgId=%s" % orgId}
+        headers = {"Authorization": "orgId=%s" % asaId}
         
     appleCampaigns: list = clientG.appleCampaigns
     appleCampaign: dict

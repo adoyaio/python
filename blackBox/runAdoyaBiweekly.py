@@ -37,7 +37,10 @@ def process(event):
     for client in clientsG:
         clientEvent = {}
         clientEvent['rootEvent'] = event
+        # TODO 
+        # clientEvent['client'] = client
         clientEvent['orgDetails'] = client.toJSON()
+        
         clientEvent['jobDetails'] = ['runAppleIntegrationKeyword', 'runBranchIntegration', 'runAppleIntegrationCampaign', 'runClientDailyReport', 'runBidAdjuster', 'runAdgroupBidAdjuster','runKeywordAdder', 'runCampaignSync']
 
         if event['env'] == 'prod':
