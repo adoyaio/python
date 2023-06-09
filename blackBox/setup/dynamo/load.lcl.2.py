@@ -34,7 +34,7 @@ def load_items_to_local(items, local, tableName):
 if __name__ == '__main__':
     # get input client id
     orgId = sys.argv[1]
-    asaId = sys.argv[2]
+    # asaId = sys.argv[2]
     
     print('Client Id:' + str(orgId)) 
 

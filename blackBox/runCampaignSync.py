@@ -146,6 +146,9 @@ def process():
 
     # write to dynamo
     updated = json.loads(clientG.toJSON(), parse_float=decimal.Decimal)
+    updated['orgId'] = updated.get('asaId')
+    updated.pop('asaId') # in clients json there is no asaId key, orgId on orgdetail represents asaid
+
     table = dynamodb.Table('clients_2')
     table.put_item(
         Item = {
@@ -156,7 +159,7 @@ def process():
 
 if __name__ == "__main__":
     clientEvent = LambdaUtils.getClientForLocalRun(
-        int(sys.argv[1]),
+        str(sys.argv[1]),
         ['james@adoya.io']
     )
     initialize(clientEvent)

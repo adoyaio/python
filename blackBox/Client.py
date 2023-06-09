@@ -163,6 +163,10 @@ class Client:
     def branchIntegrationParameters(self):
         return dict(self._branchIntegrationParameters)
 
+    @branchIntegrationParameters.setter
+    def branchIntegrationParameters(self, branchIntegrationParameters):
+        self._branchIntegrationParameters = branchIntegrationParameters
+
     @property
     def currency(self):
         return self._currency
@@ -432,7 +436,6 @@ class Client:
             return response['Items'][0]["keywords"]
 
     def buildFromDictionary(orgDetails, key):
-        print("james test build from dict client")
         print(str(orgDetails.get('orgId')))
         return Client(
             key, # root org id ie adoya id
@@ -457,7 +460,6 @@ class Client:
         )
 
     def buildFromOrgdetails(orgDetails):
-        print("james test build from orgdetails ")
         return Client(
             orgDetails.get('orgId', "orgId"),
             orgDetails.get('asaId', "asaId"), 

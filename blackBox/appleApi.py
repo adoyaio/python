@@ -91,6 +91,11 @@ def patchAppleCampaign(event, context):
    
     # write to db
     updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
+
+    # TODO test this
+    updated['orgId'] = updated.get('asaId')
+    updated.pop('asaId') # in clients json there is no asaId key, orgId on orgdetail represents asaid
+    
     table.put_item(
         Item = {
                 'orgId': org_id,

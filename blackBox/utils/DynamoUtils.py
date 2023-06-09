@@ -130,7 +130,7 @@ def getClient(dynamoResource, org_id):
 
     # TODO remove this and return dynamo response as is
     parsed = json.loads(json.dumps(clientDict['orgDetails'],cls=DecimalEncoder))
-    client = Client.buildFromDictionary(parsed)
+    client = Client.buildFromDictionary(parsed, org_id)
     return client
 
 def getClients(dynamoResource, org_id):

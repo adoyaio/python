@@ -38,9 +38,14 @@ def patchClientHandler(event, context):
     client.bidParameters = updatedClient.get('orgDetails').get('bidParameters')
     client.branchBidParameters = updatedClient.get('orgDetails').get('branchBidParameters')
     client.appleCampaigns = updatedClient.get('orgDetails').get('appleCampaigns')
+    client.branchIntegrationParameters = updatedClient.get('orgDetails').get('branchIntegrationParameters')
 
-    # write to dynamo
+    # write to dynamo but need the dictionary not the class
+    # TODO need DTO pattern here
     updated = json.loads(client.toJSON(), parse_float=decimal.Decimal)
+    updated['orgId'] = updated.get('asaId')
+    updated.pop('asaId') # in clients json there is no asaId key, orgId on orgdetail represents asaid
+
     table.put_item(
         Item = {
                 'orgId': org_id,
