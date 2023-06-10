@@ -56,10 +56,10 @@ def patchClientHandler(event, context):
     # execute apple update if needed, only in live
     if updateApple and send:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.asaId)
         headers = {
             "Authorization": "Bearer %s" % authToken, 
-            "X-AP-Context": "orgId=%s" % client.orgId,
+            "X-AP-Context": "orgId=%s" % client.asaId,
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
