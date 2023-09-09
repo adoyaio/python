@@ -666,12 +666,12 @@ def getAppleApps(event, context):
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.asaId)
         
 
         # get apps
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_GET_APPS_URL
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.asaId}
         print("URL is" + url)
         print("Headers are" + str(headers))
         response = requests.get(
@@ -695,7 +695,7 @@ def getAppleApps(event, context):
         get_acls_all_orgs_list_extracted = get_acls_all_orgs_list[0][0:1000]
         acls_response = list(
             filter(
-                lambda org:(org["orgId"] == int(client.orgId)), get_acls_all_orgs_list_extracted
+                lambda org:(org["orgId"] == int(client.asaId)), get_acls_all_orgs_list_extracted
             )
         )
 
