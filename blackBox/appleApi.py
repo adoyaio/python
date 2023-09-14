@@ -722,11 +722,11 @@ def getAppleCampaigns(event, context):
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.asaId)
         
         # get campaigns
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_CAMPAIGNS_URL
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.asaId}
         print("URL is" + url)
         print("Headers are" + str(headers))
         response = requests.get(
@@ -759,11 +759,11 @@ def getAppleAdgroups(event, context):
     # handle auth token
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.asaId)
         
         # get campaigns
         url = config.APPLE_SEARCHADS_URL_BASE_V4 + config.APPLE_ADGROUPS_URL % campaign_id
-        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.orgId}
+        headers = {"Authorization": "Bearer %s" % authToken, "X-AP-Context": "orgId=%s" % client.asaId}
         print("URL is" + url)
         print("Headers are" + str(headers))
         response = requests.get(
@@ -839,7 +839,7 @@ def getAppleAuth(event, context):
     client: Client = DynamoUtils.getClient(dynamodb, org_id)
     if client.auth is not None:
         print("found auth values in client " + str(client.auth))
-        authToken = LambdaUtils.getAuthToken(client.auth, client.orgId)
+        authToken = LambdaUtils.getAuthToken(client.auth, client.asaId)
         
     return {
         'statusCode': 200,
