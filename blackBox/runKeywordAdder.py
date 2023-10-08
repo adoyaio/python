@@ -656,14 +656,24 @@ def process():
   sent = False
   summaryReportInfo["%s (%s)" % (clientG.asaId, clientG.clientName)] = CSRI = { }
 
+  # searchCampaign = next(
+  #   item for item in clientG.appleCampaigns if item["campaignType"] == "search"
+  # )
+  # broadCampaign = next(
+  #   item for item in clientG.appleCampaigns if item["campaignType"] == "broad"
+  # )
+  # exactCampaign = next(
+  #   item for item in clientG.appleCampaigns if item["campaignType"] == "exact"
+  # )
+
   searchCampaign = next(
-    item for item in clientG.appleCampaigns if item["campaignType"] == "search"
+    item for item in clientG.appleCampaigns if item["campaignType"].startswith("search")
   )
   broadCampaign = next(
-    item for item in clientG.appleCampaigns if item["campaignType"] == "broad"
+    item for item in clientG.appleCampaigns if item["campaignType"].startswith("broad")
   )
   exactCampaign = next(
-    item for item in clientG.appleCampaigns if item["campaignType"] == "exact"
+    item for item in clientG.appleCampaigns if item["campaignType"].startswith("exact")
   )
 
   searchMatchData = getSearchTermsReportFromApple(searchCampaign['campaignId'])
